@@ -151,7 +151,4 @@
   <ItemGroup>
     <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
   </ItemGroup>
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="REM copy latest plugin builds to target output before creating other build output&#xD;&#xA;xcopy /i /Y C:\Work\Builds\CertifyPlugins\*.dll $(TargetDir)\Plugins" />
-  </Target>
 </Project>

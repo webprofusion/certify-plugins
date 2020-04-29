@@ -66,7 +66,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="REM Copy plugin dependencies to plugins output folder&#xD;&#xA;xcopy /i  /Y $(TargetDir)\*.dll C:\Work\Builds\CertifyPlugins&#xD;&#xA;&#xD;&#xA;DEL C:\Work\Builds\CertifyPlugins\Certify*.dll&#xD;&#xA;DEL C:\Work\Builds\CertifyPlugins\System*.dll&#xD;&#xA;&#xD;&#xA;REM Copy latest plugin build to plugins output folder&#xD;&#xA;xcopy /i /s /Y $(TargetPath) C:\Work\Builds\CertifyPlugins&#xD;&#xA;" />
+    <Exec Command="REM Copy plugin dependencies to plugins output folder&#xD;&#xA;xcopy /i  /Y $(TargetDir)\*.dll C:\Work\Builds\CertifyPlugins" />
   </Target>
 
 </Project>

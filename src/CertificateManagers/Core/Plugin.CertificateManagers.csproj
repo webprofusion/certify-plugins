@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="REM Copy latest plugin build to plugins output folder&#xD;&#xA;xcopy /i /s /Y $(TargetPath) C:\Work\Builds\CertifyPlugins&#xD;&#xA;&#xD;&#xA;REM remove stale refs to certify specific items&#xD;&#xA;DEL C:\Work\Builds\CertifyPlugins\Certify.*.dll&#xD;&#xA;" />
+    <Exec Command="REM Copy latest plugin build to plugins output folder&#xD;&#xA;xcopy /i /s /Y $(TargetPath) C:\Work\Builds\CertifyPlugins" />
   </Target>
 
 </Project>
