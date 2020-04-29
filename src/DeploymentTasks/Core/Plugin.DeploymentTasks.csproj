@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>DeploymentTasks</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Providers\Assets\ADSF.ps1" />
+    <None Remove="Providers\Assets\Exchange.ps1" />
+    <None Remove="Providers\Assets\RDPGatewayServices.ps1" />
+    <None Remove="Providers\Assets\RDPListenerService.ps1" />
+    <None Remove="Providers\Assets\RemoteAccess.ps1" />
+    <None Remove="Providers\Assets\RemoteAccess.xaml" />
+    <None Remove="Providers\Assets\WebManagementService.ps1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Providers\Assets\ADSF.ps1" />
+    <EmbeddedResource Include="Providers\Assets\Exchange.ps1" />
+    <EmbeddedResource Include="Providers\Assets\RDPGatewayServices.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Providers\Assets\RDPListenerService.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Providers\Assets\RemoteAccess.ps1" />
+    <EmbeddedResource Include="Providers\Assets\WebManagementService.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asmodat.Standard.SSH.NET" Version="1.0.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.6.7" />
+    <PackageReference Include="SimpleImpersonation" Version="3.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Include="Providers\Assets\RemoteAccess.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
+    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="REM Copy plugin dependencies to plugins output folder&#xD;&#xA;xcopy /i /s /Y $(TargetDir)\publish\*.dll C:\Work\Builds\CertifyPlugins&#xD;&#xA;&#xD;&#xA;REM remove stale refs to certify specific items&#xD;&#xA;DEL C:\Work\Builds\CertifyPlugins\Certify.*.dll&#xD;&#xA;&#xD;&#xA;REM Copy latest plugin build to plugins output folder&#xD;&#xA;xcopy /i /s /Y $(TargetPath) C:\Work\Builds\CertifyPlugins&#xD;&#xA;&#xD;&#xA;REM remove duplicate dependency dlls's which will be bundled anyway&#xD;&#xA;DEL C:\Work\Builds\CertifyPlugins\BouncyCastle.Crypto.dll&#xD;&#xA;DEL C:\Work\Builds\CertifyPlugins\Newtonsoft.Json.dll" />
+  </Target>
+
+</Project>
