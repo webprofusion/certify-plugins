@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Certify.Models;
+using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Plugin.CertificateManagers.WinAcme;
 using Certify.Providers;
+using Certify.Providers.CertificateManagers;
 using Newtonsoft.Json;
 
 namespace Plugin.CertificateManagers
@@ -14,6 +16,19 @@ namespace Plugin.CertificateManagers
     public class WinAcme : ICertificateManager
     {
         private string _settingsPath = "";
+        public static ProviderDefinition Definition
+        {
+            get
+            {
+                return new ProviderDefinition
+                {
+                    Id = "Plugin.CertificateManagers.WinAcme",
+                    Title = "win-acme",
+                    Description = "Queries local config for certificates managed by win-acme",
+                    HelpUrl = "https://win-acme.com"
+                };
+            }
+        }
 
         public WinAcme()
         {
@@ -53,15 +68,33 @@ namespace Plugin.CertificateManagers
                     {
                         Id = "wacs://" + cfg.Id,
                         Name = "[win-acme] " + cfg.LastFriendlyName,
+                        ItemType = ManagedCertificateType.SSL_ExternallyManaged,
+                        SourceId = Definition.Id,
+                        SourceName = Definition.Title,
                         CertificateThumbprintHash = lastSuccess?.Thumbprint,
                         LastRenewalStatus = lastStatus.Success ? RequestState.Success : (lastStatus != null ? RequestState.Error : (RequestState?)null),
                         RequestConfig = new CertRequestConfig
                         {
                             PrimaryDomain = cfg.TargetPluginOptions?.CommonName,
                             SubjectAlternativeNames = cfg.TargetPluginOptions?.AlternativeNames.ToArray()
+                        },
+                        DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
+                        {
+                            new DomainOption{ Domain=cfg.TargetPluginOptions?.CommonName, IsPrimaryDomain=true, IsManualEntry=true}
                         }
                     };
 
+                    if (managedCert.RequestConfig.SubjectAlternativeNames != null)
+                    {
+                        var domains = managedCert.RequestConfig.SubjectAlternativeNames.Where(d => d != managedCert.RequestConfig.PrimaryDomain).Distinct();
+                        foreach (var d in domains)
+                        {
+                            managedCert.DomainOptions.Add(new DomainOption { Domain = d, IsManualEntry = true, IsPrimaryDomain = false });
+                        }
+
+                    }
+
+                    managedCert.IsChanged = false;
                     list.Add(managedCert);
                 }
 

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>Certify.Plugin.CertificateManagers</AssemblyName>
+    <AssemblyName>Plugin.CertificateManagers</AssemblyName>
     <RootNamespace>Certify.Plugin.CertificateManagers</RootNamespace>
   </PropertyGroup>
 
