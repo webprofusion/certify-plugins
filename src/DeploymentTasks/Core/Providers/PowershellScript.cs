@@ -6,8 +6,6 @@ using Certify.Config;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Management;
-using SimpleImpersonation;
-using Plugin.DeploymentTasks.Shared;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -50,12 +48,10 @@ namespace Certify.Providers.DeploymentTasks
           DeploymentTaskConfig settings,
           Dictionary<string, string> credentials,
           bool isPreviewOnly,
-          DeploymentProviderDefinition definition = null
+          DeploymentProviderDefinition definition
           )
         {
             var results = new List<ActionResult>();
-
-            definition = GetDefinition(definition);
 
             var certRequest = subject as CertificateRequestResult;
 
@@ -91,7 +87,6 @@ namespace Certify.Providers.DeploymentTasks
                     }
                 }
             }
-
 
             log?.Information("Executing command via PowerShell");
 

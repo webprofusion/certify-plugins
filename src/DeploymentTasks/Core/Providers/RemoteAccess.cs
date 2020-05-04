@@ -1,7 +1,5 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Certify.Config;
 using Certify.Management;
@@ -14,10 +12,28 @@ namespace Certify.Providers.DeploymentTasks
 {
     public class RemoteAccess : IDeploymentTaskProvider
     {
-        public static new DeploymentProviderDefinition Definition { get; }
-        public new DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
+        public static DeploymentProviderDefinition Definition { get; }
+        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
         private const string SCRIPT_NAME = "RemoteAccess.ps1";
+
+        static RemoteAccess()
+        {
+            Definition = new DeploymentProviderDefinition
+            {
+                Id = "Certify.Providers.DeploymentTasks.RemoteAccess",
+                Title = "Deploy to RAS (DirectAccess, VPN, SSTP VPN etc)",
+                DefaultTitle = "Deploy to Remote Access Services",
+                IsExperimental = false,
+                UsageType = DeploymentProviderUsage.PostRequest,
+                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser,
+                Description = "Deploy latest certificate to RAS using Powershell (Set-RemoteAccess)",
+                ProviderParameters = new List<ProviderParameter>
+                {
+                    new ProviderParameter { Key = "restartServices", Name = "Include Service Restart?", Type= OptionType.Boolean, IsCredential = false, Value="false" },
+                }
+            };
+        }
 
         public async Task<List<ActionResult>> Execute(ILog log, object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, bool isPreviewOnly, DeploymentProviderDefinition definition)
         {
@@ -30,8 +46,6 @@ namespace Certify.Providers.DeploymentTasks
             }
 
             var script = Helpers.ReadStringResource(SCRIPT_NAME);
-
-            definition = GetDefinition(definition);
 
             var certRequest = subject as CertificateRequestResult;
 
@@ -50,24 +64,6 @@ namespace Certify.Providers.DeploymentTasks
             var results = new List<ActionResult>();
 
             return results;
-        }
-
-        static RemoteAccess()
-        {
-            Definition = new DeploymentProviderDefinition
-            {
-                Id = "Certify.Providers.DeploymentTasks.RemoteAccess",
-                Title = "Deploy to RAS (DirectAccess, VPN, SSTP VPN etc)",
-                DefaultTitle = "Deploy to Remote Access Services",
-                IsExperimental = false,
-                UsageType = DeploymentProviderUsage.PostRequest,
-                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser,
-                Description = "Deploy latest certificate to RAS using Powershell (Set-RemoteAccess)",
-                ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
-                {
-                    new ProviderParameter { Key = "restartServices", Name = "Include Service Restart?", Type= OptionType.Boolean, IsCredential = false, Value="false" },
-                }
-            };
         }
 
     }

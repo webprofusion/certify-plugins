@@ -21,9 +21,7 @@ namespace Certify.Providers.DeploymentTasks
     public class CertificateExport : IDeploymentTaskProvider
     {
         public static DeploymentProviderDefinition Definition { get; }
-        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
-
-        public ProviderParameter StorePath = new ProviderParameter();
+        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
         /// <summary>
         /// Terminology from https://en.wikipedia.org/wiki/Chain_of_trust
@@ -94,7 +92,7 @@ namespace Certify.Providers.DeploymentTasks
                 DeploymentTaskConfig settings,
                 Dictionary<string, string> credentials,
                 bool isPreviewOnly,
-                DeploymentProviderDefinition definition = null
+                DeploymentProviderDefinition definition
             )
         {
 
@@ -141,7 +139,6 @@ namespace Certify.Providers.DeploymentTasks
 
             }
 
-            //TODO: bytes for each file
             if (exportType == "pfxfull")
             {
                 files.Add(destPath, pfxData);
@@ -183,7 +180,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     var step = $"{definition.Title}: (Preview) would copy file via sftp to {remotePath} on host {sshConfig.Host}";
                     msg += step + "\r\n";
-                    log.Information(step);
+                    log.Information(msg);
                 }
                 else
                 {

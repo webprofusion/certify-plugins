@@ -14,7 +14,7 @@ namespace Certify.Providers.DeploymentTasks
     public class Nginx : CertificateExport, IDeploymentTaskProvider
     {
         public static new DeploymentProviderDefinition Definition { get; }
-        public new DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
+        public new DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
         static Nginx()
         {
@@ -40,7 +40,7 @@ namespace Certify.Providers.DeploymentTasks
          DeploymentTaskConfig settings,
          Dictionary<string, string> credentials,
          bool isPreviewOnly,
-         DeploymentProviderDefinition definition = null
+         DeploymentProviderDefinition definition
      )
         {
             definition = GetDefinition(definition);

@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Certify.Models;
 using Certify.Config;
 using Certify.Models.Config;
 using Certify.Models.Providers;
@@ -11,7 +10,7 @@ namespace Certify.Providers.DeploymentTasks.Core
     public class WaitTask : IDeploymentTaskProvider
     {
         public static DeploymentProviderDefinition Definition { get; }
-        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
+        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
         private static int MAX_DURATION = 10 * 60;
 
@@ -47,7 +46,7 @@ namespace Certify.Providers.DeploymentTasks.Core
           DeploymentTaskConfig settings,
           Dictionary<string, string> credentials,
           bool isPreviewOnly,
-          DeploymentProviderDefinition definition = null
+          DeploymentProviderDefinition definition
           )
         {
 

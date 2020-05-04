@@ -14,7 +14,7 @@ namespace Certify.Providers.DeploymentTasks
     public class CentralizedCertificateStore : IDeploymentTaskProvider
     {
         public static DeploymentProviderDefinition Definition { get; }
-        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
+        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
         static CentralizedCertificateStore()
         {
@@ -46,11 +46,15 @@ namespace Certify.Providers.DeploymentTasks
             DeploymentTaskConfig settings,
             Dictionary<string, string> credentials,
             bool isPreviewOnly,
-            DeploymentProviderDefinition definition = null
+            DeploymentProviderDefinition definition
             )
         {
 
-            definition = GetDefinition(definition);
+            var validationResults = await this.Validate(subject, settings, credentials, definition);
+            if (validationResults.Any())
+            {
+                return validationResults;
+            }
 
             var managedCert = ManagedCertificate.GetManagedCertificate(subject);
 
@@ -99,7 +103,7 @@ namespace Certify.Providers.DeploymentTasks
 
                 if (!string.IsNullOrWhiteSpace(destinationPath))
                 {
-                    var filename = Path.Combine(destinationPath.Trim(), domain + ".pfx");
+                    var filename = Path.Combine(destinationPath.Trim(), targetDomain + ".pfx");
 
                     fileList.Add(managedCert.CertificatePath, filename);
 
@@ -127,9 +131,9 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
         {
-            throw new System.NotImplementedException();
+            return new List<ActionResult>();
         }
     }
 }

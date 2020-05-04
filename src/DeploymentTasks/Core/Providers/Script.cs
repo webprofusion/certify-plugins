@@ -17,7 +17,7 @@ namespace Certify.Providers.DeploymentTasks
     public class Script : IDeploymentTaskProvider
     {
         public static DeploymentProviderDefinition Definition { get; }
-        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
+        public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
         static Script()
         {
@@ -52,7 +52,7 @@ namespace Certify.Providers.DeploymentTasks
           DeploymentTaskConfig settings,
           Dictionary<string, string> credentials,
           bool isPreviewOnly,
-          DeploymentProviderDefinition definition = null
+          DeploymentProviderDefinition definition
           )
         {
 
@@ -140,7 +140,7 @@ namespace Certify.Providers.DeploymentTasks
 
             if (scriptResults.Any(r => r.IsError))
             {
-                var firstError = scriptResults.First(c => c.IsError == true);
+                var firstError = scriptResults.First(c => c.IsError);
                 return new List<ActionResult> {
                     new ActionResult { IsSuccess = false, Message = $"One or more commands failed: {firstError.Command} :: {firstError.Result}" }
                 };

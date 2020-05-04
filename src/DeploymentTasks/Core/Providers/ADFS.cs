@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace Certify.Providers.DeploymentTasks
 {
-    public class ADFS : IDeploymentTaskProvider
+    public class Adfs : IDeploymentTaskProvider
     {
         public static DeploymentProviderDefinition Definition { get; }
         public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
@@ -55,7 +55,7 @@ namespace Certify.Providers.DeploymentTasks
             return results;
         }
 
-        static ADFS()
+        static Adfs()
         {
             Definition = new DeploymentProviderDefinition
             {

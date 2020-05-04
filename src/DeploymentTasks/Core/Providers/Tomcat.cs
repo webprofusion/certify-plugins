@@ -6,7 +6,7 @@ namespace Certify.Providers.DeploymentTasks
     public class Tomcat : CertificateExport, IDeploymentTaskProvider
     {
         public static new DeploymentProviderDefinition Definition { get; }
-        public new DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition) => (currentDefinition ?? Definition);
+        public new DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
         static Tomcat()
         {
@@ -37,6 +37,5 @@ namespace Certify.Providers.DeploymentTasks
                 }
             };
         }
-
     }
 }
