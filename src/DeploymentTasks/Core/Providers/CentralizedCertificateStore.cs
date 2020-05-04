@@ -133,7 +133,16 @@ namespace Certify.Providers.DeploymentTasks
 
         public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
         {
-            return new List<ActionResult>();
+            var results = new List<ActionResult>();
+
+            var destinationPath = settings.Parameters?.FirstOrDefault(d => d.Key == "path")?.Value;
+
+            if (string.IsNullOrEmpty(destinationPath))
+            {
+                results.Add(new ActionResult("A path parameter is required for export.", false));
+            }
+
+            return results;
         }
     }
 }

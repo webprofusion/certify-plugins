@@ -51,7 +51,8 @@ namespace Plugin.CertificateManagers
 
         public async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter filter = null)
         {
-            List<ManagedCertificate> list = new List<ManagedCertificate>();
+            var list = new List<ManagedCertificate>();
+
             if (await IsPresent())
             {
                 var directorySearch = new DirectoryInfo(_settingsPath);
@@ -59,43 +60,53 @@ namespace Plugin.CertificateManagers
 
                 foreach (var config in configFiles)
                 {
-                    var cfg = JsonConvert.DeserializeObject<ConfigSettings>(File.ReadAllText(config.FullName));
-
-                    var lastStatus = cfg.History?.LastOrDefault();
-                    var lastSuccess = cfg.History.LastOrDefault(x => x.Success);
-
-                    var managedCert = new ManagedCertificate
+                    try
                     {
-                        Id = "wacs://" + cfg.Id,
-                        Name = "[win-acme] " + cfg.LastFriendlyName,
-                        ItemType = ManagedCertificateType.SSL_ExternallyManaged,
-                        SourceId = Definition.Id,
-                        SourceName = Definition.Title,
-                        CertificateThumbprintHash = lastSuccess?.Thumbprint,
-                        LastRenewalStatus = lastStatus.Success ? RequestState.Success : (lastStatus != null ? RequestState.Error : (RequestState?)null),
-                        RequestConfig = new CertRequestConfig
-                        {
-                            PrimaryDomain = cfg.TargetPluginOptions?.CommonName,
-                            SubjectAlternativeNames = cfg.TargetPluginOptions?.AlternativeNames.ToArray()
-                        },
-                        DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
-                        {
-                            new DomainOption{ Domain=cfg.TargetPluginOptions?.CommonName, IsPrimaryDomain=true, IsManualEntry=true}
-                        }
-                    };
+                        var cfg = JsonConvert.DeserializeObject<ConfigSettings>(File.ReadAllText(config.FullName));
 
-                    if (managedCert.RequestConfig.SubjectAlternativeNames != null)
-                    {
-                        var domains = managedCert.RequestConfig.SubjectAlternativeNames.Where(d => d != managedCert.RequestConfig.PrimaryDomain).Distinct();
-                        foreach (var d in domains)
+                        var lastStatus = cfg.History?.LastOrDefault();
+                        var lastSuccess = cfg.History?.LastOrDefault(x => x.Success);
+
+                        var managedCert = new ManagedCertificate
                         {
-                            managedCert.DomainOptions.Add(new DomainOption { Domain = d, IsManualEntry = true, IsPrimaryDomain = false });
+                            Id = "wacs://" + cfg.Id,
+                            Name = cfg.LastFriendlyName,
+                            ItemType = ManagedCertificateType.SSL_ExternallyManaged,
+                            SourceId = Definition.Id,
+                            SourceName = Definition.Title,
+                            CertificateThumbprintHash = lastSuccess?.Thumbprint,
+                            DateRenewed = lastSuccess?.Date,
+                            DateExpiry = lastSuccess?.Date != null ? lastSuccess.Date.Value.AddDays(90) : (DateTime?)null,
+                            LastRenewalStatus = lastStatus?.Success == true ? RequestState.Success : (lastStatus != null ? RequestState.Error : (RequestState?)null),
+                            DateLastRenewalAttempt = lastStatus?.Date,
+                            RequestConfig = new CertRequestConfig
+                            {
+                                PrimaryDomain = cfg.TargetPluginOptions?.CommonName,
+                                SubjectAlternativeNames = cfg.TargetPluginOptions?.AlternativeNames.ToArray()
+                            },
+                            DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
+                        {
+                            new DomainOption{ Domain=cfg.TargetPluginOptions?.CommonName, IsPrimaryDomain=true, IsManualEntry=true, IsSelected = true}
+                        }
+                        };
+
+                        if (managedCert.RequestConfig.SubjectAlternativeNames != null)
+                        {
+                            var domains = managedCert.RequestConfig.SubjectAlternativeNames.Where(d => d != managedCert.RequestConfig.PrimaryDomain).Distinct();
+                            foreach (var d in domains)
+                            {
+                                managedCert.DomainOptions.Add(new DomainOption { Domain = d, IsManualEntry = true, IsPrimaryDomain = false });
+                            }
+
                         }
 
+                        managedCert.IsChanged = false;
+                        list.Add(managedCert);
                     }
-
-                    managedCert.IsChanged = false;
-                    list.Add(managedCert);
+                    catch (Exception exp)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to parse config: [{config}] " + exp);
+                    }
                 }
 
             }

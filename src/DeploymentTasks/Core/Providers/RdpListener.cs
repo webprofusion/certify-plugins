@@ -15,7 +15,7 @@ namespace Certify.Providers.DeploymentTasks
         public static DeploymentProviderDefinition Definition { get; }
         public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
-        private const string SCRIPT_NAME = "RDPListener.ps1";
+        private const string SCRIPT_NAME = "RDPListenerService.ps1";
 
         static RdpListener()
         {
