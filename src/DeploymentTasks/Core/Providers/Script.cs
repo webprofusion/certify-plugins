@@ -73,14 +73,12 @@ namespace Certify.Providers.DeploymentTasks
             {
                 return await RunSSHScript(log, command, args, settings, credentials);
             }
-
-            if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
+            else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
             {
                 var result = await RunLocalScript(log, command, args, settings, credentials);
                 results.Add(result);
             }
-
-            if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
+            else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
             {
                 UserCredentials windowsCredentials = null;
                 if (credentials != null && credentials.Count > 0)
@@ -100,24 +98,14 @@ namespace Certify.Providers.DeploymentTasks
                     }
                 }
 
-                if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
+                var _defaultLogonType = LogonType.Network;
+
+                await Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, async () =>
                 {
                     var result = await RunLocalScript(log, command, args, settings, credentials);
                     results.Add(result);
 
-                }
-                else
-                {
-                    var _defaultLogonType = LogonType.Network;
-
-                    await Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, async () =>
-                    {
-                        var result = await RunLocalScript(log, command, args, settings, credentials);
-                        results.Add(result);
-
-                    });
-                }
-
+                });
 
             }
             return results;
@@ -252,7 +240,7 @@ namespace Certify.Providers.DeploymentTasks
                 else if (process.ExitCode != 0)
                 {
                     _log.AppendLine("Warning: Script exited with the following ExitCode: " + process.ExitCode);
-                     return await Task.FromResult(new ActionResult { IsSuccess = false, Message = _log.ToString() });
+                    return await Task.FromResult(new ActionResult { IsSuccess = false, Message = _log.ToString() });
                 }
 
                 return await Task.FromResult(new ActionResult { IsSuccess = true, Message = _log.ToString() });
