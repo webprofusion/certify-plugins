@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Certify.Models.Providers;
 using Certify.Providers.DeploymentTasks;
 using Renci.SshNet;
+using Renci.SshNet.Common;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {
@@ -16,21 +18,7 @@ namespace Certify.Providers.Deployment.Core.Shared
             _config = config;
         }
 
-        private PrivateKeyFile GetPrivateKeyFile()
-        {
-            PrivateKeyFile pk = null;
-            if (!string.IsNullOrEmpty(_config.KeyPassphrase))
-            {
-                pk = new PrivateKeyFile(_config.PrivateKeyPath, _config.KeyPassphrase);
-            }
-            else
-            {
-                pk = new PrivateKeyFile(_config.PrivateKeyPath);
-            }
-            return pk;
-        }
-
-        public bool CopyLocalToRemote(Dictionary<string, string> filesSrcDest)
+        public bool CopyLocalToRemote(Dictionary<string, string> filesSrcDest, ILog log)
         {
             // read source files as original user
             var destFiles = new Dictionary<string, byte[]>();
@@ -40,18 +28,19 @@ namespace Certify.Providers.Deployment.Core.Shared
                 destFiles.Add(filesSrcDest[sourcePath], content);
             }
 
-            return CopyLocalToRemote(destFiles);
+            return CopyLocalToRemote(destFiles, log);
         }
 
-        public bool CopyLocalToRemote(Dictionary<string, byte[]> files)
+        public bool CopyLocalToRemote(Dictionary<string, byte[]> files, ILog log)
         {
 
             var isSuccess = true;
 
             // upload new files as destination user
-            var pk = GetPrivateKeyFile();
 
-            using (var sftp = new Renci.SshNet.SftpClient(_config.Host, _config.Username, pk))
+            var connectionInfo = SshClient.GetConnectionInfo(_config);
+
+            using (var sftp = new Renci.SshNet.SftpClient(connectionInfo))
             {
                 try
                 {
@@ -69,9 +58,20 @@ namespace Certify.Providers.Deployment.Core.Shared
                                 sftp.UploadFile(fileStream, dest.Key);
                             }
                         }
+                        catch(SftpPathNotFoundException exp)
+                        {
+                            // path not found, folder is probably wrong
+                            log?.Error($"SftpClient :: Failed to copy file. Check that the full path to {dest} is valid. {exp}");
+
+                            // failed to copy the file. TODO: retries
+                            isSuccess = false;
+                            break;
+                        }
                         catch (Exception exp)
                         {
-                            System.Diagnostics.Debug.WriteLine(exp.ToString());
+
+                            log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote: {exp}");
+
                             // failed to copy the file. TODO: retries
                             isSuccess = false;
                             break;
@@ -79,24 +79,27 @@ namespace Certify.Providers.Deployment.Core.Shared
                     }
                     sftp.Disconnect();
                 }
-                catch (Exception e)
+                catch (Exception exp)
                 {
-                    Console.WriteLine("An exception has been caught " + e.ToString());
+                    isSuccess = false;
+                    log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote: {exp}");
                 }
             }
 
             return isSuccess;
         }
+
+
         /// <summary>
         /// List a remote directory in the console.
         /// </summary>
-        public List<string> ListFiles(string remoteDirectory)
+        public List<string> ListFiles(string remoteDirectory, ILog log)
         {
-            var pk = GetPrivateKeyFile();
+            var connectionInfo = SshClient.GetConnectionInfo(_config);
 
             var fileList = new List<string>();
 
-            using (var sftp = new Renci.SshNet.SftpClient(_config.Host, _config.Username, pk))
+            using (var sftp = new Renci.SshNet.SftpClient(connectionInfo))
             {
                 try
                 {
@@ -117,7 +120,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("An exception has been caught " + e.ToString());
+                    log?.Error($"SftpClient.ListFiles :: Error listing files {e}");
                 }
             }
             return fileList;

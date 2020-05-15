@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using Certify.Config;
+using Certify.Models.Providers;
 using Renci.SshNet;
+using Renci.SshNet.Common;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {
@@ -17,11 +19,11 @@ namespace Certify.Providers.Deployment.Core.Shared
         public string KeyPassphrase { get; set; }
     }
 
-	public class CommandResult
+    public class CommandResult
     {
-		public string Command { get; set; }
-		public string Result { get; set; }
-		public bool IsError { get; set; }
+        public string Command { get; set; }
+        public string Result { get; set; }
+        public bool IsError { get; set; }
     }
 
     public class SshClient
@@ -66,28 +68,68 @@ namespace Certify.Providers.Deployment.Core.Shared
             return sshConfig;
         }
 
-        private PrivateKeyFile GetPrivateKeyFile()
+        private static PrivateKeyFile GetPrivateKeyFile(SshConnectionConfig config)
         {
-            PrivateKeyFile pk = null;
-            if (!string.IsNullOrEmpty(_config.KeyPassphrase))
+            PrivateKeyFile pk;
+            if (!string.IsNullOrEmpty(config.KeyPassphrase))
             {
-                pk = new PrivateKeyFile(_config.PrivateKeyPath, _config.KeyPassphrase);
+                pk = new PrivateKeyFile(config.PrivateKeyPath, config.KeyPassphrase);
             }
             else
             {
-                pk = new PrivateKeyFile(_config.PrivateKeyPath);
+                pk = new PrivateKeyFile(config.PrivateKeyPath);
             }
             return pk;
         }
 
-        public List<CommandResult> ExecuteCommands(List<string> commands)
+        public static ConnectionInfo GetConnectionInfo(SshConnectionConfig config)
         {
-         
+            var authMethods = new List<AuthenticationMethod>();
+
+            if (!string.IsNullOrEmpty(config.PrivateKeyPath))
+            {
+                // public key auth via private key
+                var privateKey = GetPrivateKeyFile(config);
+                var keyauth = new PrivateKeyAuthenticationMethod(config.Username, privateKey);
+                authMethods.Add(keyauth);
+            }
+
+            if (!string.IsNullOrEmpty(config.Password))
+            {
+
+                // https://stackoverflow.com/questions/15686276/unable-to-connect-to-aixunix-box-with-ssh-net-library-error-value-cannot-b
+                var kbdi = new KeyboardInteractiveAuthenticationMethod(config.Username);
+                kbdi.AuthenticationPrompt += new EventHandler<AuthenticationPromptEventArgs>(
+                    (Object sender, AuthenticationPromptEventArgs e) =>
+                    {
+                        foreach (AuthenticationPrompt prompt in e.Prompts)
+                        {
+                            if (prompt.Request.IndexOf("Password:", StringComparison.InvariantCultureIgnoreCase) != -1)
+                            {
+                                prompt.Response = config.Password;
+                            }
+                        }
+                    });
+
+                // password auth
+                authMethods.Add(new PasswordAuthenticationMethod(config.Username, config.Password));
+
+                // keyboard interactive auth
+                authMethods.Add(kbdi);
+            }
+
+            // TODO : proxy support?
+            return new ConnectionInfo(config.Host, config.Port, config.Username, authMethods.ToArray());
+        }
+
+        public List<CommandResult> ExecuteCommands(List<string> commands, ILog log)
+        {
+
             var results = new List<CommandResult>();
 
-            var pk = GetPrivateKeyFile();
+            var connectionInfo = GetConnectionInfo(_config);
 
-            using (var ssh = new Renci.SshNet.SshClient(_config.Host, _config.Username, pk))
+            using (var ssh = new Renci.SshNet.SshClient(connectionInfo))
             {
                 try
                 {
@@ -112,7 +154,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("An exception has been caught " + e.ToString());
+                    log?.Error($"SShClient :: Error executing command {e}");
                 }
             }
 

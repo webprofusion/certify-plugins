@@ -124,7 +124,7 @@ namespace Certify.Providers.DeploymentTasks
 
             log?.Information("Executing command via SSH");
 
-            var scriptResults = await Task.FromResult(ssh.ExecuteCommands(commandList));
+            var scriptResults = await Task.FromResult(ssh.ExecuteCommands(commandList, log));
 
             if (scriptResults.Any(r => r.IsError))
             {

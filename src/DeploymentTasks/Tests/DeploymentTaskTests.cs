@@ -102,7 +102,7 @@ namespace DeploymentTaskTests
 
             File.Delete(tmpPath);
 
-            Assert.IsTrue(results.All(s=>s.IsSuccess==true));
+            Assert.IsTrue(results.All(s => s.IsSuccess == true));
 
         }
 
@@ -139,11 +139,11 @@ namespace DeploymentTaskTests
             });
 
             // test file list
-            var fileList = client.ListFiles(destPath);
+            var fileList = client.ListFiles(destPath, null);
             Assert.IsTrue(fileList.Count > 0);
 
             // test file copy
-            var copiedOK = client.CopyLocalToRemote(files);
+            var copiedOK = client.CopyLocalToRemote(files, null);
 
             Assert.IsTrue(copiedOK);
 
@@ -154,7 +154,7 @@ namespace DeploymentTaskTests
         [TestMethod, TestCategory("Export")]
         public async Task TestGetAllDeploymentTaskProviders()
         {
-           
+
             var allProviders = await DeploymentTaskProviderFactory.GetDeploymentTaskProviders(_pluginManager.DeploymentTaskProviders);
 
             // all providers have a unique title

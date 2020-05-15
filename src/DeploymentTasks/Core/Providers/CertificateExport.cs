@@ -185,9 +185,19 @@ namespace Certify.Providers.DeploymentTasks
                 else
                 {
                     // copy via sftp
-                    copiedOk = sftp.CopyLocalToRemote(files);
+                    copiedOk = sftp.CopyLocalToRemote(files, log);
 
-                    log.Information($"{definition.Title}: copied file via sftp to {remotePath} on host {sshConfig.Host}");
+                    if (copiedOk)
+                    {
+                        log.Information($"{definition.Title}: copied file via sftp to {remotePath} on host {sshConfig.Host}");
+                    }
+                    else
+                    {
+                        // file copy failed, abort
+                        return new List<ActionResult>{
+                            new ActionResult { IsSuccess = false, Message = "Export failed due to connection or file copy failure. Check log for more information."}
+                        };
+                    }
                 }
             }
             else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
@@ -207,7 +217,8 @@ namespace Certify.Providers.DeploymentTasks
                         log.Error(err);
 
                         return new List<ActionResult>{
-                            new ActionResult { IsSuccess = false, Message = err }
+                            new ActionResult { IsSuccess = false, Message = err
+}
                         };
                     }
                 }
@@ -289,7 +300,7 @@ namespace Certify.Providers.DeploymentTasks
 
                 writer.Flush();
 
-                return System.Text.ASCIIEncoding.ASCII.GetBytes(writer.ToString());
+                return System.Text.Encoding.ASCII.GetBytes(writer.ToString());
             }
         }
 
