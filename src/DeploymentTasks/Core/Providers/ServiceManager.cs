@@ -22,8 +22,8 @@ namespace Certify.Providers.DeploymentTasks.Core
             try
             {
                 // populate options list with list of current services
-                var services = ServiceController.GetServices().OrderBy(s=>s.DisplayName);
-                
+                var services = ServiceController.GetServices().OrderBy(s => s.DisplayName);
+
                 var p = definition.ProviderParameters.First(k => k.Key == "servicename");
 
                 p.OptionsList = string.Join(";", services.Select(s => s.ServiceName + "=" + s.DisplayName));
@@ -90,10 +90,17 @@ namespace Certify.Providers.DeploymentTasks.Core
 
             if (action == "restart")
             {
-                log?.Information($"Stopping service [{servicename}] ");
+                if (service.Status != ServiceControllerStatus.Stopped)
+                {
+                    log?.Information($"Stopping service [{servicename}] ");
 
-                service.Stop();
-                service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+                    service.Stop();
+                    service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+                }
+                else
+                {
+                    log?.Information($"Service already stopped [{servicename}] ");
+                }
 
                 log?.Information($"Starting service [{servicename}] ");
 
@@ -104,14 +111,23 @@ namespace Certify.Providers.DeploymentTasks.Core
             {
                 log?.Information($"Stopping service [{servicename}] ");
 
-                service.Stop();
-                service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+                if (service.Status != ServiceControllerStatus.Stopped)
+                {
+                    log?.Information($"Stopping service [{servicename}] ");
+
+                    service.Stop();
+                    service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+                }
+                else
+                {
+                    log?.Information($"Service already stopped [{servicename}] ");
+                }
             }
             else if (action == "start")
             {
                 log?.Information($"Starting service [{servicename}] ");
 
-                service.Stop();
+                service.Start();
                 service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
             }
 
