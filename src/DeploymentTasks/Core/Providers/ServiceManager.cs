@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.ServiceProcess;
 using System.Threading.Tasks;
@@ -6,7 +7,7 @@ using Certify.Config;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 
-namespace Certify.Providers.DeploymentTasks.Core
+namespace Certify.Providers.DeploymentTasks
 {
     public class ServiceManager : IDeploymentTaskProvider
     {
@@ -70,10 +71,10 @@ namespace Certify.Providers.DeploymentTasks.Core
 
             definition = GetDefinition(definition);
 
-            var validation = await Validate(subject, settings, credentials, definition);
-            if (validation.Any())
+            List<ActionResult> results = await Validate(subject, settings, credentials, definition);
+            if (results.Any())
             {
-                return validation;
+                return results;
             }
 
             if (!int.TryParse(settings.Parameters.FirstOrDefault(c => c.Key == "maxwait")?.Value, out var durationSeconds))
@@ -92,47 +93,107 @@ namespace Certify.Providers.DeploymentTasks.Core
             {
                 if (service.Status != ServiceControllerStatus.Stopped)
                 {
-                    log?.Information($"Stopping service [{servicename}] ");
-
-                    service.Stop();
-                    service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+                    if (!isPreviewOnly)
+                    {
+                        service = await StopServiceWithRetry(log, servicename, service, ticks);
+                    }
                 }
                 else
                 {
                     log?.Information($"Service already stopped [{servicename}] ");
                 }
 
-                log?.Information($"Starting service [{servicename}] ");
+                if (!isPreviewOnly)
+                {
+                    service = await StartServiceWithRetry(log, servicename, service, ticks);
+                }
 
-                service.Start();
-                service.WaitForStatus(ServiceControllerStatus.Running, ticks);
+                results.Add(new ActionResult("Service Restarted", true));
+
             }
             else if (action == "stop")
             {
-                log?.Information($"Stopping service [{servicename}] ");
-
                 if (service.Status != ServiceControllerStatus.Stopped)
                 {
-                    log?.Information($"Stopping service [{servicename}] ");
+                    if (!isPreviewOnly)
+                    {
+                        service = await StopServiceWithRetry(log, servicename, service, ticks);
+                    }
 
-                    service.Stop();
-                    service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+                    results.Add(new ActionResult("Service Stopped", true));
                 }
                 else
                 {
                     log?.Information($"Service already stopped [{servicename}] ");
+
+                    results.Add(new ActionResult("Service already stopped", true));
                 }
             }
             else if (action == "start")
             {
-                log?.Information($"Starting service [{servicename}] ");
+                if (!isPreviewOnly)
+                {
+                    service = await StartServiceWithRetry(log, servicename, service, ticks);
+                }
 
-                service.Start();
-                service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+                results.Add(new ActionResult("Service Started", true));
             }
 
-            return new List<ActionResult>();
+            return results;
 
+        }
+
+        private static async Task<ServiceController> StopServiceWithRetry(ILog log, string servicename, ServiceController service, TimeSpan ticks)
+        {
+            log?.Information($"Stopping service [{servicename}] ");
+
+            try
+            {
+                service.Stop();
+            }
+            catch (InvalidOperationException exp)
+            {
+                log?.Information($"First attempt to stop service encountered an Invalid Operation. Retrying stop for [{servicename}] ");
+
+                await Task.Delay(1000);
+
+                service = new ServiceController(servicename);
+
+                if (service.Status != ServiceControllerStatus.Stopped)
+                {
+                    service.Stop();
+                }
+
+            }
+
+            service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
+            return service;
+        }
+
+        private static async Task<ServiceController> StartServiceWithRetry(ILog log, string servicename, ServiceController service, TimeSpan ticks)
+        {
+            log?.Information($"Starting service [{servicename}] ");
+
+            try
+            {
+                service.Start();
+            }
+            catch (InvalidOperationException exp)
+            {
+                log?.Information($"First attempt to start service encountered an Invalid Operation. Retrying start for [{servicename}] ");
+
+                await Task.Delay(1000);
+
+                service = new ServiceController(servicename);
+
+                if (service.Status != ServiceControllerStatus.Running)
+                {
+                    service.Start();
+                }
+            }
+
+            service.WaitForStatus(ServiceControllerStatus.Running, ticks);
+            return service;
         }
 
         public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)

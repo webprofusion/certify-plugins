@@ -8,6 +8,7 @@ using Certify.Config;
 using Certify.Core.Management.DeploymentTasks;
 using Certify.Management;
 using Certify.Models;
+using Certify.Models.Config;
 using Certify.Providers.Deployment.Core.Shared;
 using Certify.Providers.DeploymentTasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -43,7 +44,7 @@ namespace DeploymentTaskTests
                 { "password", "testuser" }
             };
 
-            var storedCred = await credentialsManager.UpdateCredential(new Certify.Models.Config.StoredCredential
+            var storedCred = await credentialsManager.UpdateCredential(new StoredCredential
             {
                 StorageKey = "atestsshuser",
                 Title = "Test: SSH",
@@ -58,7 +59,7 @@ namespace DeploymentTaskTests
                 { "password", "testuser" }
             };
 
-            storedCred = await credentialsManager.UpdateCredential(new Certify.Models.Config.StoredCredential
+            storedCred = await credentialsManager.UpdateCredential(new StoredCredential
             {
                 StorageKey = ConfigSettings["TestCredentialsKey_UNC"],
                 Title = "Test: UNC testuser",
@@ -180,10 +181,10 @@ namespace DeploymentTaskTests
                 TaskName = "A test pfx export task",
                 ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
 
-                Parameters = new List<Certify.Models.Config.ProviderParameterSetting>
+                Parameters = new List<ProviderParameterSetting>
                 {
-                    new Certify.Models.Config.ProviderParameterSetting("path", outputFile),
-                    new Certify.Models.Config.ProviderParameterSetting("type", "pfxfull")
+                    new ProviderParameterSetting("path", outputFile),
+                    new ProviderParameterSetting("type", "pfxfull")
                 }
             };
 
@@ -219,11 +220,11 @@ namespace DeploymentTaskTests
                 TaskName = "A test Apache export task",
                 ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
 
-                Parameters = new List<Certify.Models.Config.ProviderParameterSetting>
+                Parameters = new List<ProviderParameterSetting>
                 {
-                    new Certify.Models.Config.ProviderParameterSetting("path_cert", outputPath+".crt"),
-                    new Certify.Models.Config.ProviderParameterSetting("path_key", outputPath+".key"),
-                    new Certify.Models.Config.ProviderParameterSetting("path_chain", outputPath+".chain")
+                    new ProviderParameterSetting("path_cert", outputPath+".crt"),
+                    new ProviderParameterSetting("path_key", outputPath+".key"),
+                    new ProviderParameterSetting("path_chain", outputPath+".chain")
                 }
             };
 
@@ -264,10 +265,10 @@ namespace DeploymentTaskTests
                 TaskName = "A test Nginx export task",
                 ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
 
-                Parameters = new List<Certify.Models.Config.ProviderParameterSetting>
+                Parameters = new List<ProviderParameterSetting>
                 {
-                    new Certify.Models.Config.ProviderParameterSetting("path_cert", outputPath+".crt"),
-                    new Certify.Models.Config.ProviderParameterSetting("path_key", outputPath+".key")
+                    new ProviderParameterSetting("path_cert", outputPath+".crt"),
+                    new ProviderParameterSetting("path_key", outputPath+".key")
                 }
             };
 
@@ -290,6 +291,77 @@ namespace DeploymentTaskTests
 
             File.Delete(outputPath + ".crt");
             File.Delete(outputPath + ".key");
+        }
+
+
+        [TestMethod, TestCategory("Misc")]
+        public async Task TestServiceManager()
+        {
+
+            var deploymentTasks = new List<DeploymentTask>();
+            var taskTypeId = Certify.Providers.DeploymentTasks.ServiceManager.Definition.Id.ToLower();
+            var provider = DeploymentTaskProviderFactory.Create(taskTypeId, _pluginManager.DeploymentTaskProviders);
+
+            var svcName = "hMailServer";
+
+            var restartTaskConfig = new DeploymentTaskConfig
+            {
+                TaskTypeId = taskTypeId,
+                TaskName = "A test service manager task restart",
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+
+                Parameters = new List<ProviderParameterSetting>
+                {
+                    new ProviderParameterSetting("servicename", svcName),
+                    new ProviderParameterSetting("action", "restart"),
+                    new ProviderParameterSetting("maxwait", "20")
+                }
+            };
+            deploymentTasks.Add(new DeploymentTask(provider, restartTaskConfig, null));
+
+            var stopTaskConfig = new DeploymentTaskConfig
+            {
+                TaskTypeId = taskTypeId,
+                TaskName = "A test service manager task stop",
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+
+                Parameters = new List<ProviderParameterSetting>
+                {
+                    new ProviderParameterSetting("servicename", svcName),
+                    new ProviderParameterSetting("action", "stop"),
+                    new ProviderParameterSetting("maxwait", "20")
+                }
+            };
+            deploymentTasks.Add(new DeploymentTask(provider, stopTaskConfig, null));
+
+            var startTaskConfig = new DeploymentTaskConfig
+            {
+                TaskTypeId = taskTypeId,
+                TaskName = "A test service manager task start",
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+
+                Parameters = new List<ProviderParameterSetting>
+                {
+                    new ProviderParameterSetting("servicename", svcName),
+                    new ProviderParameterSetting("action", "start"),
+                    new ProviderParameterSetting("maxwait", "20")
+                }
+            };
+
+            deploymentTasks.Add(new DeploymentTask(provider, startTaskConfig, null));
+
+            // perform preview deployments
+            var managedCert = GetMockManagedCertificate("Test", "123", PrimaryTestDomain, PrimaryIISRoot);
+
+            List<ActionResult> results = new List<ActionResult>();
+            foreach (var task in deploymentTasks)
+            {
+                results.AddRange(await task.Execute(_log, managedCert, isPreviewOnly: false));
+            }
+
+            // assert output exists in destination
+            Assert.IsTrue(results.All(r => r.IsSuccess == true));
+
         }
     }
 }
