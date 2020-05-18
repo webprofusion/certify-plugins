@@ -5,7 +5,7 @@ using Certify.Config;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 
-namespace Certify.Providers.DeploymentTasks.Core
+namespace Certify.Providers.DeploymentTasks
 {
     public class WaitTask : IDeploymentTaskProvider
     {
