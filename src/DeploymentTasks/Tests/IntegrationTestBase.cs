@@ -61,7 +61,7 @@ namespace DeploymentTaskTests
                     },
                     DeploymentSiteOption = DeploymentOption.SingleSite
                 },
-                ItemType = ManagedCertificateType.SSL_LetsEncrypt_LocalIIS,
+                ItemType = ManagedCertificateType.SSL_ACME,
                 CertificatePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)+"\\Assets\\dummycert.pfx"
             };
 
