@@ -1,5 +1,7 @@
-﻿using Certify.Models;
+﻿using Certify.Management;
+using Certify.Models;
 using Certify.Models.Providers;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -16,6 +18,7 @@ namespace DeploymentTaskTests
         public string PrimaryIISRoot = @"c:\inetpub\wwwroot\";
         public Dictionary<string, string> ConfigSettings = new Dictionary<string, string>();
         internal ILog _log;
+        internal PluginManager _pluginManager;
 
         public IntegrationTestBase()
         {
@@ -38,6 +41,12 @@ namespace DeploymentTaskTests
 
             _log = new Loggy(logImp);
 
+        }
+
+        [TestInitialize]
+        public void Setup()
+        {
+            _pluginManager = new PluginManager();
         }
 
         public ManagedCertificate GetMockManagedCertificate(string siteName, string siteId, string testDomain, string testPath)
