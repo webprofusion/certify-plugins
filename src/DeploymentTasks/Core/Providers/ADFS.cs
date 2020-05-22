@@ -4,10 +4,10 @@ using Certify.Config;
 using Certify.Models;
 using Certify.Models.Providers;
 using Certify.Models.Config;
-using Certify.Management;
 using Plugin.DeploymentTasks.Shared;
 using System.Linq;
 using System.Threading;
+using Certify.Management;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -47,13 +47,13 @@ namespace Certify.Providers.DeploymentTasks
             return new List<ActionResult> { scriptResult };
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
         {
             var results = new List<ActionResult>();
 
             // validate
 
-            return results;
+            return await Task.FromResult(results);
         }
 
         static Adfs()

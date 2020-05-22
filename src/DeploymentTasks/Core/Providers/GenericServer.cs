@@ -49,7 +49,7 @@ namespace Certify.Providers.DeploymentTasks
             return await base.Execute(log, subject, settings, credentials, isPreviewOnly, definition, cancellationToken);
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
+        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
         {
 
             return await base.Validate(subject, settings, credentials, definition);

@@ -153,7 +153,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 service.Stop();
             }
-            catch (InvalidOperationException exp)
+            catch (InvalidOperationException)
             {
                 log?.Information($"First attempt to stop service encountered an Invalid Operation. Retrying stop for [{servicename}] ");
 
@@ -180,7 +180,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 service.Start();
             }
-            catch (InvalidOperationException exp)
+            catch (InvalidOperationException)
             {
                 log?.Information($"First attempt to start service encountered an Invalid Operation. Retrying start for [{servicename}] ");
 
@@ -238,7 +238,7 @@ namespace Certify.Providers.DeploymentTasks
                 }
             }
 
-            return results;
+            return await Task.FromResult(results);
         }
     }
 }

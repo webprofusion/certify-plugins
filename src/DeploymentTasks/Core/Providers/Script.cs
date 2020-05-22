@@ -162,7 +162,7 @@ namespace Certify.Providers.DeploymentTasks
                 }
             }
 
-            return results;
+            return await Task.FromResult(results);
         }
 
         private static async Task<ActionResult> RunLocalScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials)

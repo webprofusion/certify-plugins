@@ -72,7 +72,8 @@ namespace Certify.Providers.DeploymentTasks
             {
                 results.Add(new ActionResult("One or more services are required to apply certificate to. E.g. POP,IMAP,SMTP,IIS", false));
             }
-            return results;
+
+            return await Task.FromResult(results);
         }
 
     }

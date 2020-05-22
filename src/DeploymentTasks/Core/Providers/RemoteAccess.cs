@@ -64,7 +64,7 @@ namespace Certify.Providers.DeploymentTasks
         {
             var results = new List<ActionResult>();
 
-            return results;
+            return await Task.FromResult(results);
         }
 
     }

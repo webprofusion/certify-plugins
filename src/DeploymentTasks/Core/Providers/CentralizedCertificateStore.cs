@@ -144,7 +144,7 @@ namespace Certify.Providers.DeploymentTasks
                 results.Add(new ActionResult("A path parameter is required for export.", false));
             }
 
-            return results;
+            return await Task.FromResult(results);
         }
     }
 }

@@ -97,7 +97,7 @@ namespace Certify.Providers.DeploymentTasks
             return results;
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
+        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
         {
 
             // for each item, execute a certificate export

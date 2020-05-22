@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net462</TargetFramework>
     <Configurations>Debug;Release;Debug;Release</Configurations>
@@ -73,8 +73,9 @@
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Core\Certify.Core.csproj" />
     
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
-    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.csproj" />
-    <ProjectReference Include="..\Core\Plugin.DeploymentTasks.csproj" />
+    
+    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
+    <ProjectReference Include="..\Azure\Plugin.DeploymentTasks.Azure\Plugin.DeploymentTasks.Azure.csproj" />
     <ProjectReference Include="..\Core\Plugin.DeploymentTasks.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -126,7 +127,6 @@
     <PackageReference Include="System.Security.Cryptography.Primitives" Version="4.3.0" />
     <PackageReference Include="System.Security.Cryptography.X509Certificates" Version="4.3.2" />
     <PackageReference Include="System.Security.Principal.Windows" Version="4.7.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.7.0" />
     <PackageReference Include="System.Text.Encoding" Version="4.3.0" />
     <PackageReference Include="System.Text.Encoding.Extensions" Version="4.3.0" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />

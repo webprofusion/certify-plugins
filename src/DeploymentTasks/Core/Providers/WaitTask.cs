@@ -94,7 +94,7 @@ namespace Certify.Providers.DeploymentTasks
                 }
             }
 
-            return results;
+            return await Task.FromResult(results);
         }
     }
 }
