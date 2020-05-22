@@ -6,6 +6,7 @@ using Certify.Config;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Management;
+using System.Threading;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -48,7 +49,8 @@ namespace Certify.Providers.DeploymentTasks
           DeploymentTaskConfig settings,
           Dictionary<string, string> credentials,
           bool isPreviewOnly,
-          DeploymentProviderDefinition definition
+          DeploymentProviderDefinition definition,
+          CancellationToken cancellationToken
           )
         {
             var results = new List<ActionResult>();

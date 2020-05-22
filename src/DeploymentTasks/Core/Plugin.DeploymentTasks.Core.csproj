@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>Plugin.DeploymentTasks</AssemblyName>
+    <AssemblyName>Plugin.DeploymentTasks.Core</AssemblyName>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
@@ -33,9 +33,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Asmodat.Standard.SSH.NET" Version="1.0.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.6.7" />
+    <PackageReference Include="Renci.SshNet" Version="1.0.0" />
     <PackageReference Include="SimpleImpersonation" Version="3.0.0" />
   </ItemGroup>
 

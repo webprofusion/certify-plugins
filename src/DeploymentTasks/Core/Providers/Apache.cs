@@ -1,6 +1,7 @@
 ﻿
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Certify.Config;
 using Certify.Models;
@@ -49,7 +50,8 @@ namespace Certify.Providers.DeploymentTasks
             DeploymentTaskConfig settings,
             Dictionary<string, string> credentials,
             bool isPreviewOnly,
-            DeploymentProviderDefinition definition
+            DeploymentProviderDefinition definition,
+            CancellationToken cancellationToken
         )
         {
             definition = GetDefinition(definition);
@@ -69,7 +71,7 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemcrt";
 
                 log.Information(definition.Title + ":: exporting PEM format certificate file");
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition));
+                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
             }
 
             var keyPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_key");
@@ -79,7 +81,7 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
 
                 log.Information(definition.Title + ":: exporting PEM format key file");
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition));
+                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
             }
 
             var chainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_chain");
@@ -89,7 +91,7 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
 
                 log.Information(definition.Title + ":: exporting PEM format chain file");
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition));
+                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
             }
 
             return results;

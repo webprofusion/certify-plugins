@@ -7,6 +7,7 @@ using Certify.Models.Config;
 using Certify.Management;
 using Plugin.DeploymentTasks.Shared;
 using System.Linq;
+using System.Threading;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -17,7 +18,7 @@ namespace Certify.Providers.DeploymentTasks
 
         private const string SCRIPT_NAME = "ADFS.ps1";
 
-        public async Task<List<ActionResult>> Execute(ILog log, object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, bool isPreviewOnly, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Execute(ILog log, object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, bool isPreviewOnly, DeploymentProviderDefinition definition, CancellationToken cancellationToken)
         {
             var validation = await Validate(subject, settings, credentials, definition);
 

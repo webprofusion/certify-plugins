@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Certify.Config;
 using Certify.Models.Config;
@@ -41,10 +42,11 @@ namespace Certify.Providers.DeploymentTasks
             DeploymentTaskConfig settings,
             Dictionary<string, string> credentials,
             bool isPreviewOnly,
-            DeploymentProviderDefinition definition
+            DeploymentProviderDefinition definition,
+            CancellationToken cancellationToken
         )
         {
-            return await base.Execute(log, subject, settings, credentials, isPreviewOnly, definition);
+            return await base.Execute(log, subject, settings, credentials, isPreviewOnly, definition, cancellationToken);
         }
 
         public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)

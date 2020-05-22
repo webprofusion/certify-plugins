@@ -8,6 +8,7 @@ using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Providers.Deployment.Core.Shared;
 using SimpleImpersonation;
+using System.Threading;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -46,7 +47,8 @@ namespace Certify.Providers.DeploymentTasks
             DeploymentTaskConfig settings,
             Dictionary<string, string> credentials,
             bool isPreviewOnly,
-            DeploymentProviderDefinition definition
+            DeploymentProviderDefinition definition,
+            CancellationToken cancellationToken
             )
         {
 

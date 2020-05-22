@@ -11,6 +11,7 @@ using System;
 using System.Diagnostics;
 using SimpleImpersonation;
 using Plugin.DeploymentTasks.Shared;
+using System.Threading;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -52,7 +53,8 @@ namespace Certify.Providers.DeploymentTasks
           DeploymentTaskConfig settings,
           Dictionary<string, string> credentials,
           bool isPreviewOnly,
-          DeploymentProviderDefinition definition
+          DeploymentProviderDefinition definition,
+          CancellationToken cancellationToken
           )
         {
 

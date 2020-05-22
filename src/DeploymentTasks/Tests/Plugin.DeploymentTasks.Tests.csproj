@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net462</TargetFramework>
     <Configurations>Debug;Release;Debug;Release</Configurations>
@@ -75,9 +75,9 @@
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.csproj" />
     <ProjectReference Include="..\Core\Plugin.DeploymentTasks.csproj" />
+    <ProjectReference Include="..\Core\Plugin.DeploymentTasks.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Asmodat.Standard.SSH.NET" Version="1.0.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.1" />
     <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
     <PackageReference Include="Microsoft.Win32.Primitives" Version="4.3.0" />

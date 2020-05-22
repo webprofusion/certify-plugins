@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Threading.Tasks;
 using Certify.Config;
 using Certify.Models;
@@ -92,7 +93,8 @@ namespace Certify.Providers.DeploymentTasks
                 DeploymentTaskConfig settings,
                 Dictionary<string, string> credentials,
                 bool isPreviewOnly,
-                DeploymentProviderDefinition definition
+                DeploymentProviderDefinition definition,
+                CancellationToken cancellationToken
             )
         {
 

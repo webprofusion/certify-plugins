@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Certify.Config;
 using Certify.Models.Config;
@@ -46,7 +47,8 @@ namespace Certify.Providers.DeploymentTasks
           DeploymentTaskConfig settings,
           Dictionary<string, string> credentials,
           bool isPreviewOnly,
-          DeploymentProviderDefinition definition
+          DeploymentProviderDefinition definition,
+          CancellationToken cancellationToken
           )
         {
 
@@ -61,7 +63,7 @@ namespace Certify.Providers.DeploymentTasks
             if (int.TryParse(settings.Parameters.FirstOrDefault(c => c.Key == "duration")?.Value, out var durationSeconds))
             {
                 log?.Information($"Waiting for {durationSeconds} seconds..");
-                await Task.Delay(durationSeconds * 1000);
+                await Task.Delay(durationSeconds * 1000, cancellationToken);
             }
 
             return new List<ActionResult>();
