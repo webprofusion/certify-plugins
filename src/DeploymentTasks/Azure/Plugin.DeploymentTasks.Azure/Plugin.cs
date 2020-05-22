@@ -5,12 +5,11 @@ using System.Reflection;
 using System.Text;
 using Certify.Models.Config;
 using Certify.Models.Plugins;
-using Certify.Providers.CertificateManagers;
 using Certify.Providers.DeploymentTasks;
 
-namespace Plugin.CertificateManagers
+namespace Plugin.DeploymentTasks.Azure
 {
-    public class Plugin : PluginProviderBase<ICertificateManager, ProviderDefinition>, ICertificateManagerProviderPlugin
-    {
-    }
+    public class Plugin : PluginProviderBase<IDeploymentTaskProvider, DeploymentProviderDefinition>, IDeploymentTaskProviderPlugin
+    { }
+
 }

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.2.0-preview.3" />
+    <PackageReference Include="Azure.Security.KeyVault.Certificates" Version="4.1.0-preview.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="REM Copy plugin dependencies to plugins output folder&#xD;&#xA;xcopy /i  /Y $(TargetDir)\*.dll C:\Work\Builds\CertifyPlugins" />
+  </Target>
+
+</Project>
