@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using Certify.Models.Providers;
 using Certify.Providers.DeploymentTasks;
-using Renci.SshNet;
 using Renci.SshNet.Common;
 
 namespace Certify.Providers.Deployment.Core.Shared
@@ -50,13 +49,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                     {
                         try
                         {
-                            using (var fileStream = new MemoryStream())
-                            {
-                                fileStream.Write(dest.Value, 0, dest.Value.Length);
-                                fileStream.Position = 0;
-
-                                sftp.UploadFile(fileStream, dest.Key);
-                            }
+                            sftp.WriteAllBytes(dest.Key, dest.Value);
                         }
                         catch(SftpPathNotFoundException exp)
                         {
