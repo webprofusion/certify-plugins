@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
+    <ProjectReference Include="..\..\..\..\..\certify\src\Certify.Shared.Compat\Certify.Shared.Compat.csproj" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
