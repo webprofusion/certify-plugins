@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Certify.Models.Providers;
 using Certify.Providers.DeploymentTasks;
+using Plugin.DeploymentTasks.Core.Shared.Model;
 using Renci.SshNet.Common;
 
 namespace Certify.Providers.Deployment.Core.Shared
@@ -17,14 +18,14 @@ namespace Certify.Providers.Deployment.Core.Shared
             _config = config;
         }
 
-        public bool CopyLocalToRemote(Dictionary<string, string> filesSrcDest, ILog log)
+        public bool CopyLocalToRemote(List<FileCopy> filesSrcDest, ILog log)
         {
             // read source files as original user
             var destFiles = new Dictionary<string, byte[]>();
-            foreach (var sourcePath in filesSrcDest.Keys)
+            foreach (var item in filesSrcDest)
             {
-                var content = File.ReadAllBytes(sourcePath);
-                destFiles.Add(filesSrcDest[sourcePath], content);
+                var content = File.ReadAllBytes(item.SourcePath);
+                destFiles.Add(item.DestinationPath, content);
             }
 
             return CopyLocalToRemote(destFiles, log);

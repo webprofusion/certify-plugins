@@ -21,14 +21,14 @@
     <EmbeddedResource Include="Providers\Assets\ADSF.ps1" />
     <EmbeddedResource Include="Providers\Assets\Exchange.ps1" />
     <EmbeddedResource Include="Providers\Assets\RDPGatewayServices.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="Providers\Assets\RDPListenerService.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="Providers\Assets\RemoteAccess.ps1" />
     <EmbeddedResource Include="Providers\Assets\WebManagementService.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
 
@@ -48,7 +48,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
-    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
+    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared.Compat\Certify.Shared.Compat.csproj" />
   </ItemGroup>
 
   <ItemGroup>

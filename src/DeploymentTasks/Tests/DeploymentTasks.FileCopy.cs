@@ -13,6 +13,7 @@ using Certify.Providers.Deployment.Core.Shared;
 using Certify.Providers.DeploymentTasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using Plugin.DeploymentTasks.Core.Shared.Model;
 using SimpleImpersonation;
 
 namespace DeploymentTaskTests
@@ -20,7 +21,7 @@ namespace DeploymentTaskTests
     [TestClass]
     public class DeploymentTasksFileCopy : IntegrationTestBase
     {
-       
+
         [TestInitialize]
         public new void Setup()
         {
@@ -45,9 +46,9 @@ namespace DeploymentTaskTests
             // create a test temp file
             var tmpPath = Path.GetTempFileName();
             File.WriteAllText(tmpPath, "This is a test temp file");
-            var files = new Dictionary<string, string>
+            var files = new List<FileCopy>
             {
-                { tmpPath, destPath+ @"\test-copy.txt" }
+               new FileCopy { SourcePath= tmpPath, DestinationPath= destPath+ @"\test-copy.txt" }
             };
 
             var credentials = new UserCredentials(storedCred["username"], storedCred["password"]);
@@ -85,9 +86,9 @@ namespace DeploymentTaskTests
             var tmpPath = Path.GetTempFileName();
             File.WriteAllText(tmpPath, "This is a test temp file");
 
-            var files = new Dictionary<string, string>
+            var files = new List<FileCopy>
             {
-                { tmpPath, destPath+"/testfilecopy.txt" }
+                new FileCopy{ SourcePath= tmpPath, DestinationPath=  destPath+"/testfilecopy.txt" }
             };
 
             var client = new SftpClient(new SshConnectionConfig

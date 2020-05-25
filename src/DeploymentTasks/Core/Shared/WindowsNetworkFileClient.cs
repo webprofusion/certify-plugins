@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Certify.Models.Config;
 using Certify.Models.Providers;
+using Plugin.DeploymentTasks.Core.Shared.Model;
 using SimpleImpersonation;
 
 namespace Certify.Providers.Deployment.Core.Shared
@@ -30,14 +31,14 @@ namespace Certify.Providers.Deployment.Core.Shared
             return fileList;
         }
 
-        public List<ActionResult> CopyLocalToRemote(ILog log, Dictionary<string, string> filesSrcDest)
+        public List<ActionResult> CopyLocalToRemote(ILog log, List<FileCopy> filesSrcDest)
         {
             // read source files as original user
             var destFiles = new Dictionary<string, byte[]>();
-            foreach (var sourcePath in filesSrcDest.Keys)
+            foreach (var item in filesSrcDest)
             {
-                var content = File.ReadAllBytes(sourcePath);
-                destFiles.Add(filesSrcDest[sourcePath], content);
+                var content = File.ReadAllBytes(item.SourcePath);
+                destFiles.Add(item.DestinationPath, content);
             }
 
             return CopyLocalToRemote(log, destFiles);

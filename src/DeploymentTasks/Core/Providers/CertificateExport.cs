@@ -111,137 +111,146 @@ namespace Certify.Providers.DeploymentTasks
                 return results;
             }
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
-
-            // prepare collection of files in the required formats
-
-            // copy files to the required destination (local, UNC or SFTP)
-
-            var pfxData = File.ReadAllBytes(managedCert.CertificatePath);
-
-            // prepare list of files to copy
-
-            var destPath = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
-
-            if (string.IsNullOrEmpty(destPath))
+            try
             {
 
-                return new List<ActionResult> { new ActionResult("Empty path provided. Skipping export", false) };
-            }
-            var exportType = settings.Parameters.FirstOrDefault(c => c.Key == "type")?.Value.Trim();
-            var files = new Dictionary<string, byte[]>();
+                var managedCert = ManagedCertificate.GetManagedCertificate(subject);
 
-            var certPwd = "";
+                // prepare collection of files in the required formats
 
-            if (credentials != null && credentials.Any(c => c.Key == "cert_pwd_key"))
-            {
-                var credKey = credentials.First(c => c.Key == "cert_pwd_key");
+                // copy files to the required destination (local, UNC or SFTP)
 
-                // TODO: fetch credentials for cert pwd
+                var pfxData = File.ReadAllBytes(managedCert.CertificatePath);
 
-            }
+                // prepare list of files to copy
 
-            if (exportType == "pfxfull")
-            {
-                files.Add(destPath, pfxData);
-            }
-            else if (exportType == "pemkey")
-            {
-                files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey));
-            }
-            else if (exportType == "pemchain")
-            {
-                files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates));
-            }
-            else if (exportType == "pemcrt")
-            {
-                files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate));
-            }
-            else if (exportType == "pemcrtpartialchain")
-            {
-                files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates));
-            }
-            else if (exportType == "pemfull")
-            {
-                files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
-            }
+                var destPath = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
 
-            // copy to destination
-
-            var copiedOk = false;
-            var msg = "";
-            if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_SSH)
-            {
-                // sftp file copy
-                var sshConfig = SshClient.GetConnectionConfig(settings, credentials);
-
-                var sftp = new SftpClient(sshConfig);
-                var remotePath = destPath;
-
-                if (isPreviewOnly)
+                if (string.IsNullOrEmpty(destPath))
                 {
-                    var step = $"{definition.Title}: (Preview) would copy file via sftp to {remotePath} on host {sshConfig.Host}";
-                    msg += step + "\r\n";
-                    log.Information(msg);
+
+                    return new List<ActionResult> { new ActionResult("Empty path provided. Skipping export", false) };
                 }
-                else
-                {
-                    // copy via sftp
-                    copiedOk = sftp.CopyLocalToRemote(files, log);
 
-                    if (copiedOk)
+                var exportType = settings.Parameters.FirstOrDefault(c => c.Key == "type")?.Value.Trim();
+                var files = new Dictionary<string, byte[]>();
+
+                var certPwd = "";
+
+                if (credentials != null && credentials.Any(c => c.Key == "cert_pwd_key"))
+                {
+                    var credKey = credentials.First(c => c.Key == "cert_pwd_key");
+
+                    // TODO: fetch credentials for cert pwd
+
+                }
+
+                if (exportType == "pfxfull")
+                {
+                    files.Add(destPath, pfxData);
+                }
+                else if (exportType == "pemkey")
+                {
+                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey));
+                }
+                else if (exportType == "pemchain")
+                {
+                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates));
+                }
+                else if (exportType == "pemcrt")
+                {
+                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate));
+                }
+                else if (exportType == "pemcrtpartialchain")
+                {
+                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates));
+                }
+                else if (exportType == "pemfull")
+                {
+                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
+                }
+
+                // copy to destination
+
+                var copiedOk = false;
+                var msg = "";
+                if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_SSH)
+                {
+                    // sftp file copy
+                    var sshConfig = SshClient.GetConnectionConfig(settings, credentials);
+
+                    var sftp = new SftpClient(sshConfig);
+                    var remotePath = destPath;
+
+                    if (isPreviewOnly)
                     {
-                        log.Information($"{definition.Title}: copied file via sftp to {remotePath} on host {sshConfig.Host}");
+                        var step = $"{definition.Title}: (Preview) would copy file via sftp to {remotePath} on host {sshConfig.Host}";
+                        msg += step + "\r\n";
+                        log.Information(msg);
                     }
                     else
                     {
-                        // file copy failed, abort
-                        return new List<ActionResult>{
+                        // copy via sftp
+                        copiedOk = sftp.CopyLocalToRemote(files, log);
+
+                        if (copiedOk)
+                        {
+                            log.Information($"{definition.Title}: copied file via sftp to {remotePath} on host {sshConfig.Host}");
+                        }
+                        else
+                        {
+                            // file copy failed, abort
+                            return new List<ActionResult>{
                             new ActionResult { IsSuccess = false, Message = "Export failed due to connection or file copy failure. Check log for more information."}
                         };
+                        }
                     }
                 }
-            }
-            else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
-            {
-                // windows remote file copy
-
-                UserCredentials windowsCredentials = null;
-                if (credentials != null && credentials.Count > 0)
+                else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
                 {
-                    try
-                    {
-                        windowsCredentials = Helpers.GetWindowsCredentials(credentials);
-                    }
-                    catch
-                    {
-                        var err = "Task with Windows Credentials requires username and password.";
-                        log.Error(err);
+                    // windows remote file copy
 
-                        return new List<ActionResult>{
+                    UserCredentials windowsCredentials = null;
+                    if (credentials != null && credentials.Count > 0)
+                    {
+                        try
+                        {
+                            windowsCredentials = Helpers.GetWindowsCredentials(credentials);
+                        }
+                        catch
+                        {
+                            var err = "Task with Windows Credentials requires username and password.";
+                            log.Error(err);
+
+                            return new List<ActionResult>{
                             new ActionResult { IsSuccess = false, Message = err
 }
                         };
+                        }
+                    }
+
+
+                    var _client = new WindowsNetworkFileClient(windowsCredentials);
+                    if (isPreviewOnly)
+                    {
+                        var step = $"{definition.Title}: (Preview) Windows file copy to {destPath}";
+                        msg += step + " \r\n";
+                    }
+                    else
+                    {
+                        var step = $"{definition.Title}: Copying file (Windows file copy) to {destPath}";
+                        msg += step + " \r\n";
+                        log.Information(step);
+
+                        var copyResults = _client.CopyLocalToRemote(log, files);
+
+                        results.AddRange(copyResults);
                     }
                 }
-
-
-                var _client = new WindowsNetworkFileClient(windowsCredentials);
-                if (isPreviewOnly)
-                {
-                    var step = $"{definition.Title}: (Preview) Windows file copy to {destPath}";
-                    msg += step + " \r\n";
-                }
-                else
-                {
-                    var step = $"{definition.Title}: Copying file (Windows file copy) to {destPath}";
-                    msg += step + " \r\n";
-                    log.Information(step);
-
-                    var copyResults = _client.CopyLocalToRemote(log, files);
-
-                    results.AddRange(copyResults);
-                }
+            }
+            catch (Exception exp)
+            {
+                results.Add(new ActionResult($"Export failed with error: {exp}", false));
             }
 
             return await Task.FromResult(results);
