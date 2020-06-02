@@ -61,7 +61,7 @@ namespace Certify.Providers.DeploymentTasks
 
                     new List<ProviderParameter> {
                         new ProviderParameter { Key = "path", Name = "Destination Path", IsRequired = true, IsCredential = false, },
-                        new ProviderParameter { Key = "type", Name = "Export As", IsRequired = true, IsCredential = false, Value = "pfx", Type=OptionType.Select, OptionsList = optionsList },
+                        new ProviderParameter { Key = "type", Name = "Export As", IsRequired = true, IsCredential = false, Value = "pfxfull", Type=OptionType.Select, OptionsList = optionsList },
                         }
             };
         }

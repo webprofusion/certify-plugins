@@ -1,5 +1,12 @@
 ﻿
+using Certify.Config;
+using Certify.Models;
 using Certify.Models.Config;
+using Certify.Models.Providers;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -37,5 +44,69 @@ namespace Certify.Providers.DeploymentTasks
                 }
             };
         }
+
+        public new async Task<List<ActionResult>> Execute(
+           ILog log,
+           object subject,
+           DeploymentTaskConfig settings,
+           Dictionary<string, string> credentials,
+           bool isPreviewOnly,
+           DeploymentProviderDefinition definition,
+           CancellationToken cancellationToken
+       )
+        {
+            definition = GetDefinition(definition);
+
+            // for each item, execute a certificate export
+            var results = new List<ActionResult>();
+
+            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+
+            settings.Parameters.Add(new ProviderParameterSetting("path", null));
+            settings.Parameters.Add(new ProviderParameterSetting("type", null));
+
+            var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_pfx");
+            if (!string.IsNullOrWhiteSpace(certPath?.Value))
+            {
+                settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
+                settings.Parameters.Find(p => p.Key == "type").Value = "pfxfull";
+
+                log.Information(definition.Title + ":: exporting PFX format certificates and key");
+                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
+            }
+
+            return results;
+        }
+
+        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
+        {
+
+            // validate a certificate export
+            var results = new List<ActionResult>();
+
+            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+
+            settings.Parameters.Add(new ProviderParameterSetting("path", null));
+            settings.Parameters.Add(new ProviderParameterSetting("type", null));
+
+            var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_pfx");
+            if (string.IsNullOrEmpty(certPath.Value))
+            {
+                results.Add(new ActionResult
+                {
+                    IsSuccess = false,
+                    Message = "Required: " + Definition.ProviderParameters.First(f => f.Key == "path_pfx").Name
+                });
+            }
+            else
+            {
+                settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
+                settings.Parameters.Find(p => p.Key == "type").Value = "pfxfull";
+                results.AddRange(await base.Validate(managedCert, settings, credentials, definition));
+            }
+
+            return results;
+        }
+
     }
 }
