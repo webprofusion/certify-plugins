@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="REM Copy plugin dependencies to plugins output folder&#xD;&#xA;xcopy /i  /Y $(TargetDir)\*.dll C:\Work\Builds\CertifyPlugins_5x" />
+    <Exec Command="REM Copy plugin dependencies to plugins output folder&#xD;&#xA;xcopy /i /s /Y $(TargetDir)\*.dll $(SolutionDir)..\build\plugins" />
   </Target>
 
 </Project>
