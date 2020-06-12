@@ -44,7 +44,7 @@ namespace DeploymentTaskTests
                 { "password", "testuser" }
             };
 
-            var storedCred = await credentialsManager.UpdateCredential(new StoredCredential
+            var storedCred = await credentialsManager.Update(new StoredCredential
             {
                 StorageKey = "atestsshuser",
                 Title = "Test: SSH",
@@ -59,7 +59,7 @@ namespace DeploymentTaskTests
                 { "password", "testuser" }
             };
 
-            storedCred = await credentialsManager.UpdateCredential(new StoredCredential
+            storedCred = await credentialsManager.Update(new StoredCredential
             {
                 StorageKey = ConfigSettings["TestCredentialsKey_UNC"],
                 Title = "Test: UNC testuser",
