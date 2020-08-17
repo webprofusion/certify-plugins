@@ -55,7 +55,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                         catch(SftpPathNotFoundException exp)
                         {
                             // path not found, folder is probably wrong
-                            log?.Error($"SftpClient :: Failed to copy file. Check that the full path to {dest} is valid. {exp}");
+                            log?.Error($"SftpClient :: Failed to copy file. Check that the full path to {dest} is valid and that 'sudo' is not required to perform file copy. {exp}");
 
                             // failed to copy the file. TODO: retries
                             isSuccess = false;
@@ -64,7 +64,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                         catch (Exception exp)
                         {
 
-                            log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote: {exp}");
+                            log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote [{connectionInfo.Host}:{connectionInfo.Port}]: {exp}");
 
                             // failed to copy the file. TODO: retries
                             isSuccess = false;
@@ -76,7 +76,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                 catch (Exception exp)
                 {
                     isSuccess = false;
-                    log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote: {exp}");
+                    log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote [{connectionInfo.Host}:{connectionInfo.Port}]: {exp}");
                 }
             }
 

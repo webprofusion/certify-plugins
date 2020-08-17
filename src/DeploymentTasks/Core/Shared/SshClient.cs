@@ -37,9 +37,25 @@ namespace Certify.Providers.Deployment.Core.Shared
 
         public static SshConnectionConfig GetConnectionConfig(DeploymentTaskConfig config, Dictionary<string, string> credentials)
         {
+            int port = 22;
+            var host = config.TargetHost;
+
+            if (config.TargetHost?.Contains(":") == true)
+            {
+                try
+                {
+                    var components = config.TargetHost.Split(':');
+                    port = int.Parse(components[1].Trim());
+                    host = components[0].Trim();
+
+                }
+                catch { }
+            }
+
             var sshConfig = new SshConnectionConfig
             {
-                Host = config.TargetHost,
+                Host = host,
+                Port = port
             };
 
             credentials.TryGetValue("username", out var username);
