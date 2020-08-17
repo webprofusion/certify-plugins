@@ -11,9 +11,13 @@ Import-Module RemoteDesktopServices
 # Apply certificate
 Set-Item -Path RDS:\GatewayServer\SSLCertificate\Thumbprint -Value $result.ManagedItem.CertificateThumbprintHash -ErrorAction Stop
 
-# Optionally restart TSGateway
+# Optionally restart TSGateway and related service
 
 if ($restartServices -eq $true)
 {
+
+	Restart-Service IAS -Force -ErrorAction Stop
 	Restart-Service TSGateway -Force -ErrorAction Stop
+	Restart-Service SSTPSvc -Force -ErrorAction Stop
+	Write-Host "Services Restarted."
 }
