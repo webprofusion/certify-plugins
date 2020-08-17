@@ -28,7 +28,7 @@ namespace Certify.Providers.DeploymentTasks
         /// Terminology from https://en.wikipedia.org/wiki/Chain_of_trust
         /// </summary>
         [Flags]
-        enum ExportFlags
+        internal enum ExportFlags
         {
             EndEntityCertificate = 1,
             IntermediateCertificates = 4,
@@ -60,7 +60,7 @@ namespace Certify.Providers.DeploymentTasks
                 ProviderParameters =
 
                     new List<ProviderParameter> {
-                        new ProviderParameter { Key = "path", Name = "Destination Path", IsRequired = true, IsCredential = false, },
+                        new ProviderParameter { Key = "path", Name = "Destination File Path", IsRequired = true, IsCredential = false, Description="output file, e.g. C:\\CertifyCerts\\mycert.ext" },
                         new ProviderParameter { Key = "type", Name = "Export As", IsRequired = true, IsCredential = false, Value = "pfxfull", Type=OptionType.Select, OptionsList = optionsList },
                         }
             };
@@ -105,6 +105,13 @@ namespace Certify.Providers.DeploymentTasks
 
             var results = await Validate(subject, settings, credentials, definition);
 
+            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+
+            if (string.IsNullOrEmpty(managedCert.CertificatePath) || !File.Exists(managedCert.CertificatePath))
+            {
+                results.Add(new ActionResult("Source certificate file is not present. Export cannot continue.", false));
+            }
+
             if (results.Any())
             {
                 // failed validation
@@ -113,8 +120,6 @@ namespace Certify.Providers.DeploymentTasks
 
             try
             {
-
-                var managedCert = ManagedCertificate.GetManagedCertificate(subject);
 
                 // prepare collection of files in the required formats
 
@@ -155,7 +160,7 @@ namespace Certify.Providers.DeploymentTasks
                 }
                 else if (exportType == "pemchain")
                 {
-                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates));
+                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
                 }
                 else if (exportType == "pemcrt")
                 {
@@ -178,7 +183,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     // sftp file copy
                     var sshConfig = SshClient.GetConnectionConfig(settings, credentials);
-
+                    
                     var sftp = new SftpClient(sshConfig);
                     var remotePath = destPath;
 
@@ -263,7 +268,13 @@ namespace Certify.Providers.DeploymentTasks
         /// <param name="pwd">private key password</param>
         /// <param name="flags">Flags for component types to export</param>
         /// <returns></returns>
-        private byte[] GetCertComponentsAsPEMBytes(byte[] pfxData, string pwd, ExportFlags flags)
+        internal byte[] GetCertComponentsAsPEMBytes(byte[] pfxData, string pwd, ExportFlags flags)
+        {
+            var pem = GetCertComponentsAsPEMString(pfxData, pwd, flags);
+            return System.Text.Encoding.ASCII.GetBytes(pem);
+        }
+
+        internal string GetCertComponentsAsPEMString(byte[] pfxData, string pwd, ExportFlags flags)
         {
             // See also https://www.digicert.com/ssl-support/pem-ssl-creation.htm
 
@@ -300,9 +311,9 @@ namespace Certify.Providers.DeploymentTasks
                         var o = c.Certificate.Export(X509ContentType.Cert);
                         pemWriter.WriteObject(certParser.ReadCertificate(o));
                     }
-                    else if (flags.HasFlag(ExportFlags.IntermediateCertificates))
+                    else if (i != 0 && (i != chain.ChainElements.Count - 1) && flags.HasFlag(ExportFlags.IntermediateCertificates))
                     {
-                        // intermediate cert(s), if any
+                        // intermediate cert(s), if any, not including end entity and root
                         var o = c.Certificate.Export(X509ContentType.Cert);
                         pemWriter.WriteObject(certParser.ReadCertificate(o));
                     }
@@ -311,7 +322,7 @@ namespace Certify.Providers.DeploymentTasks
 
                 writer.Flush();
 
-                return System.Text.Encoding.ASCII.GetBytes(writer.ToString());
+                return writer.ToString();
             }
         }
 
@@ -321,7 +332,7 @@ namespace Certify.Providers.DeploymentTasks
         /// <param name="pfxData"></param>
         /// <param name="pwd"></param>
         /// <returns></returns>
-        private string GetCertKeyPem(byte[] pfxData, string pwd)
+        internal string GetCertKeyPem(byte[] pfxData, string pwd)
         {
             using (var s = new MemoryStream(pfxData))
             {
