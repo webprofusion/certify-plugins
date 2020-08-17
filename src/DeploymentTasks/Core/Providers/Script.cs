@@ -100,7 +100,7 @@ namespace Certify.Providers.DeploymentTasks
                     }
                 }
 
-                var _defaultLogonType = LogonType.Network;
+                var _defaultLogonType = LogonType.NewCredentials;
 
                 await Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, async () =>
                 {
@@ -124,7 +124,7 @@ namespace Certify.Providers.DeploymentTasks
                 $"{command} {args}"
             };
 
-            log?.Information("Executing command via SSH");
+            log?.Information($"Executing command via SSH [{sshConfig.Host}:{sshConfig.Port}]");
 
             var scriptResults = await Task.FromResult(ssh.ExecuteCommands(commandList, log));
 

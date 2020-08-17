@@ -11,7 +11,7 @@ namespace Certify.Providers.Deployment.Core.Shared
     public class WindowsNetworkFileClient
     {
         UserCredentials _credentials;
-        LogonType _defaultLogonType = LogonType.Network;
+        LogonType _defaultLogonType = LogonType.NewCredentials;
 
         public WindowsNetworkFileClient(UserCredentials credentials)
         {
