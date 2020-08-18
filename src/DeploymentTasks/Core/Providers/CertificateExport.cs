@@ -189,7 +189,7 @@ namespace Certify.Providers.DeploymentTasks
 
                     if (isPreviewOnly)
                     {
-                        var step = $"{definition.Title}: (Preview) would copy file via sftp to {remotePath} on host {sshConfig.Host}";
+                        var step = $"{definition.Title}: (Preview) would copy file via sftp to {remotePath} on host {sshConfig.Host}:{sshConfig.Port}";
                         msg += step + "\r\n";
                         log.Information(msg);
                     }
@@ -200,7 +200,7 @@ namespace Certify.Providers.DeploymentTasks
 
                         if (copiedOk)
                         {
-                            log.Information($"{definition.Title}: copied file via sftp to {remotePath} on host {sshConfig.Host}");
+                            log.Information($"{definition.Title}: copied file via sftp to {remotePath} on host {sshConfig.Host}:{sshConfig.Port}");
                         }
                         else
                         {
