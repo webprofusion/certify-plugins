@@ -11,6 +11,7 @@ using SimpleImpersonation;
 using System.Threading;
 using Plugin.DeploymentTasks.Core.Shared.Model;
 using System;
+using Plugin.DeploymentTasks.Shared;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -68,18 +69,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 try
                 {
-                    var username = credentials["username"];
-                    var pwd = credentials["password"];
-                    credentials.TryGetValue("domain", out var domain);
-
-                    if (domain != null)
-                    {
-                        windowsCredentials = new UserCredentials(domain, username, pwd);
-                    }
-                    else
-                    {
-                        windowsCredentials = new UserCredentials(username, pwd);
-                    }
+                    windowsCredentials = Helpers.GetWindowsCredentials(credentials);
                 }
                 catch
                 {

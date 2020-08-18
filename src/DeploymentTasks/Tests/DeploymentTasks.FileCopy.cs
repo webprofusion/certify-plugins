@@ -51,7 +51,7 @@ namespace DeploymentTaskTests
                new FileCopy { SourcePath= tmpPath, DestinationPath= destPath+ @"\test-copy.txt" }
             };
 
-            var credentials = new UserCredentials(storedCred["username"], storedCred["password"]);
+            var credentials = Plugin.DeploymentTasks.Shared.Helpers.GetWindowsCredentials(storedCred);
 
             var client = new WindowsNetworkFileClient(credentials);
 
