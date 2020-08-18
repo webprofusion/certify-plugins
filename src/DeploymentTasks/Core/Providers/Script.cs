@@ -77,7 +77,7 @@ namespace Certify.Providers.DeploymentTasks
             }
             else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
             {
-                var result = await RunLocalScript(log, command, args, settings, credentials);
+                var result = RunLocalScript(log, command, args, settings, credentials);
                 results.Add(result);
             }
             else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
@@ -102,12 +102,12 @@ namespace Certify.Providers.DeploymentTasks
 
                 var _defaultLogonType = LogonType.NewCredentials;
 
-                await Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, async () =>
-                {
-                    var result = await RunLocalScript(log, command, args, settings, credentials);
-                    results.Add(result);
+                Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, () =>
+                  {
+                      var result = RunLocalScript(log, command, args, settings, credentials);
+                      results.Add(result);
 
-                });
+                  });
 
             }
             return results;
@@ -165,7 +165,7 @@ namespace Certify.Providers.DeploymentTasks
             return await Task.FromResult(results);
         }
 
-        private static async Task<ActionResult> RunLocalScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials)
+        private static ActionResult RunLocalScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials)
         {
             var _log = new StringBuilder();
 
@@ -237,21 +237,21 @@ namespace Certify.Providers.DeploymentTasks
                     process.CloseMainWindow();
 
                     _log.AppendLine("Warning: Script ran but took too long to exit and was closed.");
-                    return await Task.FromResult(new ActionResult { IsSuccess = false, Message = _log.ToString() });
+                    return new ActionResult { IsSuccess = false, Message = _log.ToString() };
                 }
                 else if (process.ExitCode != 0)
                 {
                     _log.AppendLine("Warning: Script exited with the following ExitCode: " + process.ExitCode);
-                    return await Task.FromResult(new ActionResult { IsSuccess = false, Message = _log.ToString() });
+                    return new ActionResult { IsSuccess = false, Message = _log.ToString() };
                 }
 
-                return await Task.FromResult(new ActionResult { IsSuccess = true, Message = _log.ToString() });
+                return new ActionResult { IsSuccess = true, Message = _log.ToString() };
 
             }
             catch (Exception exp)
             {
                 _log.AppendLine("Error: " + exp.ToString());
-                return await Task.FromResult(new ActionResult { IsSuccess = false, Message = _log.ToString() });
+                return new ActionResult { IsSuccess = false, Message = _log.ToString() };
             }
         }
     }
