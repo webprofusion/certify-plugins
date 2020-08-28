@@ -43,24 +43,16 @@ namespace Certify.Providers.DeploymentTasks
         /// <param name="credentials"></param>
         /// <param name="isPreviewOnly"></param>
         /// <returns></returns>
-        public async Task<List<ActionResult>> Execute(
-          ILog log,
-          object subject,
-          DeploymentTaskConfig settings,
-          Dictionary<string, string> credentials,
-          bool isPreviewOnly,
-          DeploymentProviderDefinition definition,
-          CancellationToken cancellationToken
-          )
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 
-            var certRequest = subject as CertificateRequestResult;
+            var certRequest = execParams.Subject as CertificateRequestResult;
 
-            var command = settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value;
-            var args = settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
+            var command = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value;
+            var args = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
 
-            var inputResultAsArgument = settings.Parameters.FirstOrDefault(c => c.Key == "inputresult")?.Value;
+            var inputResultAsArgument = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "inputresult")?.Value;
 
             var parameters = new Dictionary<string, object>();
             if (inputResultAsArgument?.Trim().ToLower() == "true")
@@ -90,20 +82,20 @@ namespace Certify.Providers.DeploymentTasks
                 }
             }
 
-            log?.Information("Executing command via PowerShell");
+            execParams.Log?.Information("Executing command via PowerShell");
 
-            var result = await PowerShellManager.RunScript(null, command, parameters, null, credentials: credentials);
+            var result = await PowerShellManager.RunScript(null, command, parameters, null, credentials: execParams.Credentials);
 
             results.Add(result);
 
             return results;
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 
-            var path = settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value;
+            var path = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value;
 
             if (string.IsNullOrEmpty(path))
             {

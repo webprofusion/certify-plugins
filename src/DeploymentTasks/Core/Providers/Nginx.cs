@@ -35,22 +35,15 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public async new Task<List<ActionResult>> Execute(
-         ILog log,
-         object subject,
-         DeploymentTaskConfig settings,
-         Dictionary<string, string> credentials,
-         bool isPreviewOnly,
-         DeploymentProviderDefinition definition,
-         CancellationToken cancellationToken
-     )
+        public async new Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
-            definition = GetDefinition(definition);
+            var definition = GetDefinition(execParams.Definition);
+            var settings = execParams.Settings;
 
             // for each item, execute a certificate export
             var results = new List<ActionResult>();
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             settings.Parameters.Add(new ProviderParameterSetting("path", null));
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
@@ -60,7 +53,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemcrtpartialchain";
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
+                results.AddRange(await base.Execute(execParams));
             }
 
             var keyPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_key");
@@ -68,7 +61,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
             return results;

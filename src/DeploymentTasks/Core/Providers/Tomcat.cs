@@ -45,22 +45,15 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public new async Task<List<ActionResult>> Execute(
-           ILog log,
-           object subject,
-           DeploymentTaskConfig settings,
-           Dictionary<string, string> credentials,
-           bool isPreviewOnly,
-           DeploymentProviderDefinition definition,
-           CancellationToken cancellationToken
-       )
+        public new async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
-            definition = GetDefinition(definition);
+            var definition = GetDefinition(execParams.Definition);
+            var settings = execParams.Settings;
 
             // for each item, execute a certificate export
             var results = new List<ActionResult>();
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             settings.Parameters.Add(new ProviderParameterSetting("path", null));
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
@@ -71,20 +64,21 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pfxfull";
 
-                log.Information(definition.Title + ":: exporting PFX format certificates and key");
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
+                execParams.Log.Information(definition.Title + ":: exporting PFX format certificates and key");
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
             return results;
         }
 
-        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
+        public new async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
 
             // validate a certificate export
             var results = new List<ActionResult>();
+            var settings = execParams.Settings;
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             settings.Parameters.Add(new ProviderParameterSetting("path", null));
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
@@ -102,7 +96,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pfxfull";
-                results.AddRange(await base.Validate(managedCert, settings, credentials, definition));
+                results.AddRange(await base.Validate(execParams));
             }
 
             return results;

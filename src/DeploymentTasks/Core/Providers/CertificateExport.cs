@@ -66,8 +66,9 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
+        public Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
+            var settings = execParams.Settings;
 
             var results = new List<ActionResult> { };
             if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER)
@@ -88,24 +89,19 @@ namespace Certify.Providers.DeploymentTasks
         }
 
         public async Task<List<ActionResult>> Execute(
-                ILog log,
-                object subject,
-                DeploymentTaskConfig settings,
-                Dictionary<string, string> credentials,
-                bool isPreviewOnly,
-                DeploymentProviderDefinition definition,
-                CancellationToken cancellationToken
+               DeploymentTaskExecutionParams execParams
             )
         {
+            var definition = execParams.Definition;
 
             if (definition == null)
             {
                 definition = CertificateExport.Definition;
             }
 
-            var results = await Validate(subject, settings, credentials, definition);
+            var results = await Validate(execParams);
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             if (string.IsNullOrEmpty(managedCert.CertificatePath) || !File.Exists(managedCert.CertificatePath))
             {
@@ -120,6 +116,9 @@ namespace Certify.Providers.DeploymentTasks
 
             try
             {
+
+                var settings = execParams.Settings;
+                var log = execParams.Log;
 
                 // prepare collection of files in the required formats
 
@@ -142,11 +141,20 @@ namespace Certify.Providers.DeploymentTasks
 
                 var certPwd = "";
 
-                if (credentials != null && credentials.Any(c => c.Key == "cert_pwd_key"))
+                if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId))
                 {
-                    var credKey = credentials.First(c => c.Key == "cert_pwd_key");
+                    var cred = await execParams.CredentialsManager.GetUnlockedCredentialsDictionary(managedCert.CertificatePasswordCredentialId);
+                    if (cred != null)
+                    {
+                        certPwd = cred["password"];
+                    }
+                }
 
-                    // TODO: fetch credentials for cert pwd
+                if (execParams.Credentials != null && execParams.Credentials.Any(c => c.Key == "cert_pwd_key"))
+                {
+                    var credKey = execParams.Credentials.First(c => c.Key == "cert_pwd_key");
+
+                    // TODO: fetch credentials for cert export pwd
 
                 }
 
@@ -182,12 +190,12 @@ namespace Certify.Providers.DeploymentTasks
                 if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_SSH)
                 {
                     // sftp file copy
-                    var sshConfig = SshClient.GetConnectionConfig(settings, credentials);
+                    var sshConfig = SshClient.GetConnectionConfig(settings, execParams.Credentials);
                     
                     var sftp = new SftpClient(sshConfig);
                     var remotePath = destPath;
 
-                    if (isPreviewOnly)
+                    if (execParams.IsPreviewOnly)
                     {
                         var step = $"{definition.Title}: (Preview) would copy file via sftp to {remotePath} on host {sshConfig.Host}:{sshConfig.Port}";
                         msg += step + "\r\n";
@@ -216,11 +224,11 @@ namespace Certify.Providers.DeploymentTasks
                     // windows remote file copy
 
                     UserCredentials windowsCredentials = null;
-                    if (credentials != null && credentials.Count > 0)
+                    if (execParams.Credentials != null && execParams.Credentials.Count > 0)
                     {
                         try
                         {
-                            windowsCredentials = Helpers.GetWindowsCredentials(credentials);
+                            windowsCredentials = Helpers.GetWindowsCredentials(execParams.Credentials);
                         }
                         catch
                         {
@@ -236,7 +244,7 @@ namespace Certify.Providers.DeploymentTasks
 
 
                     var _client = new WindowsNetworkFileClient(windowsCredentials);
-                    if (isPreviewOnly)
+                    if (execParams.IsPreviewOnly)
                     {
                         var step = $"{definition.Title}: (Preview) Windows file copy to {destPath}";
                         msg += step + " \r\n";

@@ -44,22 +44,15 @@ namespace Certify.Providers.DeploymentTasks
 
         }
 
-        public new async Task<List<ActionResult>> Execute(
-            ILog log,
-            object subject,
-            DeploymentTaskConfig settings,
-            Dictionary<string, string> credentials,
-            bool isPreviewOnly,
-            DeploymentProviderDefinition definition,
-            CancellationToken cancellationToken
-        )
+        public new async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
-            definition = GetDefinition(definition);
+            var definition = GetDefinition(execParams.Definition);
+            var settings = execParams.Settings;
 
             // for each item, execute a certificate export
             var results = new List<ActionResult>();
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             settings.Parameters.Add(new ProviderParameterSetting("path", null));
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
@@ -70,8 +63,8 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemcrt";
 
-                log.Information(definition.Title + ":: exporting PEM format certificate file");
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
+                execParams.Log.Information(definition.Title + ":: exporting PEM format certificate file");
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
             var keyPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_key");
@@ -80,8 +73,8 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
 
-                log.Information(definition.Title + ":: exporting PEM format key file");
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
+                execParams.Log.Information(definition.Title + ":: exporting PEM format key file");
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
             var chainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_chain");
@@ -90,20 +83,21 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
 
-                log.Information(definition.Title + ":: exporting PEM format chain file");
-                results.AddRange(await base.Execute(log, managedCert, settings, credentials, isPreviewOnly, definition, cancellationToken));
+                execParams.Log.Information(definition.Title + ":: exporting PEM format chain file");
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
             return results;
         }
 
-        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
+        public new async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
 
             // for each item, execute a certificate export
             var results = new List<ActionResult>();
+            var settings = execParams.Settings;
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             settings.Parameters.Add(new ProviderParameterSetting("path", null));
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
@@ -121,7 +115,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemcrt";
-                results.AddRange(await base.Validate(managedCert, settings, credentials, definition));
+                results.AddRange(await base.Validate(execParams));
             }
 
             var keyPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_key");
@@ -140,7 +134,7 @@ namespace Certify.Providers.DeploymentTasks
 
                     settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
                     settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
-                    results.AddRange(await base.Validate(managedCert, settings, credentials, definition));
+                    results.AddRange(await base.Validate(execParams));
                 }
             }
 
@@ -149,7 +143,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
-                results.AddRange(await base.Validate(managedCert, settings, credentials, definition));
+                results.AddRange(await base.Validate(execParams));
 
             }
 

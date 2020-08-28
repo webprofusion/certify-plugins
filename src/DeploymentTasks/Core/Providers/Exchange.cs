@@ -36,10 +36,10 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public async Task<List<ActionResult>> Execute(ILog log, object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, bool isPreviewOnly, DeploymentProviderDefinition definition, CancellationToken cancellationToken)
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            var validation = await Validate(subject, settings, credentials, definition);
+            var validation = await Validate(execParams);
 
             if (validation.Any())
             {
@@ -48,27 +48,27 @@ namespace Certify.Providers.DeploymentTasks
 
             var script = Helpers.ReadStringResource(SCRIPT_NAME);
 
-            var certRequest = subject as CertificateRequestResult;
+            var certRequest = execParams.Subject as CertificateRequestResult;
 
-            log?.Information("Executing command via PowerShell");
+            execParams.Log?.Information("Executing command via PowerShell");
 
-            var services = settings.Parameters.FirstOrDefault(p => p.Key == "services")?.Value;
+            var services = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "services")?.Value;
 
             var parameters = new Dictionary<string, object>
             {
                 { "services", services }
             };
 
-            var scriptResult = await PowerShellManager.RunScript(certRequest, parameters: parameters, scriptContent: script, credentials: credentials);
+            var scriptResult = await PowerShellManager.RunScript(certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
 
             return new List<ActionResult> { scriptResult };
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 
-            if (string.IsNullOrEmpty(settings.Parameters.FirstOrDefault(p => p.Key == "services")?.Value))
+            if (string.IsNullOrEmpty(execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "services")?.Value))
             {
                 results.Add(new ActionResult("One or more services are required to apply certificate to. E.g. POP,IMAP,SMTP,IIS", false));
             }

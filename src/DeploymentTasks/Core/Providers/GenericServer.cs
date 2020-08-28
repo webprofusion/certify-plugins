@@ -36,23 +36,15 @@ namespace Certify.Providers.DeploymentTasks
 
         }
 
-        public new async Task<List<ActionResult>> Execute(
-            ILog log,
-            object subject,
-            DeploymentTaskConfig settings,
-            Dictionary<string, string> credentials,
-            bool isPreviewOnly,
-            DeploymentProviderDefinition definition,
-            CancellationToken cancellationToken
-        )
+        public new async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
-            return await base.Execute(log, subject, settings, credentials, isPreviewOnly, definition, cancellationToken);
+            return await base.Execute(execParams);
         }
 
-        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition = null)
+        public new async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
 
-            return await base.Validate(subject, settings, credentials, definition);
+            return await base.Validate(execParams);
         }
 
     }

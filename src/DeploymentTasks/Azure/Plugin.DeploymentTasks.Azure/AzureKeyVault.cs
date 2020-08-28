@@ -52,27 +52,19 @@ namespace Plugin.DeploymentTasks.Azure
         /// <param name="credentials"></param>
         /// <param name="isPreviewOnly"></param>
         /// <returns></returns>
-        public async Task<List<ActionResult>> Execute(
-          ILog log,
-          object subject,
-          DeploymentTaskConfig settings,
-          Dictionary<string, string> credentials,
-          bool isPreviewOnly,
-          DeploymentProviderDefinition definition,
-          CancellationToken cancellationToken
-          )
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            definition = GetDefinition(definition);
+            var definition = GetDefinition(execParams.Definition);
 
-            var results = await Validate(subject, settings, credentials, definition);
+            var results = await Validate(execParams);
 
             if (results.Any())
             {
                 return results;
             }
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             if (string.IsNullOrEmpty(managedCert.CertificatePath))
             {
@@ -80,17 +72,17 @@ namespace Plugin.DeploymentTasks.Azure
                 return results;
             }
 
-            var keyVaultUri = new Uri(settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value);
+            var keyVaultUri = new Uri(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value);
 
             var pfxData = File.ReadAllBytes(managedCert.CertificatePath);
 
             // from application user details in Azure AD
 
-            var cred = new ClientSecretCredential(credentials["tenantid"], credentials["clientid"], credentials["secret"]);
+            var cred = new ClientSecretCredential(execParams.Credentials["tenantid"], execParams.Credentials["clientid"], execParams.Credentials["secret"]);
 
             var client = new CertificateClient(keyVaultUri, cred);
 
-            var customName = settings.Parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value;
+            var customName = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value;
 
             var certName = GetStringAsKeyVaultName(customName ?? managedCert.Name);
 
@@ -100,18 +92,18 @@ namespace Plugin.DeploymentTasks.Azure
             {
                 await client.ImportCertificateAsync(importOptions);
 
-                log.Information($"Deployed certificate [{certName}] to Azure Key Vault");
+                execParams.Log.Information($"Deployed certificate [{certName}] to Azure Key Vault");
 
                 results.Add(new ActionResult("Certificate Deployed to Azure Key Vault", true));
             }
             catch (AuthenticationFailedException exp)
             {
-                log.Error($"Azure Authentiation error: {exp.InnerException?.Message ?? exp.Message}");
+                execParams.Log.Error($"Azure Authentiation error: {exp.InnerException?.Message ?? exp.Message}");
                 results.Add(new ActionResult("Key Vault Deployment Failed", false));
             }
             catch (Exception exp)
             {
-                log.Error($"Failed to deploy certificate [{certName}] to Azure Key Vault :{exp}");
+                execParams.Log.Error($"Failed to deploy certificate [{certName}] to Azure Key Vault :{exp}");
                 results.Add(new ActionResult("Key Vault Deployment Failed", false));
             }
 
@@ -136,17 +128,17 @@ namespace Plugin.DeploymentTasks.Azure
             return ascii;
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult> { };
 
-            var uri = settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
+            var uri = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
             if (string.IsNullOrEmpty(uri))
             {
                 results.Add(new ActionResult("Vault URI is required e.g. https://<vault-name>.vault.azure.net/", false));
             }
 
-            var cert_name = settings.Parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value;
+            var cert_name = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value;
             if (!string.IsNullOrEmpty(cert_name))
             {
                 if (!Regex.IsMatch(cert_name, "^[0-9a-zA-Z-]+$"))

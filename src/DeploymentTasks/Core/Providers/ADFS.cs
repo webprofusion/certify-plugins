@@ -18,9 +18,9 @@ namespace Certify.Providers.DeploymentTasks
 
         private const string SCRIPT_NAME = "ADFS.ps1";
 
-        public async Task<List<ActionResult>> Execute(ILog log, object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, bool isPreviewOnly, DeploymentProviderDefinition definition, CancellationToken cancellationToken)
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
-            var validation = await Validate(subject, settings, credentials, definition);
+            var validation = await Validate(execParams);
 
             if (validation.Any())
             {
@@ -29,25 +29,27 @@ namespace Certify.Providers.DeploymentTasks
 
             var script = Helpers.ReadStringResource(SCRIPT_NAME);
 
+            var definition = execParams.Definition;
+
             definition = GetDefinition(definition);
 
-            var certRequest = subject as CertificateRequestResult;
+            var certRequest = execParams.Subject as CertificateRequestResult;
 
-            log?.Information("Executing command via PowerShell");
+            execParams.Log?.Information("Executing command via PowerShell");
 
-            var performRestart = settings.Parameters.FirstOrDefault(p => p.Key == "performServiceRestart")?.Value;
+            var performRestart = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "performServiceRestart")?.Value;
 
             var parameters = new Dictionary<string, object>
             {
                 { "performServiceRestart", performRestart }
             };
 
-            var scriptResult = await PowerShellManager.RunScript(certRequest, parameters: parameters, scriptContent: script, credentials: credentials);
+            var scriptResult = await PowerShellManager.RunScript(certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
 
             return new List<ActionResult> { scriptResult };
         }
 
-        public new async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public new async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 

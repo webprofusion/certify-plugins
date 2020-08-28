@@ -39,26 +39,18 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public async Task<List<ActionResult>> Execute(
-          ILog log,
-          object subject,
-          DeploymentTaskConfig settings,
-          Dictionary<string, string> credentials,
-          bool isPreviewOnly,
-          DeploymentProviderDefinition definition,
-          CancellationToken cancellationToken
-          )
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            definition = GetDefinition(definition);
+            var definition = GetDefinition(execParams.Definition);
 
-            var results = await Validate(subject, settings, credentials, definition);
+            var results = await Validate(execParams);
             if (results.Any())
             {
                 return results;
             }
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             if (string.IsNullOrEmpty(managedCert.CertificatePath))
             {
@@ -66,11 +58,11 @@ namespace Certify.Providers.DeploymentTasks
                 return results;
 
             }
-            string vaultUri = settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
-            string vaultPath = settings.Parameters.FirstOrDefault(c => c.Key == "vault_secret_path")?.Value;
+            string vaultUri = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
+            string vaultPath = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_secret_path")?.Value;
 
             var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("X-Vault-Token", credentials["api_token"]);
+            httpClient.DefaultRequestHeaders.Add("X-Vault-Token", execParams.Credentials["api_token"]);
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             var vaultUrl = $"{vaultUri}{vaultPath}";
@@ -99,7 +91,7 @@ namespace Certify.Providers.DeploymentTasks
 
             var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(secret), System.Text.UnicodeEncoding.UTF8, "application/json");
 
-            log.Information($"Deploying to Vault: {vaultUrl}");
+            execParams.Log.Information($"Deploying to Vault: {vaultUrl}");
 
             var response = await httpClient.PostAsync(vaultUrl, content);
 
@@ -147,7 +139,7 @@ namespace Certify.Providers.DeploymentTasks
             return exportString;
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult> { };
 

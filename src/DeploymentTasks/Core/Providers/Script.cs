@@ -47,52 +47,44 @@ namespace Certify.Providers.DeploymentTasks
         /// <param name="credentials"></param>
         /// <param name="isPreviewOnly"></param>
         /// <returns></returns>
-        public async Task<List<ActionResult>> Execute(
-          ILog log,
-          object subject,
-          DeploymentTaskConfig settings,
-          Dictionary<string, string> credentials,
-          bool isPreviewOnly,
-          DeploymentProviderDefinition definition,
-          CancellationToken cancellationToken
-          )
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            definition = GetDefinition(definition);
+            var definition = GetDefinition(execParams.Definition);
 
-            var results = await Validate(subject, settings, credentials, definition);
+            var results = await Validate(execParams);
             if (results.Any())
             {
                 return results;
             }
 
-            var command = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
-            var args = settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
+            var command = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
+            var args = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
 
 
             //TODO: non-ssh local script
-            if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_SSH)
+            if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_SSH)
             {
-                return await RunSSHScript(log, command, args, settings, credentials);
+                return await RunSSHScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials);
             }
-            else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
+            else if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
             {
-                var result = RunLocalScript(log, command, args, settings, credentials);
+                var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials);
                 results.Add(result);
             }
-            else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
+            else if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
             {
                 UserCredentials windowsCredentials = null;
-                if (credentials != null && credentials.Count > 0)
+                if (execParams.Credentials != null && execParams.Credentials.Count > 0)
                 {
                     try
                     {
-                        windowsCredentials = Helpers.GetWindowsCredentials(credentials);
+                        windowsCredentials = Helpers.GetWindowsCredentials(execParams.Credentials);
                     }
                     catch
                     {
                         var err = "Task with Windows Credentials requires username and password.";
-                        log.Error(err);
+                        execParams.Log.Error(err);
 
                         return new List<ActionResult>{
                             new ActionResult { IsSuccess = false, Message = err }
@@ -104,7 +96,7 @@ namespace Certify.Providers.DeploymentTasks
 
                 Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, () =>
                   {
-                      var result = RunLocalScript(log, command, args, settings, credentials);
+                      var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials);
                       results.Add(result);
 
                   });
@@ -143,12 +135,12 @@ namespace Certify.Providers.DeploymentTasks
             }
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 
             // validate
-            var path = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
+            var path = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
 
             if (string.IsNullOrEmpty(path))
             {
@@ -156,7 +148,7 @@ namespace Certify.Providers.DeploymentTasks
             }
             else
             {
-                if ((settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER) && !System.IO.File.Exists(path))
+                if ((execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER) && !System.IO.File.Exists(path))
                 {
                     results.Add(new ActionResult("There is no local script file present at the given path: " + path, false));
                 }

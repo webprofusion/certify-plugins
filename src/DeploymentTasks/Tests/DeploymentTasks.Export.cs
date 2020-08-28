@@ -53,7 +53,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var result = await task.Execute(_log, managedCert, CancellationToken.None, isPreviewOnly: false);
+                var result = await task.Execute(_log, null, managedCert, CancellationToken.None, isPreviewOnly: false);
             }
 
             // assert new valid pfx exists in destination
@@ -93,7 +93,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var result = await task.Execute(_log, managedCert, CancellationToken.None, isPreviewOnly: false);
+                var result = await task.Execute(_log, null, managedCert, CancellationToken.None, isPreviewOnly: false);
             }
 
             // assert output exists in destination
@@ -137,7 +137,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var result = await task.Execute(_log, managedCert, CancellationToken.None, isPreviewOnly: false);
+                var result = await task.Execute(_log,null, managedCert, CancellationToken.None, isPreviewOnly: false);
             }
 
             // assert output exists in destination

@@ -44,32 +44,24 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public async Task<List<ActionResult>> Execute(
-            ILog log,
-            object subject,
-            DeploymentTaskConfig settings,
-            Dictionary<string, string> credentials,
-            bool isPreviewOnly,
-            DeploymentProviderDefinition definition,
-            CancellationToken cancellationToken
-            )
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            var validationResults = await this.Validate(subject, settings, credentials, definition);
+            var validationResults = await this.Validate(execParams);
             if (validationResults.Any())
             {
                 return validationResults;
             }
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(subject);
+            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
             UserCredentials windowsCredentials = null;
 
-            if (credentials != null && credentials.Count > 0)
+            if (execParams.Credentials != null && execParams.Credentials.Count > 0)
             {
                 try
                 {
-                    windowsCredentials = Helpers.GetWindowsCredentials(credentials);
+                    windowsCredentials = Helpers.GetWindowsCredentials(execParams.Credentials);
                 }
                 catch
                 {
@@ -88,7 +80,7 @@ namespace Certify.Providers.DeploymentTasks
 
                 var fileList = new List<FileCopy>();
 
-                var destinationPath = settings.Parameters?.FirstOrDefault(d => d.Key == "path")?.Value;
+                var destinationPath = execParams.Settings.Parameters?.FirstOrDefault(d => d.Key == "path")?.Value;
 
                 foreach (var domain in domains)
                 {
@@ -102,7 +94,7 @@ namespace Certify.Providers.DeploymentTasks
                     {
                         var filename = Path.Combine(destinationPath.Trim(), targetDomain + ".pfx");
 
-                        log.Information($"{Definition.Title}: Storing PFX as {filename}");
+                        execParams.Log?.Information($"{Definition.Title}: Storing PFX as {filename}");
 
                         fileList.Add(new FileCopy { SourcePath = managedCert.CertificatePath, DestinationPath = filename });
                     }
@@ -116,9 +108,9 @@ namespace Certify.Providers.DeploymentTasks
                 }
                 else
                 {
-                    if (!isPreviewOnly)
+                    if (!execParams.IsPreviewOnly)
                     {
-                        windowsFileClient.CopyLocalToRemote(log, fileList);
+                        windowsFileClient.CopyLocalToRemote(execParams.Log, fileList);
                     }
 
                 }
@@ -136,11 +128,11 @@ namespace Certify.Providers.DeploymentTasks
             }
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 
-            var destinationPath = settings.Parameters?.FirstOrDefault(d => d.Key == "path")?.Value;
+            var destinationPath = execParams.Settings.Parameters?.FirstOrDefault(d => d.Key == "path")?.Value;
 
             if (string.IsNullOrEmpty(destinationPath))
             {

@@ -32,10 +32,10 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public async Task<List<ActionResult>> Execute(ILog log, object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, bool isPreviewOnly, DeploymentProviderDefinition definition, CancellationToken cancellationToken)
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            var validation = await Validate(subject, settings, credentials, definition);
+            var validation = await Validate(execParams);
 
             if (validation.Any())
             {
@@ -44,18 +44,18 @@ namespace Certify.Providers.DeploymentTasks
 
             var script = Helpers.ReadStringResource(SCRIPT_NAME);
 
-            var certRequest = subject as CertificateRequestResult;
+            var certRequest = execParams.Subject as CertificateRequestResult;
 
-            log?.Information("Executing command via PowerShell");
+            execParams.Log?.Information("Executing command via PowerShell");
 
             var parameters = new Dictionary<string, object>();
 
-            var scriptResult = await PowerShellManager.RunScript(certRequest, parameters: parameters, scriptContent: script, credentials: credentials);
+            var scriptResult = await PowerShellManager.RunScript(certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
 
             return new List<ActionResult> { scriptResult };
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 

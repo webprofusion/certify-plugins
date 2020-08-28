@@ -60,20 +60,14 @@ namespace Certify.Providers.DeploymentTasks
             };
         }
 
-        public async Task<List<ActionResult>> Execute(
-          ILog log,
-          object subject,
-          DeploymentTaskConfig settings,
-          Dictionary<string, string> credentials,
-          bool isPreviewOnly,
-          DeploymentProviderDefinition definition,
-          CancellationToken cancellationToken
-          )
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            definition = GetDefinition(definition);
+            var settings = execParams.Settings;
 
-            List<ActionResult> results = await Validate(subject, settings, credentials, definition);
+            var definition = GetDefinition(execParams.Definition);
+
+            List<ActionResult> results = await Validate(execParams);
             if (results.Any())
             {
                 return results;
@@ -95,19 +89,19 @@ namespace Certify.Providers.DeploymentTasks
             {
                 if (service.Status != ServiceControllerStatus.Stopped)
                 {
-                    if (!isPreviewOnly)
+                    if (!execParams.IsPreviewOnly)
                     {
-                        service = await StopServiceWithRetry(log, servicename, service, ticks);
+                        service = await StopServiceWithRetry(execParams.Log, servicename, service, ticks);
                     }
                 }
                 else
                 {
-                    log?.Information($"Service already stopped [{servicename}] ");
+                    execParams.Log?.Information($"Service already stopped [{servicename}] ");
                 }
 
-                if (!isPreviewOnly)
+                if (!!execParams.IsPreviewOnly)
                 {
-                    service = await StartServiceWithRetry(log, servicename, service, ticks);
+                    service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
                 }
 
                 results.Add(new ActionResult("Service Restarted", true));
@@ -117,25 +111,25 @@ namespace Certify.Providers.DeploymentTasks
             {
                 if (service.Status != ServiceControllerStatus.Stopped)
                 {
-                    if (!isPreviewOnly)
+                    if (!!execParams.IsPreviewOnly)
                     {
-                        service = await StopServiceWithRetry(log, servicename, service, ticks);
+                        service = await StopServiceWithRetry(execParams.Log, servicename, service, ticks);
                     }
 
                     results.Add(new ActionResult("Service Stopped", true));
                 }
                 else
                 {
-                    log?.Information($"Service already stopped [{servicename}] ");
+                    execParams.Log?.Information($"Service already stopped [{servicename}] ");
 
                     results.Add(new ActionResult("Service already stopped", true));
                 }
             }
             else if (action == "start")
             {
-                if (!isPreviewOnly)
+                if (!execParams.IsPreviewOnly)
                 {
-                    service = await StartServiceWithRetry(log, servicename, service, ticks);
+                    service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
                 }
 
                 results.Add(new ActionResult("Service Started", true));
@@ -198,9 +192,11 @@ namespace Certify.Providers.DeploymentTasks
             return service;
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult> { };
+
+            var settings = execParams.Settings;
 
             var action = settings.Parameters.FirstOrDefault(c => c.Key == "action")?.Value;
 

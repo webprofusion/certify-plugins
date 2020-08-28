@@ -41,48 +41,40 @@ namespace Certify.Providers.DeploymentTasks
         /// <param name="credentials"></param>
         /// <param name="isPreviewOnly"></param>
         /// <returns></returns>
-        public async Task<List<ActionResult>> Execute(
-          ILog log,
-          object subject,
-          DeploymentTaskConfig settings,
-          Dictionary<string, string> credentials,
-          bool isPreviewOnly,
-          DeploymentProviderDefinition definition,
-          CancellationToken cancellationToken
-          )
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            definition = GetDefinition(definition);
+            var definition = GetDefinition(execParams.Definition);
 
-            var validation = await Validate(subject, settings, credentials, definition);
+            var validation = await Validate(execParams);
             if (validation.Any())
             {
                 return validation;
             }
 
-            if (int.TryParse(settings.Parameters.FirstOrDefault(c => c.Key == "duration")?.Value, out var durationSeconds))
+            if (int.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "duration")?.Value, out var durationSeconds))
             {
-                log?.Information($"Waiting for {durationSeconds} seconds..");
-                await Task.Delay(durationSeconds * 1000, cancellationToken);
+                execParams.Log?.Information($"Waiting for {durationSeconds} seconds..");
+                await Task.Delay(durationSeconds * 1000, execParams.CancellationToken);
             }
 
             return new List<ActionResult>();
 
         }
 
-        public async Task<List<ActionResult>> Validate(object subject, DeploymentTaskConfig settings, Dictionary<string, string> credentials, DeploymentProviderDefinition definition)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult> { };
 
-            var duration = settings.Parameters.FirstOrDefault(c => c.Key == "duration")?.Value;
+            var duration = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "duration")?.Value;
 
             if (string.IsNullOrEmpty(duration))
             {
                 results.Add(new ActionResult("Invalid duration specified. An integer value is required.", false));
                 return results;
             }
-          
-            if (!int.TryParse(settings.Parameters.FirstOrDefault(c => c.Key == "duration")?.Value, out var durationSeconds))
+
+            if (!int.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "duration")?.Value, out var durationSeconds))
             {
                 results.Add(new ActionResult("Invalid duration specified. An integer value is required.", false));
             }
