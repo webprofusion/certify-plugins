@@ -1,13 +1,15 @@
-﻿param($result, [switch] $restartServices = $false)
+﻿param($result, [switch] $restartServices = $false, [switch] $alternateTlsBinding = $false)
             
 # https://docs.microsoft.com/en-us/windows-server/identity/ad-fs/operations/manage-ssl-certificates-ad-fs-wap
 
-Set-AdfsCertificate -CertificateType Service-Communications -Thumbprint $result.ManagedItem.CertificateThumbprintHash
+Set-AdfsCertificate -CertificateType Service-Communications -Thumbprint $result.ManagedItem.CertificateThumbprintHash -Confirm:$false
 
-Set-AdfsSslCertificate -Thumbprint $result.ManagedItem.CertificateThumbprintHash
+Set-AdfsSslCertificate -Thumbprint $result.ManagedItem.CertificateThumbprintHash -ErrorAction Stop -Confirm:$false
 
 # primary AD FS with Alternate TLS binding
-# Set-AdfsAlternateTlsClientBinding -Thumbprint $result.ManagedItem.CertificateThumbprintHash
+if ( $alternateTlsBinding -eq $true) {
+    Set-AdfsAlternateTlsClientBinding -Thumbprint $result.ManagedItem.CertificateThumbprintHash -ErrorAction Stop -Confirm:$false
+} 
 
 if ( $restartServices -eq $true) {
 

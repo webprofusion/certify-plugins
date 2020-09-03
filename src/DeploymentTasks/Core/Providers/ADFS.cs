@@ -37,11 +37,13 @@ namespace Certify.Providers.DeploymentTasks
 
             execParams.Log?.Information("Executing command via PowerShell");
 
-            var performRestart = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "performServiceRestart")?.Value;
+            var performRestart = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "performServiceRestart")?.Value ?? "false";
+            var alternateTlsBinding = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "alternateTlsBinding")?.Value ?? "false";
 
             var parameters = new Dictionary<string, object>
             {
-                { "performServiceRestart", performRestart }
+                { "performServiceRestart", performRestart },
+                 { "alternateTlsBinding", alternateTlsBinding }
             };
 
             var scriptResult = await PowerShellManager.RunScript(certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
@@ -70,7 +72,8 @@ namespace Certify.Providers.DeploymentTasks
                 Description = "Apply certificate to local Active Directory Federation Services (ADFS) service",
                 ProviderParameters = new List<ProviderParameter>
                 {
-                     new ProviderParameter { Key = "restartServices", Name = "Include Service Restart?",  Type= OptionType.Boolean, IsCredential = false,Value="false" },
+                     new ProviderParameter { Key = "restartServices", Name = "Include Service Restart",  Type= OptionType.Boolean, IsCredential = false,Value="true" },
+                     new ProviderParameter { Key = "alternateTlsBinding", Name = "Update Alternate TLS client binding",  Type= OptionType.Boolean, IsCredential = false,Value="false" },
                 }
             };
         }
