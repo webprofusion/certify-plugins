@@ -26,7 +26,7 @@ namespace Certify.Providers.DeploymentTasks
                 Id = "Certify.Providers.DeploymentTasks.HashicorpVault",
                 Title = "Deploy to Hashicorp Vault",
                 IsExperimental = true,
-                UsageType = DeploymentProviderUsage.Any,
+                UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = StandardAuthTypes.STANDARD_AUTH_API_TOKEN,
                 Description = "Store your certificate and private key in an instance of Hashicorp Vault.",
