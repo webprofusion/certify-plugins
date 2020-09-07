@@ -84,7 +84,7 @@ namespace Certify.Providers.DeploymentTasks
 
             execParams.Log?.Information("Executing command via PowerShell");
 
-            var result = await PowerShellManager.RunScript(null, command, parameters, null, credentials: execParams.Credentials);
+            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: execParams.Credentials);
 
             results.Add(result);
 

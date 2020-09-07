@@ -85,7 +85,7 @@ namespace DeploymentTaskTests
             List<ActionResult> results = new List<ActionResult>();
             foreach (var task in deploymentTasks)
             {
-                results.AddRange(await task.Execute(_log, null, managedCert, CancellationToken.None, isPreviewOnly: false));
+                results.AddRange(await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false));
             }
 
             // assert output exists in destination
