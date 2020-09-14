@@ -20,7 +20,54 @@ namespace DeploymentTaskTests
         {
             base.Setup();
 
-            _pluginManager.LoadPlugins(new List<string> { "DeploymentTasks" });
+            _pluginManager.LoadPlugins(new List<string> { "DeploymentTasks" }, false);
+        }
+
+        [TestMethod, TestCategory("ServiceManager")]
+        public async Task TestServiceManagerValidation()
+        {
+
+
+            var taskTypeId = Certify.Providers.DeploymentTasks.ServiceManager.Definition.Id.ToLower();
+            var provider = DeploymentTaskProviderFactory.Create(taskTypeId, _pluginManager.DeploymentTaskProviders);
+
+            var svcName = "aspnet_state";
+
+            var restartTaskConfig = new DeploymentTaskConfig
+            {
+                TaskTypeId = taskTypeId,
+                TaskName = "A test service manager task restart",
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+
+                Parameters = new List<ProviderParameterSetting>
+                {
+                    new ProviderParameterSetting("servicename", ""),
+                    new ProviderParameterSetting("action", "restart"),
+                    new ProviderParameterSetting("maxwait", "20")
+                }
+            };
+
+            var managedCert = GetMockManagedCertificate("Test", "123", PrimaryTestDomain, PrimaryIISRoot);
+
+            List<ActionResult> results = new List<ActionResult>();
+            var task = new DeploymentTask(provider, restartTaskConfig, null);
+
+            var validationResult = await task.TaskProvider.Validate(
+                new DeploymentTaskExecutionParams(
+                    _log,
+                    null,
+                    managedCert,
+                    task.TaskConfig,
+                    null,
+                    isPreviewOnly: false,
+                    task.TaskProvider.GetDefinition(), CancellationToken.None,
+                    new DeploymentContext { }
+                )
+                );
+
+            Assert.IsFalse(validationResult.All(r => r.IsSuccess == true));
+
+
         }
 
         [TestMethod, TestCategory("ServiceManager")]
@@ -31,7 +78,7 @@ namespace DeploymentTaskTests
             var taskTypeId = Certify.Providers.DeploymentTasks.ServiceManager.Definition.Id.ToLower();
             var provider = DeploymentTaskProviderFactory.Create(taskTypeId, _pluginManager.DeploymentTaskProviders);
 
-            var svcName = "hMailServer";
+            var svcName = "aspnet_state";
 
             var restartTaskConfig = new DeploymentTaskConfig
             {

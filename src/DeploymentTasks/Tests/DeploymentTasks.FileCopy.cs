@@ -27,7 +27,7 @@ namespace DeploymentTaskTests
         {
             base.Setup();
 
-            _pluginManager.LoadPlugins(new List<string> { "DeploymentTasks" });
+            _pluginManager.LoadPlugins(new List<string> { "DeploymentTasks" }, false);
         }
 
 
