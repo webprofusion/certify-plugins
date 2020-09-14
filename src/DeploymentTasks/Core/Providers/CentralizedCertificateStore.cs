@@ -27,7 +27,7 @@ namespace Certify.Providers.DeploymentTasks
                 Id = "Certify.Providers.DeploymentTasks.CCS",
                 Title = "Deploy to Centralized Certificate Store (CCS)",
                 DefaultTitle = "Deploy to CCS",
-                IsExperimental = true,
+                IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to Windows Centralized Certificate Store",

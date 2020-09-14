@@ -46,7 +46,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 Id = "Certify.Providers.DeploymentTasks.ServiceManager",
                 Title = "Stop, Start or Restart a Service",
-                IsExperimental = true,
+                IsExperimental = false,
                 HasDynamicParameters = true,
                 UsageType = DeploymentProviderUsage.Any,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
