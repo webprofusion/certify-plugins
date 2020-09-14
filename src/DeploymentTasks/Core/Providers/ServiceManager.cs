@@ -99,24 +99,31 @@ namespace Certify.Providers.DeploymentTasks
                     execParams.Log?.Information($"Service already stopped [{servicename}] ");
                 }
 
-                if (!!execParams.IsPreviewOnly)
+                if (!execParams.IsPreviewOnly)
                 {
                     service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
-                }
 
-                results.Add(new ActionResult("Service Restarted", true));
+                    results.Add(new ActionResult("Service Restarted", true));
+                }
+                else
+                {
+                    results.Add(new ActionResult("[Preview] Service would restart.", true));
+                }
 
             }
             else if (action == "stop")
             {
                 if (service.Status != ServiceControllerStatus.Stopped)
                 {
-                    if (!!execParams.IsPreviewOnly)
+                    if (!execParams.IsPreviewOnly)
                     {
                         service = await StopServiceWithRetry(execParams.Log, servicename, service, ticks);
+                        results.Add(new ActionResult("Service Stopped", true));
                     }
-
-                    results.Add(new ActionResult("Service Stopped", true));
+                    else
+                    {
+                        results.Add(new ActionResult("[Preview] Service would be stopped", true));
+                    }
                 }
                 else
                 {
@@ -130,13 +137,15 @@ namespace Certify.Providers.DeploymentTasks
                 if (!execParams.IsPreviewOnly)
                 {
                     service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
+                    results.Add(new ActionResult("Service Started", true));
                 }
-
-                results.Add(new ActionResult("Service Started", true));
+                else
+                {
+                    results.Add(new ActionResult("[Preview] Service would be started", true));
+                }
             }
 
             return results;
-
         }
 
         private static async Task<ServiceController> StopServiceWithRetry(ILog log, string servicename, ServiceController service, TimeSpan ticks)
