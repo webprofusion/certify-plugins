@@ -143,7 +143,7 @@ namespace Plugin.DeploymentTasks.Azure
             {
                 if (!Regex.IsMatch(cert_name, "^[0-9a-zA-Z-]+$"))
                 {
-                    results.Add(new ActionResult("Vault URI is required e.g. https://<vault-name>.vault.azure.net/", false));
+                    results.Add(new ActionResult("Certificate name can only be alphanumeric.", false));
                 }
             }
             return results;
