@@ -132,7 +132,6 @@ namespace Certify.Providers.DeploymentTasks
 
                 if (string.IsNullOrEmpty(destPath))
                 {
-
                     return new List<ActionResult> { new ActionResult("Empty path provided. Skipping export", false) };
                 }
 
@@ -150,13 +149,14 @@ namespace Certify.Providers.DeploymentTasks
                     }
                 }
 
+
+                // TODO: custom pfx pwd for export
+                /*
                 if (execParams.Credentials != null && execParams.Credentials.Any(c => c.Key == "cert_pwd_key"))
                 {
                     var credKey = execParams.Credentials.First(c => c.Key == "cert_pwd_key");
-
-                    // TODO: fetch credentials for cert export pwd
-
                 }
+                */
 
                 if (exportType == "pfxfull")
                 {
