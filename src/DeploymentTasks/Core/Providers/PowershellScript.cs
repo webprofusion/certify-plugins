@@ -29,6 +29,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     new ProviderParameter{ Key="scriptpath", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
                     new ProviderParameter{ Key="inputresult", Name="Pass Result as First Argument", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="true"  },
+                    new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="newcredentials", OptionsList="newcredentials=New Credentials;network=Network;service=Service"  },
                     new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
                 }
             };
@@ -84,7 +85,8 @@ namespace Certify.Providers.DeploymentTasks
 
             execParams.Log?.Information("Executing command via PowerShell");
 
-            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: execParams.Credentials);
+            string logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
+            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: execParams.Credentials, logonType: logonType);
 
             results.Add(result);
 
