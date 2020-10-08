@@ -30,7 +30,7 @@ namespace Certify.Providers.DeploymentTasks
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
-                Description = "Deploy latest certificate to Windows Centralized Certificate Store",
+                Description = "Deploy latest certificate to Windows Centralized Certificate Store. Note: if a local IIS install is present you should disable Auto deployment to avoid mixing use of local certs bindings and CCS.",
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {
                     new ProviderParameter{
