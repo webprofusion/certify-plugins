@@ -1,5 +1,6 @@
 ﻿using Certify.Config;
 using Certify.Core.Management.DeploymentTasks;
+using Certify.Management;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
@@ -45,8 +46,12 @@ namespace DeploymentTaskTests
                 }
             };
 
+            var credentialsManager = new CredentialsManager();
+            var credentials = await credentialsManager.GetUnlockedCredentialsDictionary(ConfigSettings["TestCredentialsKey_AzureKeyVault"]);
+
             var provider = DeploymentTaskProviderFactory.Create(tasktypeId, _pluginManager.DeploymentTaskProviders);
-            var t = new DeploymentTask(provider, config, null);
+
+            var t = new DeploymentTask(provider, config, credentials);
 
             deploymentTasks.Add(t);
 
