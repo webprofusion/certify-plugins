@@ -130,7 +130,7 @@ namespace Certify.Providers.DeploymentTasks
             else
             {
                 return new List<ActionResult> {
-                    new ActionResult { IsSuccess = true, Message = "Nothing to do" }
+                    new ActionResult { IsSuccess = true, Message = "Command Completed" }
                 };
             }
         }
