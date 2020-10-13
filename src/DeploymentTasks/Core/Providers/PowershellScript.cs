@@ -29,7 +29,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     new ProviderParameter{ Key="scriptpath", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
                     new ProviderParameter{ Key="inputresult", Name="Pass Result as First Arg", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="true"  },
-                    new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="newcredentials", OptionsList="newcredentials=New Credentials;network=Network;service=Service;interactive=Interactive;batch=Batch"  },
+                    new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList="network=Network;newcredentials=New Credentials;service=Service;interactive=Interactive;batch=Batch"  },
                     new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
                 }
             };
