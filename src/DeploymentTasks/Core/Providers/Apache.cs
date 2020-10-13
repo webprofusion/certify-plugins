@@ -36,9 +36,9 @@ namespace Certify.Providers.DeploymentTasks
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {
-                     new ProviderParameter{ Key="path_cert", Name="Destination for .crt", IsRequired=true, IsCredential=false, Description="e.g. Path, UNC or /somewhere/server.crt" },
-                     new ProviderParameter{ Key="path_key", Name="Destination for .key", IsRequired=true, IsCredential=false, Description="e.g. Path, UNC or /somewhere/server.key"  },
-                     new ProviderParameter{ Key="path_chain", Name="Optional Destination for chain (ca.crt)", IsRequired=true, IsCredential=false, Description="e.g. Path, UNC or /somewhere/ca.crt"  },
+                     new ProviderParameter{ Key="path_cert", Name="Output file path .crt", IsRequired=true, IsCredential=false, Description="e.g. /somewhere/server.crt" },
+                     new ProviderParameter{ Key="path_key", Name="Output file path .key", IsRequired=true, IsCredential=false, Description="e.g. /somewhere/server.key"  },
+                     new ProviderParameter{ Key="path_chain", Name="Output file for chain", IsRequired=false, IsCredential=false, Description="(Optional) e.g. /somewhere/ca.crt"  },
                 }
             };
 

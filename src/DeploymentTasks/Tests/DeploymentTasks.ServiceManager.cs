@@ -26,8 +26,6 @@ namespace DeploymentTaskTests
         [TestMethod, TestCategory("ServiceManager")]
         public async Task TestServiceManagerValidation()
         {
-
-
             var taskTypeId = Certify.Providers.DeploymentTasks.ServiceManager.Definition.Id.ToLower();
             var provider = DeploymentTaskProviderFactory.Create(taskTypeId, _pluginManager.DeploymentTaskProviders);
 
@@ -41,7 +39,7 @@ namespace DeploymentTaskTests
 
                 Parameters = new List<ProviderParameterSetting>
                 {
-                    new ProviderParameterSetting("servicename", ""),
+                    new ProviderParameterSetting("servicename", svcName),
                     new ProviderParameterSetting("action", "restart"),
                     new ProviderParameterSetting("maxwait", "20")
                 }
