@@ -31,7 +31,8 @@ namespace Certify.Providers.DeploymentTasks
                 Description = "Deploy latest certificate to MS Exchange Services",
                 ProviderParameters = new List<ProviderParameter>
                 {
-                      new ProviderParameter{ Key="services", Name="Services", IsRequired=true, IsCredential=false, Value="POP,IMAP,SMTP,IIS"}
+                      new ProviderParameter{ Key="services", Name="Services", IsRequired=true, IsCredential=false, Value="POP,IMAP,SMTP,IIS"},
+                      new ProviderParameter{ Key="donotrequiressl", Name="Do Not Require Ssl", IsRequired=false, Type= OptionType.Boolean, IsCredential = false,Value="false" }
                 }
             };
         }
@@ -53,10 +54,12 @@ namespace Certify.Providers.DeploymentTasks
             execParams.Log?.Information("Executing command via PowerShell");
 
             var services = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "services")?.Value;
+            var doNotRequireSsl = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "donotrequiressl")?.Value;
 
             var parameters = new Dictionary<string, object>
             {
-                { "services", services }
+                { "services", services },
+                { "addDoNotRequireSslFlag", doNotRequireSsl }
             };
 
             var scriptResult = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
