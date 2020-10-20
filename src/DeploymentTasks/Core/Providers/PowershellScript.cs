@@ -86,10 +86,14 @@ namespace Certify.Providers.DeploymentTasks
             execParams.Log?.Information("Executing command via PowerShell");
 
             string logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
-            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: execParams.Credentials, logonType: logonType);
+
+            // if running as local/default service user no credentials are provided for user impersonation
+            var credentials = execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL ? null : execParams.Credentials;
+
+            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: credentials, logonType: logonType);
 
             results.Add(result);
-
+                
             return results;
         }
 
