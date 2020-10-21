@@ -1,5 +1,5 @@
 ﻿# This script enables the use of the newly retrieved and stored certificate with common Exchange services
-# For more script info see https://docs.certifytheweb.com/docs/script-hooks.html
+# For more script info see https://docs.certifytheweb.com/docs/script-hooks
 
 param($result, $services, [switch] $cleanupPreviousCerts = $false, [switch] $addDoNotRequireSslFlag = $false)
 
@@ -10,16 +10,16 @@ Write-Host "Enabling Certificate for Exchange services.."
 		
 
 
-if ($addDoNotUseSslFlag eq $true)
+if ($addDoNotUseSslFlag -eq $true)
 {
-	@args = @{ 
+	$args = @{ 
 		Thumbprint = $result.ManagedItem.CertificateThumbprintHash; 
 		Services = $services; 
 		Force = $true;
 		ErrorAction = Stop;
 	}
 
-	@args["DoNotRequireSsl"]= $true
+	$args["DoNotRequireSsl"]= $true
 
 	# us eoptional args
 	Enable-ExchangeCertificate @args
