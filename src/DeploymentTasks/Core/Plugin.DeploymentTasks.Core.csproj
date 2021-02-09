@@ -35,7 +35,7 @@
   <ItemGroup>
     <PackageReference Include="Asmodat.Standard.SSH.NET" Version="1.0.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="Portable.BouncyCastle" Version="1.8.8" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.9" />
     <PackageReference Include="SimpleImpersonation" Version="3.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="5.0.0" />
   </ItemGroup>
