@@ -1,12 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using Certify.Management;
+using Certify.Models;
+using Certify.Models.Config;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Certify.Models;
-using Certify.Config;
-using Certify.Models.Config;
-using Certify.Models.Providers;
-using Certify.Management;
-using System.Threading;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -93,7 +90,7 @@ namespace Certify.Providers.DeploymentTasks
             var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: credentials, logonType: logonType);
 
             results.Add(result);
-                
+
             return results;
         }
 

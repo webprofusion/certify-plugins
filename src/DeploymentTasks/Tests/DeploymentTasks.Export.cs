@@ -137,7 +137,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var result = await task.Execute(_log,null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false);
+                var result = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false);
             }
 
             // assert output exists in destination

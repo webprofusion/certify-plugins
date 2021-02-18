@@ -1,7 +1,6 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Plugin.CertificateManagers;
+using System.Threading.Tasks;
 
 namespace Plugin.Tests
 {

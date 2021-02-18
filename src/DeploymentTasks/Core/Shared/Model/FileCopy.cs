@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Plugin.DeploymentTasks.Core.Shared.Model
+﻿namespace Plugin.DeploymentTasks.Core.Shared.Model
 {
     public class FileCopy
     {

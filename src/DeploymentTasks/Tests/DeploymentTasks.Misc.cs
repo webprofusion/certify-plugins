@@ -1,26 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Certify;
-using Certify.Config;
-using Certify.Core.Management.DeploymentTasks;
+﻿using Certify.Core.Management.DeploymentTasks;
 using Certify.Management;
-using Certify.Models;
 using Certify.Models.Config;
-using Certify.Providers.Deployment.Core.Shared;
-using Certify.Providers.DeploymentTasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using SimpleImpersonation;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace DeploymentTaskTests
 {
     [TestClass]
     public class DeploymentTaskMisc : IntegrationTestBase
     {
-       
+
         [TestInitialize]
         public new void Setup()
         {

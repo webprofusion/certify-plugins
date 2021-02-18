@@ -1,15 +1,12 @@
-﻿using System;
+﻿using Certify.Models;
+using Certify.Models.Config;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Threading;
 using System.Threading.Tasks;
-using Certify.Config;
-using Certify.Models;
-using Certify.Models.Config;
-using Certify.Models.Providers;
 using static Certify.Providers.DeploymentTasks.CertificateExport;
 
 namespace Certify.Providers.DeploymentTasks
@@ -67,14 +64,15 @@ namespace Certify.Providers.DeploymentTasks
 
             var vaultUrl = $"{vaultUri}{vaultPath}";
 
-            byte[] pfxData =  File.ReadAllBytes(managedCert.CertificatePath);
+            byte[] pfxData = File.ReadAllBytes(managedCert.CertificatePath);
 
             var pfxPwd = "";
 
             var secret = new
             {
-                data = new { 
-                    key = GetEncodedCertComponent("pemkey", pfxData, pfxPwd), 
+                data = new
+                {
+                    key = GetEncodedCertComponent("pemkey", pfxData, pfxPwd),
                     cert = GetEncodedCertComponent("pemcrt", pfxData, pfxPwd),
                     intermediates = GetEncodedCertComponent("pemchain", pfxData, pfxPwd),
                     pfx = GetEncodedCertComponent("pfxfull", pfxData, pfxPwd)

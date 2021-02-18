@@ -1,9 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Threading;
+﻿using Certify.Models.Config;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Certify.Config;
-using Certify.Models.Config;
-using Certify.Models.Providers;
 
 namespace Certify.Providers.DeploymentTasks
 {

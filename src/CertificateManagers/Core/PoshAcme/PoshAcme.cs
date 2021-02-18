@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Certify.Models;
+﻿using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Plugin.CertificateManagers.PoshAcme;
 using Certify.Providers.CertificateManagers;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Plugin.CertificateManagers
 {

@@ -1,9 +1,7 @@
 ﻿using Azure.Identity;
 using Azure.Security.KeyVault.Certificates;
-using Certify.Config;
 using Certify.Models;
 using Certify.Models.Config;
-using Certify.Models.Providers;
 using Certify.Providers.DeploymentTasks;
 using System;
 using System.Collections.Generic;
@@ -11,7 +9,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Plugin.DeploymentTasks.Azure

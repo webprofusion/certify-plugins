@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using Certify.Models.Config;
+﻿using Certify.Models.Config;
 using Certify.Models.Providers;
 using Plugin.DeploymentTasks.Core.Shared.Model;
 using SimpleImpersonation;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {
@@ -92,7 +92,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                             throw new Exception("Cannot write file to a directory name. Please specify the full file path.");
                         }
                     }
-                        
+
                 }
                 catch (Exception exp)
                 {

@@ -1,20 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
-using Certify.Config;
-using Certify.Models;
+﻿using Certify.Models;
 using Certify.Models.Config;
-using Certify.Models.Providers;
 using Certify.Providers.Deployment.Core.Shared;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.X509;
 using Plugin.DeploymentTasks.Shared;
 using SimpleImpersonation;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -191,7 +188,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     // sftp file copy
                     var sshConfig = SshClient.GetConnectionConfig(settings, execParams.Credentials);
-                    
+
                     var sftp = new SftpClient(sshConfig);
                     var remotePath = destPath;
 

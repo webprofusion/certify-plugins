@@ -1,17 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using Certify.Models;
+using Certify.Models.Config;
+using Certify.Providers.Deployment.Core.Shared;
+using Plugin.DeploymentTasks.Core.Shared.Model;
+using Plugin.DeploymentTasks.Shared;
+using SimpleImpersonation;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Certify.Models;
-using Certify.Config;
-using Certify.Models.Config;
-using Certify.Models.Providers;
-using Certify.Providers.Deployment.Core.Shared;
-using SimpleImpersonation;
-using System.Threading;
-using Plugin.DeploymentTasks.Core.Shared.Model;
-using System;
-using Plugin.DeploymentTasks.Shared;
 
 namespace Certify.Providers.DeploymentTasks
 {

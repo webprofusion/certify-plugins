@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using Certify.Models.Providers;
+﻿using Certify.Models.Providers;
 using Certify.Providers.DeploymentTasks;
 using Plugin.DeploymentTasks.Core.Shared.Model;
 using Renci.SshNet.Common;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {
@@ -52,7 +52,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                         {
                             sftp.WriteAllBytes(dest.Key, dest.Value);
                         }
-                        catch(SftpPathNotFoundException exp)
+                        catch (SftpPathNotFoundException exp)
                         {
                             // path not found, folder is probably wrong
                             log?.Error($"SftpClient :: Failed to copy file. Check that the full path to {dest} is valid and that 'sudo' is not required to perform file copy. {exp}");

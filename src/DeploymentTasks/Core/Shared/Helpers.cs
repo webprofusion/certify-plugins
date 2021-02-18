@@ -1,10 +1,8 @@
-﻿using System;
+﻿using SimpleImpersonation;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using SimpleImpersonation;
 
 namespace Plugin.DeploymentTasks.Shared
 {
@@ -29,7 +27,7 @@ namespace Plugin.DeploymentTasks.Shared
             }
         }
 
-        public static UserCredentials GetWindowsCredentials(Dictionary<string,string> credentials)
+        public static UserCredentials GetWindowsCredentials(Dictionary<string, string> credentials)
         {
             UserCredentials windowsCredentials;
 
