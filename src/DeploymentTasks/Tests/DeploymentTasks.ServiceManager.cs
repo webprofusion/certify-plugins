@@ -63,7 +63,7 @@ namespace DeploymentTaskTests
                 )
                 );
 
-            Assert.IsFalse(validationResult.All(r => r.IsSuccess == true));
+            Assert.IsFalse(validationResult.Any());
 
 
         }
