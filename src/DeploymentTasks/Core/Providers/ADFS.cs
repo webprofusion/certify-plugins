@@ -48,7 +48,7 @@ namespace Certify.Providers.DeploymentTasks
             return new List<ActionResult> { scriptResult };
         }
 
-        public new async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
+        public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult>();
 
