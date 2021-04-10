@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Certify.Plugin.CertificateManagers.Certbot
 {
@@ -8,7 +6,7 @@ namespace Certify.Plugin.CertificateManagers.Certbot
 
     public class ConfigSettings
     {
-       
+
         public string Version { get; set; }
         public string ArchiveDir { get; set; }
         public string Cert { get; set; }
@@ -22,6 +20,6 @@ namespace Certify.Plugin.CertificateManagers.Certbot
         public string Authenticator { get; set; }
         public string Server { get; set; }
 
-        public Dictionary<string,string> WebrootMap { get; set; }
+        public Dictionary<string, string> WebrootMap { get; set; }
     }
 }

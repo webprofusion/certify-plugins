@@ -1,13 +1,11 @@
 ﻿using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
-using Certify.Plugin.CertificateManagers.Certbot;
 using Certify.Providers.CertificateManagers;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace Plugin.CertificateManagers
@@ -25,7 +23,7 @@ namespace Plugin.CertificateManagers
                     Title = "Certbot",
                     Description = "Queries local config for certificates managed by Certbot",
                     HelpUrl = "https://certbot.eff.org/",
-                    IsEnabled = false
+                    IsEnabled = true
                 };
             }
         }
@@ -48,6 +46,42 @@ namespace Plugin.CertificateManagers
         {
             throw new NotImplementedException();
         }
+        private Dictionary<string, Dictionary<string, string>> ParseIni(string ini)
+        {
+            var content = new Dictionary<string, Dictionary<string, string>>();
+
+            if (!string.IsNullOrEmpty(ini))
+            {
+                var section = "Global";
+                var lines = ini.Split('\n');
+                foreach (var l in lines)
+                {
+                    try
+                    {
+                        if (l.StartsWith("["))
+                        {
+                            section = l.Replace("[", "").Replace("]", "").Trim();
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(l) && l.Contains("="))
+                            {
+                                var kv = l.Split('=');
+                                content.TryGetValue(section, out var values);
+                                if (values == null) values = new Dictionary<string, string>();
+                                values.Add(kv[0].Trim(), kv[1].Trim());
+                                content[section] = values;
+                            }
+                        }
+                    }
+                    catch (Exception exp)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Error parsing certbot config: " + exp);
+                    }
+                }
+            }
+            return content;
+        }
 
         public async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter filter = null)
         {
@@ -55,7 +89,7 @@ namespace Plugin.CertificateManagers
 
             if (await IsPresent())
             {
-                var directorySearch = new DirectoryInfo(Path.Combine(_settingsPath,"renewal"));
+                var directorySearch = new DirectoryInfo(Path.Combine(_settingsPath, "renewal"));
                 var configFiles = directorySearch.GetFiles("*.conf", SearchOption.AllDirectories);
 
                 foreach (var config in configFiles)
@@ -63,6 +97,7 @@ namespace Plugin.CertificateManagers
                     try
                     {
                         var id = config.Name.Replace(".conf", "");
+
                         var managedCert = new ManagedCertificate
                         {
                             Id = "certbot://" + id,
@@ -70,48 +105,65 @@ namespace Plugin.CertificateManagers
                             ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                             SourceId = Definition.Id,
                             SourceName = Definition.Title
-                        };
-                        /*
-                        var cfg = JsonConvert.DeserializeObject<ConfigSettings>(File.ReadAllText(config.FullName));
 
-                        var lastStatus = cfg.History?.LastOrDefault();
-                        var lastSuccess = cfg.History?.LastOrDefault(x => x.Success);
-
-                        var managedCert = new ManagedCertificate
-                        {
-                            Id = "certbot://" + cfg.Id,
-                            Name = cfg.LastFriendlyName,
-                            ItemType = ManagedCertificateType.SSL_ExternallyManaged,
-                            SourceId = Definition.Id,
-                            SourceName = Definition.Title,
-                            CertificateThumbprintHash = lastSuccess?.Thumbprint,
-                            DateRenewed = lastSuccess?.Date,
-                            DateExpiry = lastSuccess?.Date != null ? lastSuccess.Date.Value.AddDays(90) : (DateTime?)null,
-                            LastRenewalStatus = lastStatus?.Success == true ? RequestState.Success : (lastStatus != null ? RequestState.Error : (RequestState?)null),
-                            DateLastRenewalAttempt = lastStatus?.Date,
-                            RequestConfig = new CertRequestConfig
-                            {
-                                PrimaryDomain = cfg.TargetPluginOptions?.CommonName,
-                                SubjectAlternativeNames = cfg.TargetPluginOptions?.AlternativeNames.ToArray()
-                            },
-                            DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
-                        {
-                            new DomainOption{ Domain=cfg.TargetPluginOptions?.CommonName, IsPrimaryDomain=true, IsManualEntry=true, IsSelected = true}
-                        }
                         };
 
-                        if (managedCert.RequestConfig.SubjectAlternativeNames != null)
+                        var certFile = new FileInfo(Path.Combine(_settingsPath, "live", id, "cert.pem"));
+                        if (certFile.Exists)
                         {
-                            var domains = managedCert.RequestConfig.SubjectAlternativeNames.Where(d => d != managedCert.RequestConfig.PrimaryDomain).Distinct();
-                            foreach (var d in domains)
+                            try
                             {
-                                managedCert.DomainOptions.Add(new DomainOption { Domain = d, IsManualEntry = true, IsPrimaryDomain = false });
+                                var cert = Certify.Management.CertificateManager.ReadCertificateFromPem(certFile.FullName);
+                                var parsedCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(cert.GetEncoded()); managedCert.DateStart = cert.NotBefore;
+                                managedCert.DateExpiry = cert.NotAfter;
+                                managedCert.DateRenewed = cert.NotBefore;
+                                managedCert.DateLastRenewalAttempt = cert.NotBefore;
+                                managedCert.CertificateThumbprintHash = parsedCert.Thumbprint;
+                                managedCert.CertificatePath = certFile.FullName;
+                                managedCert.LastRenewalStatus = RequestState.Success;
+
+                                if (cert.NotAfter<DateTime.Now.AddDays(29))
+                                {
+                                    // assume certs with less than 30 days left have failed to renew
+                                    managedCert.LastRenewalStatus = RequestState.Error;
+                                    managedCert.RenewalFailureMessage = "Check certbot configuration. This certificate will expire in less than 30 days and has not yet automatically renewed.";
+                                }
+
+                                managedCert.RequestConfig = new CertRequestConfig
+                                {
+                                    PrimaryDomain = parsedCert.SubjectName.Name
+                                };
+
+                                var sn = ((System.Collections.ArrayList)cert.GetSubjectAlternativeNames());
+
+                                List<string> sans = new List<string>();
+                                foreach (System.Collections.ArrayList s in sn)
+                                {
+                                    sans.Add(s[1].ToString());
+                                }
+
+                                managedCert.RequestConfig.SubjectAlternativeNames = sans.ToArray();
+
+                                managedCert.DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
+                                    {
+                                        new DomainOption{
+                                            Domain=managedCert.RequestConfig.PrimaryDomain,
+                                            IsPrimaryDomain=true,
+                                            IsManualEntry=true,
+                                            IsSelected = true
+                                        }
+                                    };
+
+                             
                             }
-
+                            catch (Exception exp)
+                            {
+                                System.Diagnostics.Debug.WriteLine("Failed to parse cert: " + exp);
+                            }
                         }
 
-
-                        */
+                        //var cfg = ParseIni(File.ReadAllText(config.FullName));
+                       
                         managedCert.IsChanged = false;
                         list.Add(managedCert);
                     }
