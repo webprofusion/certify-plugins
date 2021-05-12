@@ -28,6 +28,7 @@ namespace Certify.Providers.DeploymentTasks
                     new ProviderParameter{ Key="inputresult", Name="Pass Result as First Arg", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="true"  },
                     new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList="network=Network;newcredentials=New Credentials;service=Service;interactive=Interactive;batch=Batch"  },
                     new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
+                    new ProviderParameter{ Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
                 }
             };
         }
@@ -51,6 +52,15 @@ namespace Certify.Providers.DeploymentTasks
             var args = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
 
             var inputResultAsArgument = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "inputresult")?.Value;
+
+            var timeoutMinutes = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "timeout")?.Value;
+
+            int.TryParse(timeoutMinutes, out int timeout);
+
+            if (timeout < 1 || timeout > 120)
+            {
+                timeout = 5;
+            }
 
             var parameters = new Dictionary<string, object>();
             if (inputResultAsArgument?.Trim().ToLower() == "true")
@@ -87,7 +97,7 @@ namespace Certify.Providers.DeploymentTasks
             // if running as local/default service user no credentials are provided for user impersonation
             var credentials = execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL ? null : execParams.Credentials;
 
-            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: credentials, logonType: logonType);
+            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: credentials, logonType: logonType, timeoutMinutes: timeout);
 
             results.Add(result);
 
@@ -112,6 +122,19 @@ namespace Certify.Providers.DeploymentTasks
                 }
             }
 
+            var timeoutMinutes = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "timeout")?.Value;
+            if (!string.IsNullOrEmpty(timeoutMinutes))
+            {
+                if (!int.TryParse(timeoutMinutes, out int timeout))
+                {
+                    results.Add(new ActionResult("Timeout (Minutes) value is invalid", false));
+                }
+
+                if (timeout < 1 || timeout > 120)
+                {
+                    results.Add(new ActionResult("Timeout (Minutes) value is out of range (1-120).", false));
+                }
+            }
             return await Task.FromResult(results);
         }
     }
