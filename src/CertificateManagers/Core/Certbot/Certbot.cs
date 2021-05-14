@@ -4,7 +4,6 @@ using Certify.Models.Providers;
 using Certify.Providers.CertificateManagers;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -122,7 +121,7 @@ namespace Plugin.CertificateManagers
                                 managedCert.CertificatePath = certFile.FullName;
                                 managedCert.LastRenewalStatus = RequestState.Success;
 
-                                if (cert.NotAfter<DateTime.Now.AddDays(29))
+                                if (cert.NotAfter < DateTime.Now.AddDays(29))
                                 {
                                     // assume certs with less than 30 days left have failed to renew
                                     managedCert.LastRenewalStatus = RequestState.Error;
@@ -154,7 +153,7 @@ namespace Plugin.CertificateManagers
                                         }
                                     };
 
-                             
+
                             }
                             catch (Exception exp)
                             {
@@ -163,7 +162,7 @@ namespace Plugin.CertificateManagers
                         }
 
                         //var cfg = ParseIni(File.ReadAllText(config.FullName));
-                       
+
                         managedCert.IsChanged = false;
                         list.Add(managedCert);
                     }
