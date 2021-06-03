@@ -89,61 +89,64 @@ namespace Plugin.CertificateManagers
             if (await IsPresent())
             {
                 var directorySearch = new DirectoryInfo(Path.Combine(_settingsPath, "renewal"));
-                var configFiles = directorySearch.GetFiles("*.conf", SearchOption.AllDirectories);
 
-                foreach (var config in configFiles)
+                if (directorySearch.Exists)
                 {
-                    try
+                    var configFiles = directorySearch.GetFiles("*.conf", SearchOption.AllDirectories);
+
+                    foreach (var config in configFiles)
                     {
-                        var id = config.Name.Replace(".conf", "");
-
-                        var managedCert = new ManagedCertificate
+                        try
                         {
-                            Id = "certbot://" + id,
-                            Name = id,
-                            ItemType = ManagedCertificateType.SSL_ExternallyManaged,
-                            SourceId = Definition.Id,
-                            SourceName = Definition.Title
+                            var id = config.Name.Replace(".conf", "");
 
-                        };
-
-                        var certFile = new FileInfo(Path.Combine(_settingsPath, "live", id, "cert.pem"));
-                        if (certFile.Exists)
-                        {
-                            try
+                            var managedCert = new ManagedCertificate
                             {
-                                var cert = Certify.Management.CertificateManager.ReadCertificateFromPem(certFile.FullName);
-                                var parsedCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(cert.GetEncoded()); managedCert.DateStart = cert.NotBefore;
-                                managedCert.DateExpiry = cert.NotAfter;
-                                managedCert.DateRenewed = cert.NotBefore;
-                                managedCert.DateLastRenewalAttempt = cert.NotBefore;
-                                managedCert.CertificateThumbprintHash = parsedCert.Thumbprint;
-                                managedCert.CertificatePath = certFile.FullName;
-                                managedCert.LastRenewalStatus = RequestState.Success;
+                                Id = "certbot://" + id,
+                                Name = id,
+                                ItemType = ManagedCertificateType.SSL_ExternallyManaged,
+                                SourceId = Definition.Id,
+                                SourceName = Definition.Title
 
-                                if (cert.NotAfter < DateTime.Now.AddDays(29))
+                            };
+
+                            var certFile = new FileInfo(Path.Combine(_settingsPath, "live", id, "cert.pem"));
+                            if (certFile.Exists)
+                            {
+                                try
                                 {
-                                    // assume certs with less than 30 days left have failed to renew
-                                    managedCert.LastRenewalStatus = RequestState.Error;
-                                    managedCert.RenewalFailureMessage = "Check certbot configuration. This certificate will expire in less than 30 days and has not yet automatically renewed.";
-                                }
+                                    var cert = Certify.Management.CertificateManager.ReadCertificateFromPem(certFile.FullName);
+                                    var parsedCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(cert.GetEncoded()); managedCert.DateStart = cert.NotBefore;
+                                    managedCert.DateExpiry = cert.NotAfter;
+                                    managedCert.DateRenewed = cert.NotBefore;
+                                    managedCert.DateLastRenewalAttempt = cert.NotBefore;
+                                    managedCert.CertificateThumbprintHash = parsedCert.Thumbprint;
+                                    managedCert.CertificatePath = certFile.FullName;
+                                    managedCert.LastRenewalStatus = RequestState.Success;
 
-                                managedCert.RequestConfig = new CertRequestConfig
-                                {
-                                    PrimaryDomain = parsedCert.SubjectName.Name
-                                };
+                                    if (cert.NotAfter < DateTime.Now.AddDays(29))
+                                    {
+                                        // assume certs with less than 30 days left have failed to renew
+                                        managedCert.LastRenewalStatus = RequestState.Error;
+                                        managedCert.RenewalFailureMessage = "Check certbot configuration. This certificate will expire in less than 30 days and has not yet automatically renewed.";
+                                    }
 
-                                var sn = ((System.Collections.ArrayList)cert.GetSubjectAlternativeNames());
+                                    managedCert.RequestConfig = new CertRequestConfig
+                                    {
+                                        PrimaryDomain = parsedCert.SubjectName.Name
+                                    };
 
-                                List<string> sans = new List<string>();
-                                foreach (System.Collections.ArrayList s in sn)
-                                {
-                                    sans.Add(s[1].ToString());
-                                }
+                                    var sn = ((System.Collections.ArrayList)cert.GetSubjectAlternativeNames());
 
-                                managedCert.RequestConfig.SubjectAlternativeNames = sans.ToArray();
+                                    List<string> sans = new List<string>();
+                                    foreach (System.Collections.ArrayList s in sn)
+                                    {
+                                        sans.Add(s[1].ToString());
+                                    }
 
-                                managedCert.DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
+                                    managedCert.RequestConfig.SubjectAlternativeNames = sans.ToArray();
+
+                                    managedCert.DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
                                     {
                                         new DomainOption{
                                             Domain=managedCert.RequestConfig.PrimaryDomain,
@@ -154,21 +157,22 @@ namespace Plugin.CertificateManagers
                                     };
 
 
+                                }
+                                catch (Exception exp)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("Failed to parse cert: " + exp);
+                                }
                             }
-                            catch (Exception exp)
-                            {
-                                System.Diagnostics.Debug.WriteLine("Failed to parse cert: " + exp);
-                            }
+
+                            //var cfg = ParseIni(File.ReadAllText(config.FullName));
+
+                            managedCert.IsChanged = false;
+                            list.Add(managedCert);
                         }
-
-                        //var cfg = ParseIni(File.ReadAllText(config.FullName));
-
-                        managedCert.IsChanged = false;
-                        list.Add(managedCert);
-                    }
-                    catch (Exception exp)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Failed to parse config: [{config}] " + exp);
+                        catch (Exception exp)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to parse config: [{config}] " + exp);
+                        }
                     }
                 }
 
