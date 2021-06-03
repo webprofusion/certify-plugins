@@ -21,7 +21,7 @@ if ($addDoNotUseSslFlag -eq $true)
 
 	$args["DoNotRequireSsl"]= $true
 
-	# us eoptional args
+	# use optional args
 	Enable-ExchangeCertificate @args
 } else {
 	# tell Exchange which services to use this certificate for, force accept certificate to avoid command line prompt
