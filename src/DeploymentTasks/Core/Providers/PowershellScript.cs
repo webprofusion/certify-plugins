@@ -29,6 +29,7 @@ namespace Certify.Providers.DeploymentTasks
                     new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList="network=Network;newcredentials=New Credentials;service=Service;interactive=Interactive;batch=Batch"  },
                     new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
                     new ProviderParameter{ Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
+                    new ProviderParameter{ Key="newprocess", Name="Launch New Process", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false" }
                 }
             };
         }
@@ -60,6 +61,12 @@ namespace Certify.Providers.DeploymentTasks
             if (timeout < 1 || timeout > 120)
             {
                 timeout = 5;
+            }
+
+            var launchNewProcess = false;
+            if (bool.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "newprocess")?.Value, out var parsedBool))
+            {
+                launchNewProcess = parsedBool;
             }
 
             var parameters = new Dictionary<string, object>();
@@ -97,7 +104,7 @@ namespace Certify.Providers.DeploymentTasks
             // if running as local/default service user no credentials are provided for user impersonation
             var credentials = execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL ? null : execParams.Credentials;
 
-            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: credentials, logonType: logonType, timeoutMinutes: timeout);
+            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: credentials, logonType: logonType, timeoutMinutes: timeout, launchNewProcess: launchNewProcess);
 
             results.Add(result);
 

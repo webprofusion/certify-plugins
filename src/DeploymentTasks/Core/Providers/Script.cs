@@ -9,6 +9,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -33,6 +35,8 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     new ProviderParameter{ Key="path", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
                     new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false  },
+                    new ProviderParameter{ Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
+                    new ProviderParameter{ Key="newprocess", Name="Launch New Process", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false" }
                 }
             };
         }
@@ -40,11 +44,7 @@ namespace Certify.Providers.DeploymentTasks
         /// <summary>
         /// Execute a script or program either locally or remotely, windows or ssh
         /// </summary>
-        /// <param name="log"></param>
-        /// <param name="managedCert"></param>
-        /// <param name="settings"></param>
-        /// <param name="credentials"></param>
-        /// <param name="isPreviewOnly"></param>
+
         /// <returns></returns>
         public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
@@ -60,15 +60,28 @@ namespace Certify.Providers.DeploymentTasks
             var command = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
             var args = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
 
+            var timeoutMinutes = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "timeout")?.Value;
 
-            //TODO: non-ssh local script
+            int.TryParse(timeoutMinutes, out int timeout);
+
+            if (timeout < 1 || timeout > 120)
+            {
+                timeout = 2;
+            }
+
+            var launchNewProcess = false;
+            if (bool.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "newprocess")?.Value, out var parsedBool))
+            {
+                launchNewProcess = parsedBool;
+            }
+
             if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_SSH)
             {
                 return await RunSSHScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials);
             }
             else if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
             {
-                var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials);
+                var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout);
                 results.Add(result);
             }
             else if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
@@ -91,15 +104,26 @@ namespace Certify.Providers.DeploymentTasks
                     }
                 }
 
-                var _defaultLogonType = LogonType.NewCredentials;
+                if (launchNewProcess)
+                {
+                    // start process as new user
+                    var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, true);
+                    results.Add(result);
+                }
+                else
+                {
+                    // default is to wrap in an impersonation context
+                    var _defaultLogonType = LogonType.Interactive;
 
-                Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, () =>
-                  {
-                      var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials);
-                      results.Add(result);
+                    Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, () =>
+                    {
+                        System.Diagnostics.Debug.WriteLine("Impersonating User: " + WindowsIdentity.GetCurrent().Name);
 
-                  });
+                        var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, false);
+                        results.Add(result);
 
+                    });
+                }
             }
             return results;
         }
@@ -153,16 +177,28 @@ namespace Certify.Providers.DeploymentTasks
                 }
             }
 
+            var timeoutMinutes = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "timeout")?.Value;
+            if (!string.IsNullOrEmpty(timeoutMinutes))
+            {
+                if (!int.TryParse(timeoutMinutes, out int timeout))
+                {
+                    results.Add(new ActionResult("Timeout (Minutes) value is invalid", false));
+                }
+
+                if (timeout < 1 || timeout > 120)
+                {
+                    results.Add(new ActionResult("Timeout (Minutes) value is out of range (1-120).", false));
+                }
+            }
+
             return await Task.FromResult(results);
         }
 
-        private static ActionResult RunLocalScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials)
+        private static ActionResult RunLocalScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials, int timeoutMins, bool launchNewProcess = false)
         {
             var _log = new StringBuilder();
 
             // https://stackoverflow.com/questions/5519328/executing-batch-file-in-c-sharp
-
-            var maxWaitTime = 120;
 
             var scriptProcessInfo = new ProcessStartInfo(Environment.ExpandEnvironmentVariables(command))
             {
@@ -172,6 +208,37 @@ namespace Certify.Providers.DeploymentTasks
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
+            if (launchNewProcess)
+            {
+                // launch process with user credentials set
+                if (credentials != null && credentials.ContainsKey("username") && credentials.ContainsKey("password"))
+                {
+                    var username = credentials["username"];
+                    var pwd = credentials["password"];
+
+                    credentials.TryGetValue("domain", out var domain);
+
+                    if (domain == null && !username.Contains(".\\") && !username.Contains("@"))
+                    {
+                        domain = ".";
+                    }
+
+                    scriptProcessInfo.UserName = username;
+                    scriptProcessInfo.Domain = domain;
+
+                    var sPwd = new SecureString();
+                    foreach (char c in pwd)
+                    {
+                        sPwd.AppendChar(c);
+                    }
+                    sPwd.MakeReadOnly();
+
+                    scriptProcessInfo.Password = sPwd;
+
+                    _log.AppendLine($"Launching Process as User: {domain}\\{username}");
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(args))
             {
@@ -212,7 +279,7 @@ namespace Certify.Providers.DeploymentTasks
                     process.BeginOutputReadLine();
                     process.BeginErrorReadLine();
 
-                    process.WaitForExit((maxWaitTime) * 1000);
+                    process.WaitForExit((timeoutMins * 60) * 1000);
                 }
                 catch (Exception exp)
                 {
