@@ -129,6 +129,15 @@ namespace Certify.Providers.DeploymentTasks
                 }
             }
 
+            var args = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
+            if (args != null)
+            {
+                if (args.Trim().StartsWith("-"))
+                {
+                    results.Add(new ActionResult("Arguments must be provided in the format arg1=value;arg2=value;arg3=value", false));
+                }
+            }
+
             var timeoutMinutes = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "timeout")?.Value;
             if (!string.IsNullOrEmpty(timeoutMinutes))
             {
