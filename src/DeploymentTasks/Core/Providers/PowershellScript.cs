@@ -119,14 +119,7 @@ namespace Certify.Providers.DeploymentTasks
 
             if (string.IsNullOrEmpty(path))
             {
-                results.Add(new ActionResult("A path to a script is required.", false));
-            }
-            else
-            {
-                if (!System.IO.File.Exists(path))
-                {
-                    results.Add(new ActionResult("There is no script file present at the given path: " + path, false));
-                }
+                results.Add(new ActionResult("A path to a script file is required.", false));
             }
 
             var args = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
