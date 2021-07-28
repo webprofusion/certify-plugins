@@ -77,6 +77,8 @@ namespace Certify.Providers.DeploymentTasks
 
             if (!string.IsNullOrEmpty(args))
             {
+                args = SubstituteEscapedCharacters(args);
+
                 foreach (var o in args.Split(';'))
                 {
                     if (!string.IsNullOrEmpty(o))
@@ -86,12 +88,15 @@ namespace Certify.Providers.DeploymentTasks
                         if (keyValuePair.Length == 1)
                         {
                             // item has a key only
-                            parameters.Add(keyValuePair[0].Trim(), "");
+                            var key = RestoreEscapedCharacters(keyValuePair[0]).Trim();
+                            parameters.Add(key, "");
                         }
                         else
                         {
                             // item has a key and value
-                            parameters.Add(keyValuePair[0].Trim(), keyValuePair[1].Trim());
+                            var key = RestoreEscapedCharacters(keyValuePair[0]).Trim();
+                            var val = RestoreEscapedCharacters(keyValuePair[1]).Trim();
+                            parameters.Add(key, val);
                         }
                     }
                 }
@@ -109,6 +114,46 @@ namespace Certify.Providers.DeploymentTasks
             results.Add(result);
 
             return results;
+        }
+
+        /// <summary>
+        /// Before parsing arguments, allow for escaped characters
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private string SubstituteEscapedCharacters(string args)
+        {
+            // substitute escaped semicolons
+            args = args.Replace(@"\;", "🏠");
+
+            // substitute escaped =
+            args = args.Replace(@"\=", "▶️");
+
+            // substitute escaped \
+            args = args.Replace(@"\\", "⏫");
+
+            return args;
+        }
+
+        /// <summary>
+        /// After parsing arguments, restore escaped characters
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private string RestoreEscapedCharacters(string value)
+        {
+            if (value == null) return value;
+
+            // restore escaped semicolons
+            value = value.Replace("🏠", ";");
+
+            // restore escaped =
+            value = value.Replace("▶️", "=");
+
+            // restore escaped \
+            value = value.Replace("⏫", @"\");
+
+            return value;
         }
 
         public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
