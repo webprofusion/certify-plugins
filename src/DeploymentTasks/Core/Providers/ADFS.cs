@@ -70,7 +70,7 @@ namespace Certify.Providers.DeploymentTasks
                 ProviderParameters = new List<ProviderParameter>
                 {
                      new ProviderParameter { Key = "restartServices", Name = "Include Service Restart",  Type= OptionType.Boolean, IsCredential = false,Value="true" },
-                     new ProviderParameter { Key = "alternateTlsBinding", Name = "Update Alternate TLS client binding",  Type= OptionType.Boolean, IsCredential = false,Value="false" },
+                     new ProviderParameter { Key = "alternateTlsBinding", Name = "Use Alternate TLS client binding",  Type= OptionType.Boolean, IsCredential = false,Value="false" },
                 }
             };
         }
