@@ -37,7 +37,8 @@ namespace Certify.Providers.DeploymentTasks
             {"pemcrt", "PEM - Primary Certificate (e.g. .crt)" },
             {"pemchain", "PEM - Intermediate Certificate Chain + Root CA Cert (e.g. .chain)" },
             {"pemkey", "PEM - Private Key (e.g. .key)" },
-            {"pemfull", "PEM - Full Certificate Chain" },
+            {"pemfullnokey", "PEM - Full Certificate Chain (Excluding Key)" },
+            {"pemfull", "PEM - Full Certificate Chain (Including Key)" },
             {"pemcrtpartialchain", "PEM - Primary Certficate + Intermediate Certificate Chain (e.g. .crt)" },
             {"pfxfull", "PFX (PKCX#12), Full certificate including private key" }
         };
@@ -178,6 +179,10 @@ namespace Certify.Providers.DeploymentTasks
                 else if (exportType == "pemfull")
                 {
                     files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
+                }
+                else if (exportType == "pemfullnokey")
+                {
+                    files.Add(destPath, GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
                 }
 
                 // copy to destination
