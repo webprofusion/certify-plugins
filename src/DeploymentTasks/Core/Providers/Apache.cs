@@ -33,9 +33,10 @@ namespace Certify.Providers.DeploymentTasks
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {
-                     new ProviderParameter{ Key="path_cert", Name="Output file path .crt", IsRequired=true, IsCredential=false, Description="e.g. /somewhere/server.crt" },
-                     new ProviderParameter{ Key="path_key", Name="Output file path .key", IsRequired=true, IsCredential=false, Description="e.g. /somewhere/server.key"  },
-                     new ProviderParameter{ Key="path_chain", Name="Output file for chain", IsRequired=false, IsCredential=false, Description="(Optional) e.g. /somewhere/ca.crt"  },
+                     new ProviderParameter{ Key="path_cert", Name="Output filepath for cert", IsRequired=true, IsCredential=false, Description="e.g. /somewhere/cert.pem" },
+                     new ProviderParameter{ Key="path_key", Name="Output filepath for key", IsRequired=true, IsCredential=false, Description="e.g. /somewhere/privkey.pem"  },
+                     new ProviderParameter{ Key="path_fullchain", Name="Output filepath for full chain", IsRequired=false, IsCredential=false, Description="(Optional) e.g. /somewhere/fullchain.pem"  },
+                     new ProviderParameter{ Key="path_chain", Name="Output filepath for CA chain", IsRequired=false, IsCredential=false, Description="(Optional) e.g. /somewhere/chain.pem"  },
                 }
             };
 
@@ -84,6 +85,16 @@ namespace Certify.Providers.DeploymentTasks
                 results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
+            var fullchainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain");
+            if (!string.IsNullOrWhiteSpace(fullchainPath?.Value) && !results.Any(r => r.IsSuccess == false))
+            {
+                settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
+                settings.Parameters.Find(p => p.Key == "type").Value = "pemfullnokey";
+
+                execParams.Log.Information(definition.Title + ":: exporting PEM format full chain file");
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
+            }
+
             return results;
         }
 
@@ -100,12 +111,12 @@ namespace Certify.Providers.DeploymentTasks
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
 
             var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_cert");
-            if (string.IsNullOrEmpty(certPath.Value))
+            if (string.IsNullOrEmpty(certPath.Value) &&  string.IsNullOrEmpty(settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain")?.Value))
             {
                 results.Add(new ActionResult
                 {
                     IsSuccess = false,
-                    Message = "Required: " + Definition.ProviderParameters.First(f => f.Key == "path_cert").Name
+                    Message = $"Required: {Definition.ProviderParameters.First(f => f.Key == "path_cert").Name} or {Definition.ProviderParameters.First(f => f.Key == "path_fullchain").Name}"
                 });
             }
             else
@@ -140,6 +151,16 @@ namespace Certify.Providers.DeploymentTasks
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
+                results.AddRange(await base.Validate(execParams));
+
+            }
+
+
+            var fullchainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain");
+            if (fullchainPath != null && !results.Any(r => r.IsSuccess == false))
+            {
+                settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
+                settings.Parameters.Find(p => p.Key == "type").Value = "pemfullnokey";
                 results.AddRange(await base.Validate(execParams));
 
             }
