@@ -1,7 +1,5 @@
-﻿using Certify.Models;
-using Certify.Models.Config;
+﻿using Certify.Models.Config;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Certify.Providers.DeploymentTasks

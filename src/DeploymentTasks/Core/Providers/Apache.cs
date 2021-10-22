@@ -111,7 +111,7 @@ namespace Certify.Providers.DeploymentTasks
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
 
             var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_cert");
-            if (string.IsNullOrEmpty(certPath.Value) &&  string.IsNullOrEmpty(settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain")?.Value))
+            if (string.IsNullOrEmpty(certPath.Value) && string.IsNullOrEmpty(settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain")?.Value))
             {
                 results.Add(new ActionResult
                 {
