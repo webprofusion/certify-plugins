@@ -143,7 +143,7 @@ namespace Plugin.DeploymentTasks.Azure
                     results.Add(new ActionResult("Certificate name can only be alphanumeric.", false));
                 }
             }
-            return results;
+            return await Task.FromResult(results);
         }
     }
 }

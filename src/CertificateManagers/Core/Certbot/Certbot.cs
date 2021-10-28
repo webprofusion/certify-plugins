@@ -201,11 +201,11 @@ namespace Plugin.CertificateManagers
             if (Directory.Exists(settingsPath))
             {
                 _settingsPath = settingsPath;
-                return true;
+                return await Task.FromResult(true);
             }
             else
             {
-                return false;
+                return await Task.FromResult(false);
             }
         }
 
