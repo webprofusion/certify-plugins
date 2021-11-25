@@ -95,7 +95,7 @@ namespace Plugin.DeploymentTasks.Azure
             }
             catch (AuthenticationFailedException exp)
             {
-                execParams.Log.Error($"Azure Authentiation error: {exp.InnerException?.Message ?? exp.Message}");
+                execParams.Log.Error($"Azure Authentication error: {exp.InnerException?.Message ?? exp.Message}");
                 results.Add(new ActionResult("Key Vault Deployment Failed", false));
             }
             catch (Exception exp)
