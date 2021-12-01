@@ -35,9 +35,32 @@ namespace Plugin.DeploymentTasks.Azure
                 ProviderParameters = new List<ProviderParameter>
                 {
                     new ProviderParameter{ Key="vault_uri", Name="Azure Vault Uri", IsRequired=true, IsCredential=false,  Description="e.g. https://<vault-name>.vault.azure.net/", Type= OptionType.String },
-                    new ProviderParameter{ Key="cert_name", Name="Certificate Name", IsRequired=false, IsCredential=false,  Description="(optional, alphanumeric characters 0-9a-Z or -)", Type= OptionType.String }
+                    new ProviderParameter{ Key="cert_name", Name="Certificate Name", IsRequired=false, IsCredential=false,  Description="(optional, alphanumeric characters 0-9a-Z or -)", Type= OptionType.String },
+                    new ProviderParameter{ Key="azure_service",Name="Azure Service", IsRequired=true, IsPassword=false, IsCredential=false, Value="global", OptionsList="global=Azure Cloud; china=Azure China; germany=Azure Germany; usgov=Azure US Government" },
                 }
             };
+        }
+
+        private Uri MapAzureServiceToAzureAuthorityHost(string service)
+        {
+            if (string.IsNullOrEmpty(service))
+            {
+                return AzureAuthorityHosts.AzurePublicCloud;
+            }
+
+            switch (service.Trim())
+            {
+                case "global":
+                    return AzureAuthorityHosts.AzurePublicCloud;
+                case "usgov":
+                    return AzureAuthorityHosts.AzureGovernment;
+                case "china":
+                    return AzureAuthorityHosts.AzureChina;
+                case "germany":
+                    return AzureAuthorityHosts.AzureGermany;
+                default:
+                    return AzureAuthorityHosts.AzurePublicCloud;
+            }
         }
 
         /// <summary>
@@ -74,8 +97,9 @@ namespace Plugin.DeploymentTasks.Azure
             var pfxData = File.ReadAllBytes(managedCert.CertificatePath);
 
             // from application user details in Azure AD
+            var azureservice = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "azure_service")?.Value;
 
-            var cred = new ClientSecretCredential(execParams.Credentials["tenantid"], execParams.Credentials["clientid"], execParams.Credentials["secret"]);
+            var cred = new ClientSecretCredential(execParams.Credentials["tenantid"], execParams.Credentials["clientid"], execParams.Credentials["secret"], new ClientSecretCredentialOptions { AuthorityHost = MapAzureServiceToAzureAuthorityHost(azureservice) });
 
             var client = new CertificateClient(keyVaultUri, cred);
 
