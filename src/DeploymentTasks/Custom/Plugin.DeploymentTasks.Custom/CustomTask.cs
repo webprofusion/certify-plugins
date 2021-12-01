@@ -1,5 +1,6 @@
 ﻿using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
+using RestSharp;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,7 +12,6 @@ namespace Plugin.DeploymentTasks.Custom
     {
         public static DeploymentProviderDefinition Definition { get; }
         public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
-
 
         static CustomTask()
         {
@@ -30,7 +30,6 @@ namespace Plugin.DeploymentTasks.Custom
             };
         }
 
-
         public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
@@ -42,13 +41,21 @@ namespace Plugin.DeploymentTasks.Custom
             {
                 return results;
             }
+            
+            // perform a custom step which will invoke a foreign dependency not used by the main Certify app
+
+            var client = new RestClient("http://worldtimeapi.org/api");
+            var request = new RestRequest("/ip", DataFormat.Json);
+            var httpResult = await client.GetAsync<string>(request);
 
             var msg = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "msg")?.Value ?? "<none>";
+
+            msg += httpResult;
+
             results.Add(new ActionResult(msg, true));
 
             return results;
         }
-
 
         public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
@@ -59,7 +66,6 @@ namespace Plugin.DeploymentTasks.Custom
             {
                 results.Add(new ActionResult("Please provide a message", false));
             }
-
 
             return await Task.FromResult(results);
         }
