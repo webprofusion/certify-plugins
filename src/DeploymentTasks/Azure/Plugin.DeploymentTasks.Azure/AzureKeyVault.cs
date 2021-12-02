@@ -41,27 +41,7 @@ namespace Plugin.DeploymentTasks.Azure
             };
         }
 
-        private Uri MapAzureServiceToAzureAuthorityHost(string service)
-        {
-            if (string.IsNullOrEmpty(service))
-            {
-                return AzureAuthorityHosts.AzurePublicCloud;
-            }
 
-            switch (service.Trim())
-            {
-                case "global":
-                    return AzureAuthorityHosts.AzurePublicCloud;
-                case "usgov":
-                    return AzureAuthorityHosts.AzureGovernment;
-                case "china":
-                    return AzureAuthorityHosts.AzureChina;
-                case "germany":
-                    return AzureAuthorityHosts.AzureGermany;
-                default:
-                    return AzureAuthorityHosts.AzurePublicCloud;
-            }
-        }
 
         /// <summary>
         /// Deploy current cert to Azure Key Vault
@@ -99,7 +79,7 @@ namespace Plugin.DeploymentTasks.Azure
             // from application user details in Azure AD
             var azureservice = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "azure_service")?.Value;
 
-            var cred = new ClientSecretCredential(execParams.Credentials["tenantid"], execParams.Credentials["clientid"], execParams.Credentials["secret"], new ClientSecretCredentialOptions { AuthorityHost = MapAzureServiceToAzureAuthorityHost(azureservice) });
+            var cred = new ClientSecretCredential(execParams.Credentials["tenantid"], execParams.Credentials["clientid"], execParams.Credentials["secret"], new ClientSecretCredentialOptions { AuthorityHost = AzureUtils.MapServiceToAuthorityHost(azureservice) });
 
             var client = new CertificateClient(keyVaultUri, cred);
 

@@ -3,7 +3,6 @@ using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
 using Microsoft.Azure.Management.AppService.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using System;
@@ -42,30 +41,9 @@ namespace Plugin.DeploymentTasks.Azure
             };
         }
 
-        private AzureEnvironment MapAzureServiceToAzureEnvironment(string service)
-        {
-            if (string.IsNullOrEmpty(service))
-            {
-                return AzureEnvironment.AzureGlobalCloud;
-            }
-
-            switch (service.Trim())
-            {
-                case "global":
-                    return AzureEnvironment.AzureGlobalCloud;
-                case "usgov":
-                    return AzureEnvironment.AzureUSGovernment;
-                case "china":
-                    return AzureEnvironment.AzureChinaCloud;
-                case "germany":
-                    return AzureEnvironment.AzureGermanCloud;
-                default:
-                    return AzureEnvironment.FromName(service);
-            }
-        }
 
         /// <summary>
-        /// Deploy current cert to Azure Key Vault
+        /// Deploy current cert to Azure App Service
         /// </summary>
         /// <param name="log"></param>
         /// <param name="managedCert"></param>
@@ -100,7 +78,7 @@ namespace Plugin.DeploymentTasks.Azure
 
             var svcPrincipalLogin = new ServicePrincipalLoginInformation { ClientId = execParams.Credentials["clientid"], ClientSecret = execParams.Credentials["secret"] };
 
-            var azureEnvironment = MapAzureServiceToAzureEnvironment(azureservice);
+            var azureEnvironment = AzureUtils.MapServiceToEnvironment(azureservice);
 
             var azureCreds = new AzureCredentials(svcPrincipalLogin, tenantId, azureEnvironment);
 
