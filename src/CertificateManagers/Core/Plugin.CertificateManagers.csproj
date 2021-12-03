@@ -16,8 +16,4 @@
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="REM Copy latest plugin build to plugins output folder&#xD;&#xA;xcopy /i /s /Y $(TargetPath) $(SolutionDir)\..\build\plugins\$(ConfigurationName)\" />
-  </Target>
-
 </Project>
