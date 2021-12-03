@@ -245,6 +245,12 @@ namespace Plugin.DeploymentTasks.Azure
                 results.Add(new ActionResult("Service name is required", false));
             }
 
+            var subscriptionid = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "subscriptionid")?.Value;
+            if (string.IsNullOrEmpty(subscriptionid))
+            {
+                results.Add(new ActionResult("Subscription Id is required", false));
+            }
+
             return await Task.FromResult(results);
         }
     }
