@@ -49,7 +49,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
-    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared.Compat\Certify.Shared.Compat.csproj" />
+    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared.MultiPlaform\Certify.Shared.MultiPlaform.csproj" />
   </ItemGroup>
 
   <ItemGroup>
