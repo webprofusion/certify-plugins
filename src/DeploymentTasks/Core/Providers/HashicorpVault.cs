@@ -1,5 +1,6 @@
 ﻿using Certify.Models;
 using Certify.Models.Config;
+using Certify.Shared.Core.Utils.PKI;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +8,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using static Certify.Providers.DeploymentTasks.CertificateExport;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -106,8 +106,6 @@ namespace Certify.Providers.DeploymentTasks
 
         public string GetEncodedCertComponent(string exportType, byte[] pfxData, string certPwd)
         {
-            var export = new CertificateExport();
-
             string exportString = null;
             if (exportType == "pfxfull")
             {
@@ -115,23 +113,23 @@ namespace Certify.Providers.DeploymentTasks
             }
             else if (exportType == "pemkey")
             {
-                exportString = export.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.PrivateKey);
+                exportString = CertUtils.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.PrivateKey);
             }
             else if (exportType == "pemchain")
             {
-                exportString = export.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate);
+                exportString = CertUtils.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate);
             }
             else if (exportType == "pemcrt")
             {
-                exportString = export.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.EndEntityCertificate);
+                exportString = CertUtils.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.EndEntityCertificate);
             }
             else if (exportType == "pemcrtpartialchain")
             {
-                exportString = export.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates);
+                exportString = CertUtils.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates);
             }
             else if (exportType == "pemfull")
             {
-                exportString = export.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate);
+                exportString = CertUtils.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate);
             }
 
             return exportString;
