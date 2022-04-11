@@ -11,7 +11,7 @@ namespace Certify.Providers.Deployment.Core.Shared
 
     public class SftpClient
     {
-        SshConnectionConfig _config;
+        private SshConnectionConfig _config;
 
         public SftpClient(SshConnectionConfig config)
         {

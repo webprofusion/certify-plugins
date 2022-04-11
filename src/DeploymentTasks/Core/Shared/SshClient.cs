@@ -27,7 +27,7 @@ namespace Certify.Providers.Deployment.Core.Shared
 
     public class SshClient
     {
-        SshConnectionConfig _config;
+        private SshConnectionConfig _config;
 
         public SshClient(SshConnectionConfig config)
         {

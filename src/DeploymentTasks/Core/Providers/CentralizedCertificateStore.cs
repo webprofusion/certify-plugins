@@ -44,7 +44,7 @@ namespace Certify.Providers.DeploymentTasks
         public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
         {
 
-            var validationResults = await this.Validate(execParams);
+            var validationResults = await Validate(execParams);
             if (validationResults.Any())
             {
                 return validationResults;
