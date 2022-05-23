@@ -25,7 +25,7 @@ namespace Certify.Providers.DeploymentTasks
             {"pemkey", "PEM - Private Key (e.g. .key)" },
             {"pemfullnokey", "PEM - Full Certificate Chain (Excluding Key)" },
             {"pemfull", "PEM - Full Certificate Chain (Including Key)" },
-            {"pemcrtpartialchain", "PEM - Primary Certficate + Intermediate Certificate Chain (e.g. .crt)" },
+            {"pemcrtpartialchain", "PEM - Primary Certificate + Intermediate Certificate Chain (e.g. .crt)" },
             {"pfxfull", "PFX (PKCX#12), Full certificate including private key" }
         };
 
