@@ -46,7 +46,7 @@ namespace DeploymentTaskTests
                 }
             };
 
-            var credentialsManager = new CredentialsManager();
+            var credentialsManager = new SQLiteCredentialsManager();
             var credentials = await credentialsManager.GetUnlockedCredentialsDictionary(ConfigSettings["TestCredentialsKey_AzureKeyVault"]);
 
             var provider = DeploymentTaskProviderFactory.Create(tasktypeId, _pluginManager.DeploymentTaskProviders);

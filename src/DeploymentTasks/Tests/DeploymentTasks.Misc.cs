@@ -26,7 +26,7 @@ namespace DeploymentTaskTests
         [TestMethod, TestCategory("TestCredentials")]
         public async Task CreateTestCredentials()
         {
-            var credentialsManager = new CredentialsManager
+            var credentialsManager = new SQLiteCredentialsManager
             {
                 StorageSubfolder = "credentials\\test"
             };

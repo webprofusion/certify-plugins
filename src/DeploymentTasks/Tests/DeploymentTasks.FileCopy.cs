@@ -27,7 +27,7 @@ namespace DeploymentTaskTests
         {
             var destPath = ConfigSettings["TestUNCPath"];
 
-            var credentialsManager = new CredentialsManager
+            var credentialsManager = new SQLiteCredentialsManager
             {
                 StorageSubfolder = "credentials\\test"
             };
@@ -62,7 +62,7 @@ namespace DeploymentTaskTests
         [TestMethod, TestCategory("NetworkFileCopy")]
         public async Task TestSftpFileCopy()
         {
-            var credentialsManager = new CredentialsManager
+            var credentialsManager = new SQLiteCredentialsManager
             {
                 StorageSubfolder = "credentials\\test"
             };
