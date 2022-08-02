@@ -29,11 +29,11 @@ namespace Certify.Management
         private readonly string _dbPath = $"C:\\programdata\\certify\\{ITEMMANAGERCONFIG}.db";
         private readonly string _connectionString;
 
-        private AsyncRetryPolicy _retryPolicy = Policy.Handle<SQLiteException>().WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1));
+        private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<SQLiteException>().WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1));
 
-        private static SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
+        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
 
-        private ILog _log;
+        private readonly ILog _log;
 
         private bool _initialised { get; set; } = false;
 
@@ -298,7 +298,7 @@ namespace Certify.Management
         }
         public async Task DeleteAll()
         {
-            var items = await GetAll();
+            var items = await Find(ManagedCertificateFilter.ALL);
             foreach (var item in items)
             {
                 await Delete(item);
@@ -444,7 +444,7 @@ namespace Certify.Management
             return await LoadManagedCertificate(siteId);
         }
 
-        public async Task<List<ManagedCertificate>> GetAll(ManagedCertificateFilter filter = null)
+        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
         {
 
             var items = await LoadAllManagedCertificates(filter);

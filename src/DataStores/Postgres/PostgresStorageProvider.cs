@@ -69,7 +69,7 @@ namespace Certify.Datastore.Postgres
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            var items = await GetAll(new ManagedCertificateFilter { Name = nameStartsWith });
+            var items = await Find(new ManagedCertificateFilter { Name = nameStartsWith });
 
             foreach (var item in items.Where(i => i.Name.StartsWith(nameStartsWith)))
             {
@@ -82,7 +82,7 @@ namespace Certify.Datastore.Postgres
 
         }
 
-        public async Task<List<ManagedCertificate>> GetAll(ManagedCertificateFilter filter = null)
+        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
         {
             var managedCertificates = new List<ManagedCertificate>();
 
