@@ -89,9 +89,9 @@ namespace Certify.Providers.DeploymentTasks
             if (!string.IsNullOrWhiteSpace(fullchainPath?.Value) && !results.Any(r => r.IsSuccess == false))
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemfullnokey";
+                settings.Parameters.Find(p => p.Key == "type").Value = "pemcrtpartialchain";
 
-                execParams.Log.Information(definition.Title + ":: exporting PEM format full chain file");
+                execParams.Log.Information(definition.Title + ":: exporting PEM format full chain file (excluding root)");
                 results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
