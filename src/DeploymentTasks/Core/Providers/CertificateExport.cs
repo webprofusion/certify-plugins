@@ -22,6 +22,7 @@ namespace Certify.Providers.DeploymentTasks
         static private Dictionary<string, string> ExportTypes = new Dictionary<string, string> {
             {"pemcrt", "PEM - Primary Certificate (e.g. .crt)" },
             {"pemchain", "PEM - Intermediate Certificate Chain + Root CA Cert (e.g. .chain)" },
+            {"pemintermediates", "PEM - Intermediate Certificate Chain (e.g. .pem)" },
             {"pemkey", "PEM - Private Key (e.g. .key)" },
             {"pemfullnokey", "PEM - Full Certificate Chain (Excluding Key)" },
             {"pemfull", "PEM - Full Certificate Chain (Including Key)" },
@@ -153,6 +154,10 @@ namespace Certify.Providers.DeploymentTasks
                 else if (exportType == "pemchain")
                 {
                     files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
+                }
+                else if (exportType == "pemintermediates")
+                {
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates));
                 }
                 else if (exportType == "pemcrt")
                 {
