@@ -1,10 +1,13 @@
-﻿using Certify.Models.Config;
+using Certify.Models.Config;
 using Certify.Models.Providers;
+using Microsoft.Win32.SafeHandles;
 using Plugin.DeploymentTasks.Core.Shared.Model;
+using Serilog;
 using SimpleImpersonation;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Principal;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {
@@ -22,11 +25,13 @@ namespace Certify.Providers.Deployment.Core.Shared
         {
             var fileList = new List<string>();
 
-            Impersonation.RunAsUser(_credentials, _defaultLogonType, () =>
+            using (SafeAccessTokenHandle userHandle = _credentials.LogonUser(_defaultLogonType))
             {
-                fileList.AddRange(Directory.GetFiles(remoteDirectory));
-
-            });
+                WindowsIdentity.RunImpersonated(userHandle, () =>
+                 {
+                     fileList.AddRange(Directory.GetFiles(remoteDirectory));
+                 });
+            }
 
             return fileList;
         }
@@ -57,12 +62,15 @@ namespace Certify.Providers.Deployment.Core.Shared
                 // write new files as destination user
                 try
                 {
-                    var results = new List<ActionResult>();
-                    Impersonation.RunAsUser(_credentials, _defaultLogonType, () =>
+                    using (SafeAccessTokenHandle userHandle = _credentials.LogonUser(_defaultLogonType))
                     {
-                        results = PerformFileWrites(log, destFiles);
-                    });
-                    return results;
+                        var results = WindowsIdentity.RunImpersonated(userHandle, () =>
+                          {
+                              return PerformFileWrites(log, destFiles);
+                          });
+
+                        return results;
+                    }
                 }
                 catch (Exception exp)
                 {

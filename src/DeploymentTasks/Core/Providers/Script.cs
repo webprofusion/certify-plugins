@@ -115,14 +115,15 @@ namespace Certify.Providers.DeploymentTasks
                     // default is to wrap in an impersonation context
                     var _defaultLogonType = LogonType.Interactive;
 
-                    Impersonation.RunAsUser(windowsCredentials, _defaultLogonType, () =>
+                    using (var userHandle = windowsCredentials.LogonUser(_defaultLogonType))
                     {
-                        System.Diagnostics.Debug.WriteLine("Impersonating User: " + WindowsIdentity.GetCurrent().Name);
+                        WindowsIdentity.RunImpersonated(userHandle, () =>
+                        {
+                            var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, false);
+                            results.Add(result);
+                        });
+                    }
 
-                        var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, false);
-                        results.Add(result);
-
-                    });
                 }
             }
             return results;
