@@ -1,4 +1,10 @@
-﻿using System;
+﻿using Certify.Models;
+using Certify.Models.Providers;
+using Certify.Providers;
+using Newtonsoft.Json;
+using Polly;
+using Polly.Retry;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
@@ -6,12 +12,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Certify.Models;
-using Certify.Models.Providers;
-using Certify.Providers;
-using Newtonsoft.Json;
-using Polly;
-using Polly.Retry;
 
 namespace Certify.Management
 {

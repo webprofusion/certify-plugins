@@ -19,7 +19,8 @@ namespace Certify.Datastore.SQLServer
         private readonly ILog _log;
         private readonly string _connectionString;
         private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<Exception>()
-                                            .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) => {
+                                            .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
+                                            {
                                                 System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
                                             });
 
@@ -95,7 +96,7 @@ namespace Certify.Datastore.SQLServer
 
             if (!string.IsNullOrEmpty(filter?.Keyword))
             {
-              //  conditions += "json::jsonb ->> 'Name' LIKE '%'+@keyword+'%'";
+                //  conditions += "json::jsonb ->> 'Name' LIKE '%'+@keyword+'%'";
             }
 
             if (!string.IsNullOrEmpty(conditions))

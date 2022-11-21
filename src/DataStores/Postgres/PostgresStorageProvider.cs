@@ -17,7 +17,8 @@ namespace Certify.Datastore.Postgres
         private readonly ILog _log;
         private readonly string _connectionString;
         private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<ArgumentException>()
-            .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) => { 
+            .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
+            {
                 System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
             });
 
