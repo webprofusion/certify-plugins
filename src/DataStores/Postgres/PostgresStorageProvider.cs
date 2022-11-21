@@ -178,13 +178,13 @@ namespace Certify.Datastore.Postgres
             return await Task.FromResult(true);
         }
 
-        public async Task PerformMaintenance()
+        public Task PerformMaintenance()
         {
             _log?.Warning("Postgres: Maintenance not implemented");
-
+            return Task.CompletedTask;
         }
 
-        public async Task StoreAll(IEnumerable<ManagedCertificate> list)
+        public Task StoreAll(IEnumerable<ManagedCertificate> list)
         {
             throw new NotImplementedException();
         }
