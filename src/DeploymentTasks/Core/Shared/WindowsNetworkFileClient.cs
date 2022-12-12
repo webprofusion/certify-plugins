@@ -2,7 +2,6 @@ using Certify.Models.Config;
 using Certify.Models.Providers;
 using Microsoft.Win32.SafeHandles;
 using Plugin.DeploymentTasks.Core.Shared.Model;
-using Serilog;
 using SimpleImpersonation;
 using System;
 using System.Collections.Generic;
