@@ -481,6 +481,16 @@ namespace Certify.Management
                     items = items.Where(i => i.RequestConfig.Challenges != null && i.RequestConfig.Challenges.Any(t => t.ChallengeCredentialKey == filter.StoredCredentialKey));
                 }
 
+                if (filter.LastOCSPCheckMins != null)
+                {
+                    items = items.Where(i => i.DateLastOcspCheck == null || i.DateLastOcspCheck < DateTime.Now.AddMinutes(-(int)filter.LastOCSPCheckMins));
+                }
+
+                if (filter.LastRenewalInfoCheckMins != null)
+                {
+                    items = items.Where(i => i.DateLastRenewalInfoCheck == null || i.DateLastRenewalInfoCheck < DateTime.Now.AddMinutes(-(int)filter.LastRenewalInfoCheckMins));
+                }
+
                 //TODO: IncludeOnlyNextAutoRenew
                 if (filter.MaxResults > 0)
                 {

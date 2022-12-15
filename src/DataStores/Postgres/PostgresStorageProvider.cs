@@ -94,6 +94,8 @@ namespace Certify.Datastore.Postgres
                 conditions += "config::jsonb ->> 'Name' LIKE '%'+@keyword+'%'";
             }
 
+            //TODO: other filter conditions e.g. last ocsp check
+
             if (!string.IsNullOrEmpty(conditions))
             {
                 sql += " WHERE " + conditions;
