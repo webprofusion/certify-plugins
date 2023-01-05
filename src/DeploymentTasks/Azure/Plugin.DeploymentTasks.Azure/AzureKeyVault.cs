@@ -89,6 +89,20 @@ namespace Plugin.DeploymentTasks.Azure
 
             var importOptions = new ImportCertificateOptions(certName, pfxData);
 
+            var certPwd = "";
+
+            // get PFX password if in use
+            if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId))
+            {
+                var pwdCred = await execParams.CredentialsManager.GetUnlockedCredentialsDictionary(managedCert.CertificatePasswordCredentialId);
+                if (pwdCred != null)
+                {
+                    certPwd = pwdCred["password"];
+                }
+
+                importOptions.Password = certPwd;
+            }
+
             try
             {
                 await client.ImportCertificateAsync(importOptions);
