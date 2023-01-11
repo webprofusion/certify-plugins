@@ -19,7 +19,7 @@ namespace Plugin.DeploymentTasks.Azure
         public static DeploymentProviderDefinition Definition { get; }
         public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
-        private IdnMapping _idnMapping = new IdnMapping();
+        private readonly IdnMapping _idnMapping = new IdnMapping();
 
         static AzureKeyVault()
         {
