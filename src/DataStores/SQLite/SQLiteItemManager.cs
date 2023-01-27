@@ -1,4 +1,4 @@
-﻿using Certify.Models;
+using Certify.Models;
 using Certify.Models.Providers;
 using Certify.Providers;
 using Newtonsoft.Json;
@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 namespace Certify.Management
 {
     /// <summary>
-    /// ItemManager is the storage service implem,entation (SQLLite) for Managed Certificate information
+    /// SQLiteItemManager is the storage service implementation for Managed Certificate information using SQLite
     /// </summary>
     public class SQLiteItemManager : IManagedItemStore
     {
@@ -37,7 +37,7 @@ namespace Certify.Management
 
         private bool _initialised { get; set; } = false;
 
-        public SQLiteItemManager(string storageSubfolder = null, ILog log = null)
+        public SQLiteItemManager(string storageSubfolder = null, ILog log = null, bool highPerformanceMode = true)
         {
             _log = log;
 
@@ -50,20 +50,29 @@ namespace Certify.Management
 
             _connectionString = $"Data Source={_dbPath};PRAGMA temp_store=MEMORY;Cache=Shared;PRAGMA journal_mode=WAL;";
 
+            if (highPerformanceMode)
+            {
+                // for tests only, not suitable for production. https://www.sqlite.org/faq.html#q19
+                _connectionString += "PRAGMA synchronous=OFF;";
+            }
+
             try
             {
-                if (File.Exists(_dbPath))
+                if (!highPerformanceMode)
                 {
-                    // upgrade schema if db exists
-                    var upgraded = UpgradeSchema().Result;
-                }
-                else
-                {
-                    // upgrade from JSON storage if db doesn't exist yet
-                    var settingsUpgraded = UpgradeSettings().Result;
-                }
+                    if (File.Exists(_dbPath))
+                    {
+                        // upgrade schema if db exists
+                        var upgraded = UpgradeSchema().Result;
+                    }
+                    else
+                    {
+                        // upgrade from JSON storage if db doesn't exist yet
+                        var settingsUpgraded = UpgradeSettings().Result;
+                    }
 
-                PerformDBBackup();
+                    PerformDBBackup();
+                }
 
                 //enable write ahead logging mode
                 EnableDBWriteAheadLogging();
@@ -311,47 +320,119 @@ namespace Certify.Management
 
             var watch = Stopwatch.StartNew();
 
-            // FIXME: this query should called only when absolutely required as the result set may be very large
             if (File.Exists(_dbPath))
             {
-                var sql = "SELECT id, json FROM manageditem";
+
+                var sql = @"SELECT id, json, 
+                                json_extract(json, '$.Name') as Name, 
+                                datetime(json_extract(json,'$.DateLastOcspCheck')) as dateLastOcspCheck,
+                                datetime(json_extract(json,'$.DateLastRenewalInfoCheck')) as dateLastRenewalInfoCheck 
+                           FROM manageditem";
+
+                var queryParameters = new List<SQLiteParameter>();
+                var conditions = new List<string>();
+
+                if (!string.IsNullOrEmpty(filter.Id))
+                {
+                    conditions.Add(" id = @id");
+                    queryParameters.Add(new SQLiteParameter("@id", filter.Id));
+                }
+
+                if (!string.IsNullOrEmpty(filter.Name))
+                {
+                    conditions.Add(" Name LIKE @name"); // case insensitive string match
+                    queryParameters.Add(new SQLiteParameter("@name", filter.Name));
+                }
+
+                if (!string.IsNullOrEmpty(filter.Keyword))
+                {
+                    conditions.Add(" (Name LIKE '%' || @keyword || '%')"); // case insensitive string contains
+                    queryParameters.Add(new SQLiteParameter("@keyword", filter.Keyword));
+                }
+
+                if (filter.LastOCSPCheckMins != null)
+                {
+                    conditions.Add(" dateLastOcspCheck < datetime(@ocspCheckDate)");
+                    var dateString = DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins).ToString("yyyy-MM-dd HH:mm");
+                    var dateParam = new SQLiteParameter("@ocspCheckDate", dateString);
+                    //dateParam.Value = DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins);
+                    queryParameters.Add(dateParam);
+                }
+
+                if (filter.LastRenewalInfoCheckMins != null)
+                {
+                    conditions.Add(" dateLastRenewalInfoCheck < datetime(@renewalInfoCheckDate)");
+                    var dateParam = new SQLiteParameter("@renewalInfoCheckDate", System.Data.DbType.DateTime);
+                    dateParam.Value = DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins);
+                    queryParameters.Add(dateParam);
+                }
+
+                if (conditions.Any())
+                {
+                    sql += " WHERE ";
+                    bool isFirstCondition = true;
+                    foreach (var c in conditions)
+                    {
+                        sql += (!isFirstCondition ? " AND " + c : c);
+
+                        isFirstCondition = false;
+                    }
+                }
+
+                sql += $" ORDER BY Name ";
 
                 if (filter?.PageIndex != null && filter?.PageSize != null)
                 {
                     sql += $" LIMIT {filter.PageSize} OFFSET {filter.PageIndex}";
-                    //sql += $" WHERE id NOT IN (SELECT id FROM manageditem ORDER BY id ASC LIMIT {filter.PageSize * filter.PageIndex}) ORDER BY id ASC LIMIT {filter.PageIndex}";
+                }
+                else if (filter?.MaxResults > 0)
+                {
+                    sql += $" LIMIT {filter.MaxResults}";
                 }
 
-                using (var db = new SQLiteConnection(_connectionString))
-                using (var cmd = new SQLiteCommand(sql, db))
+                try
                 {
-                    await db.OpenAsync();
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    await _dbMutex.WaitAsync(10 * 1000).ConfigureAwait(false);
+
+                    using (var db = new SQLiteConnection(_connectionString))
+                    using (var cmd = new SQLiteCommand(sql, db))
                     {
-                        while (await reader.ReadAsync())
+                        cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                        await db.OpenAsync();
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            var itemId = (string)reader["id"];
-
-                            var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
-
-                            // in some cases users may have previously manipulated the id, causing
-                            // duplicates. Correct the ID here (database Id is unique):
-                            if (managedCertificate.Id != itemId)
+                            while (await reader.ReadAsync())
                             {
-                                managedCertificate.Id = itemId;
-                                Debug.WriteLine("LoadSettings: Corrected managed site id: " + managedCertificate.Name);
+                                var itemId = (string)reader["id"];
+
+                                var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
+
+                                // in some cases users may have previously manipulated the id, causing
+                                // duplicates. Correct the ID here (database Id is unique):
+                                if (managedCertificate.Id != itemId)
+                                {
+                                    managedCertificate.Id = itemId;
+                                    Debug.WriteLine("LoadSettings: Corrected managed site id: " + managedCertificate.Name);
+                                }
+
+                                managedCertificates.Add(managedCertificate);
                             }
 
-                            managedCertificates.Add(managedCertificate);
+                            reader.Close();
                         }
+                        db.Close();
+                    }
 
-                        reader.Close();
+                    foreach (var site in managedCertificates)
+                    {
+                        site.IsChanged = false;
                     }
                 }
-
-                foreach (var site in managedCertificates)
+                finally
                 {
-                    site.IsChanged = false;
+                    _dbMutex.Release();
                 }
             }
 
@@ -451,20 +532,6 @@ namespace Certify.Management
 
             if (filter != null)
             {
-                if (!string.IsNullOrEmpty(filter.Id))
-                {
-                    items = items.Where(i => i.Id.ToLowerInvariant().Trim() == filter.Id.ToLowerInvariant().Trim());
-                }
-
-                if (!string.IsNullOrEmpty(filter.Name))
-                {
-                    items = items.Where(i => i.Name.ToLowerInvariant().Trim() == filter.Name.ToLowerInvariant().Trim());
-                }
-
-                if (!string.IsNullOrEmpty(filter.Keyword))
-                {
-                    items = items.Where(i => i.Name.ToLowerInvariant().Contains(filter.Keyword.ToLowerInvariant()));
-                }
 
                 if (!string.IsNullOrEmpty(filter.ChallengeType))
                 {
@@ -481,21 +548,8 @@ namespace Certify.Management
                     items = items.Where(i => i.RequestConfig.Challenges != null && i.RequestConfig.Challenges.Any(t => t.ChallengeCredentialKey == filter.StoredCredentialKey));
                 }
 
-                if (filter.LastOCSPCheckMins != null)
-                {
-                    items = items.Where(i => i.DateLastOcspCheck == null || i.DateLastOcspCheck < DateTime.Now.AddMinutes(-(int)filter.LastOCSPCheckMins));
-                }
-
-                if (filter.LastRenewalInfoCheckMins != null)
-                {
-                    items = items.Where(i => i.DateLastRenewalInfoCheck == null || i.DateLastRenewalInfoCheck < DateTime.Now.AddMinutes(-(int)filter.LastRenewalInfoCheckMins));
-                }
-
                 //TODO: IncludeOnlyNextAutoRenew
-                if (filter.MaxResults > 0)
-                {
-                    items = items.Take(filter.MaxResults);
-                }
+
             }
 
             return items.ToList();
@@ -606,13 +660,19 @@ namespace Certify.Management
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            var items = await LoadAllManagedCertificates(new ManagedCertificateFilter { Name = nameStartsWith });
-
-            items = items.Where(i => i.Name.StartsWith(nameStartsWith));
-
-            foreach (var item in items)
+            using (var db = new SQLiteConnection(_connectionString))
             {
-                await Delete(item);
+                await db.OpenAsync();
+                using (var tran = db.BeginTransaction())
+                {
+                    using (var cmd = new SQLiteCommand("DELETE FROM manageditem WHERE json_extract(json, '$.Name') LIKE @nameStartsWith || '%' ", db))
+                    {
+                        cmd.Parameters.Add(new SQLiteParameter("@nameStartsWith", nameStartsWith));
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    tran.Commit();
+                }
             }
         }
     }
