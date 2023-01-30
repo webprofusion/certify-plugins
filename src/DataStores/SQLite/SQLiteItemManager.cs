@@ -323,18 +323,18 @@ namespace Certify.Management
             if (File.Exists(_dbPath))
             {
 
-                var sql = @"SELECT id, json, 
-                                json_extract(json, '$.Name') as Name, 
-                                datetime(json_extract(json,'$.DateLastOcspCheck')) as dateLastOcspCheck,
-                                datetime(json_extract(json,'$.DateLastRenewalInfoCheck')) as dateLastRenewalInfoCheck 
-                           FROM manageditem";
+                var sql = @"SELECT i.id, i.json, 
+                                i.json ->> 'Name' as Name, 
+                                datetime(i.json ->> 'DateLastOcspCheck') as dateLastOcspCheck,
+                                datetime(i.json ->> 'DateLastRenewalInfoCheck') as dateLastRenewalInfoCheck 
+                           FROM manageditem i ";
 
                 var queryParameters = new List<SQLiteParameter>();
                 var conditions = new List<string>();
 
                 if (!string.IsNullOrEmpty(filter.Id))
                 {
-                    conditions.Add(" id = @id");
+                    conditions.Add(" i.id = @id");
                     queryParameters.Add(new SQLiteParameter("@id", filter.Id));
                 }
 
@@ -362,6 +362,24 @@ namespace Certify.Management
                     queryParameters.Add(new SQLiteParameter("@renewalInfoCheckDate", DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
                 }
 
+                if (filter.ChallengeType != null)
+                {
+                    conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeType'=@challengeType)"); // challenges.value->>'ChallengeType'=@challengeType
+                    queryParameters.Add(new SQLiteParameter("@challengeType", filter.ChallengeType));
+                }
+
+                if (filter.ChallengeProvider != null)
+                {               
+                    conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeProvider'=@challengeProvider)"); 
+                    queryParameters.Add(new SQLiteParameter("@challengeProvider", filter.ChallengeProvider));
+                }
+
+                if (filter.StoredCredentialKey != null)
+                {
+                    conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeCredentialKey'=@challengeCredentialKey)");
+                    queryParameters.Add(new SQLiteParameter("@challengeCredentialKey", filter.StoredCredentialKey));
+                }
+
                 if (conditions.Any())
                 {
                     sql += " WHERE ";
@@ -374,11 +392,11 @@ namespace Certify.Management
                     }
                 }
 
-                sql += $" ORDER BY Name ";
+                sql += $" ORDER BY Name COLLATE NOCASE ASC";
 
                 if (filter?.PageIndex != null && filter?.PageSize != null)
                 {
-                    sql += $" LIMIT {filter.PageSize} OFFSET {filter.PageIndex}";
+                    sql += $" LIMIT {filter.PageSize} OFFSET {filter.PageIndex * filter.PageSize}";
                 }
                 else if (filter?.MaxResults > 0)
                 {
@@ -522,31 +540,7 @@ namespace Certify.Management
 
         public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
         {
-
             var items = await LoadAllManagedCertificates(filter);
-
-            if (filter != null)
-            {
-
-                if (!string.IsNullOrEmpty(filter.ChallengeType))
-                {
-                    items = items.Where(i => i.RequestConfig.Challenges != null && i.RequestConfig.Challenges.Any(t => t.ChallengeType == filter.ChallengeType));
-                }
-
-                if (!string.IsNullOrEmpty(filter.ChallengeProvider))
-                {
-                    items = items.Where(i => i.RequestConfig.Challenges != null && i.RequestConfig.Challenges.Any(t => t.ChallengeProvider == filter.ChallengeProvider));
-                }
-
-                if (!string.IsNullOrEmpty(filter.StoredCredentialKey))
-                {
-                    items = items.Where(i => i.RequestConfig.Challenges != null && i.RequestConfig.Challenges.Any(t => t.ChallengeCredentialKey == filter.StoredCredentialKey));
-                }
-
-                //TODO: IncludeOnlyNextAutoRenew
-
-            }
-
             return items.ToList();
         }
 
@@ -660,7 +654,7 @@ namespace Certify.Management
                 await db.OpenAsync();
                 using (var tran = db.BeginTransaction())
                 {
-                    using (var cmd = new SQLiteCommand("DELETE FROM manageditem WHERE json_extract(json, '$.Name') LIKE @nameStartsWith || '%' ", db))
+                    using (var cmd = new SQLiteCommand("DELETE FROM manageditem WHERE json ->>'Name' LIKE @nameStartsWith || '%' ", db))
                     {
                         cmd.Parameters.Add(new SQLiteParameter("@nameStartsWith", nameStartsWith));
                         await cmd.ExecuteNonQueryAsync();
