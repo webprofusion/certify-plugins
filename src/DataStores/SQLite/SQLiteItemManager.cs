@@ -352,19 +352,14 @@ namespace Certify.Management
 
                 if (filter.LastOCSPCheckMins != null)
                 {
-                    conditions.Add(" dateLastOcspCheck < datetime(@ocspCheckDate)");
-                    var dateString = DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins).ToString("yyyy-MM-dd HH:mm");
-                    var dateParam = new SQLiteParameter("@ocspCheckDate", dateString);
-                    //dateParam.Value = DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins);
-                    queryParameters.Add(dateParam);
+                    conditions.Add(" dateLastOcspCheck < @ocspCheckDate");
+                    queryParameters.Add(new SQLiteParameter("@ocspCheckDate", DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
                 }
 
                 if (filter.LastRenewalInfoCheckMins != null)
                 {
-                    conditions.Add(" dateLastRenewalInfoCheck < datetime(@renewalInfoCheckDate)");
-                    var dateParam = new SQLiteParameter("@renewalInfoCheckDate", System.Data.DbType.DateTime);
-                    dateParam.Value = DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins);
-                    queryParameters.Add(dateParam);
+                    conditions.Add(" dateLastRenewalInfoCheck < @renewalInfoCheckDate");
+                    queryParameters.Add(new SQLiteParameter("@renewalInfoCheckDate", DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
                 }
 
                 if (conditions.Any())
