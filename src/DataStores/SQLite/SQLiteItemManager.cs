@@ -211,7 +211,7 @@ namespace Certify.Management
                 using (var db = new SQLiteConnection(_connectionString))
                 {
                     await db.OpenAsync();
-                    using (var cmd = new SQLiteCommand("CREATE TABLE manageditem (id TEXT NOT NULL UNIQUE PRIMARY KEY, parentid TEXT NULL, json TEXT NOT NULL)", db))
+                    using (var cmd = new SQLiteCommand("CREATE TABLE manageditem (id TEXT NOT NULL UNIQUE PRIMARY KEY, json TEXT NOT NULL)", db))
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
@@ -245,10 +245,9 @@ namespace Certify.Management
                 {
                     foreach (var item in list)
                     {
-                        using (var cmd = new SQLiteCommand("INSERT OR REPLACE INTO manageditem (id,parentid,json) VALUES (@id,@parentid, @json)", db))
+                        using (var cmd = new SQLiteCommand("INSERT OR REPLACE INTO manageditem (id, json) VALUES (@id, @json)", db))
                         {
                             cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SQLiteParameter("@parentid", item.ParentId));
                             cmd.Parameters.Add(new SQLiteParameter("@json", JsonConvert.SerializeObject(item)));
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -285,14 +284,7 @@ namespace Certify.Management
                         }
                     }
 
-                    if (!cols.Contains("parentid"))
-                    {
-                        // upgrade schema
-                        using (var cmd = new SQLiteCommand("ALTER TABLE manageditem ADD COLUMN parentid TEXT", db))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
+                    // perform any further schema checks and upgrades..
                 }
                 catch
                 {
