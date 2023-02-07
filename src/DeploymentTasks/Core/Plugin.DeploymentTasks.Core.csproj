@@ -50,12 +50,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Page Include="Providers\Assets\RemoteAccess.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared.Extensions\Certify.Shared.Extensions.csproj" />
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
