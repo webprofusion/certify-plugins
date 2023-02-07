@@ -315,11 +315,7 @@ namespace Certify.Management
             if (File.Exists(_dbPath))
             {
 
-                var sql = @"SELECT i.id, i.json, 
-                                i.json ->> 'Name' as Name, 
-                                datetime(i.json ->> 'DateLastOcspCheck') as dateLastOcspCheck,
-                                datetime(i.json ->> 'DateLastRenewalInfoCheck') as dateLastRenewalInfoCheck 
-                           FROM manageditem i ";
+                var sql = @"SELECT i.id, i.json, i.json ->> 'Name' as Name FROM manageditem i ";
 
                 var queryParameters = new List<SQLiteParameter>();
                 var conditions = new List<string>();
@@ -344,13 +340,13 @@ namespace Certify.Management
 
                 if (filter.LastOCSPCheckMins != null)
                 {
-                    conditions.Add(" dateLastOcspCheck < @ocspCheckDate");
+                    conditions.Add(" datetime(i.json ->> 'DateLastOcspCheck') < @ocspCheckDate");
                     queryParameters.Add(new SQLiteParameter("@ocspCheckDate", DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
                 }
 
                 if (filter.LastRenewalInfoCheckMins != null)
                 {
-                    conditions.Add(" dateLastRenewalInfoCheck < @renewalInfoCheckDate");
+                    conditions.Add(" datetime(i.json ->> 'DateLastRenewalInfoCheck') < @renewalInfoCheckDate");
                     queryParameters.Add(new SQLiteParameter("@renewalInfoCheckDate", DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
                 }
 
