@@ -1,7 +1,4 @@
-﻿# This is an example script and it will be overwritten when the next update is installed. 
-# To use this script copy it to another location and modify as required
-
-# Set certificate for Web Management Service in port 8172 (Web Deploy etc)
+﻿# Set certificate for Web Management Service in port 8172 (Web Deploy etc)
 # This script:
 # - updates the read permission for the certificate private key to allow LOCAL_SERVICE (the web management service user) to read the private key
 # - then sets the associated service port ssl binding to the new cert
