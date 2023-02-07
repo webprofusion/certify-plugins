@@ -15,8 +15,6 @@ CREATE TABLE dbo.manageditem
 (
     id NVARCHAR(255) NOT NULL,
     config NVARCHAR(MAX),
-    primary_subject NVARCHAR(500),
-    date_expiry datetime,
     PRIMARY KEY (id)
 )
 
