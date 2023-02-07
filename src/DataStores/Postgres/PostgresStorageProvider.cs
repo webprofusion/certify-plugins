@@ -70,11 +70,19 @@ namespace Certify.Datastore.Postgres
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            var items = await Find(new ManagedCertificateFilter { Name = nameStartsWith });
-
-            foreach (var item in items.Where(i => i.Name.StartsWith(nameStartsWith)))
+            using (var db = new NpgsqlConnection(_connectionString))
             {
-                await Delete(item);
+                await db.OpenAsync();
+                using (var tran = db.BeginTransaction())
+                {
+                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE config ->>'Name' LIKE @nameStartsWith || '%' ", db))
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter("@nameStartsWith", nameStartsWith));
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    tran.Commit();
+                }
             }
         }
 
@@ -87,24 +95,86 @@ namespace Certify.Datastore.Postgres
         {
             var managedCertificates = new List<ManagedCertificate>();
 
-            var sql = "SELECT id, config FROM manageditem";
-            var conditions = "";
-            if (!string.IsNullOrEmpty(filter?.Keyword))
+            var sql = @"SELECT * from 
+                         (SELECT subquery.id, subquery.config, 
+                                                        subquery.config ->> 'Name' as Name, 
+                                                        (subquery.config ->> 'DateLastOcspCheck')::timestamp with time zone  as dateLastOcspCheck,
+                                                        (subquery.config ->> 'DateLastRenewalInfoCheck')::timestamp with time zone as dateLastRenewalInfoCheck 
+                                                   FROM manageditem subquery  
+                          ) AS i ";
+
+            var queryParameters = new List<NpgsqlParameter>();
+            var conditions = new List<string>();
+
+            if (!string.IsNullOrEmpty(filter.Id))
             {
-                conditions += "config::jsonb ->> 'Name' LIKE '%'+@keyword+'%'";
+                conditions.Add(" i.id = @id");
+                queryParameters.Add(new NpgsqlParameter("@id", filter.Id));
             }
 
-            //TODO: other filter conditions e.g. last ocsp check
-
-            if (!string.IsNullOrEmpty(conditions))
+            if (!string.IsNullOrEmpty(filter.Name))
             {
-                sql += " WHERE " + conditions;
+                conditions.Add(" Name LIKE @name"); // case insensitive string match
+                queryParameters.Add(new NpgsqlParameter("@name", filter.Name));
             }
+
+            if (!string.IsNullOrEmpty(filter.Keyword))
+            {
+                conditions.Add(" (Name LIKE '%' || @keyword || '%')"); // case insensitive string contains
+                queryParameters.Add(new NpgsqlParameter("@keyword", filter.Keyword));
+            }
+
+            if (filter.LastOCSPCheckMins != null)
+            {
+                conditions.Add(" dateLastOcspCheck < @ocspCheckDate");
+                queryParameters.Add(new NpgsqlParameter("@ocspCheckDate", DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
+            }
+
+            if (filter.LastRenewalInfoCheckMins != null)
+            {
+                conditions.Add(" dateLastRenewalInfoCheck < @renewalInfoCheckDate");
+                queryParameters.Add(new NpgsqlParameter("@renewalInfoCheckDate", DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
+            }
+
+            if (filter.ChallengeType != null)
+            {
+                conditions.Add(" EXISTS (SELECT 1 FROM jsonb_array_elements(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeType'=@challengeType)");
+                queryParameters.Add(new NpgsqlParameter("@challengeType", filter.ChallengeType));
+            }
+
+            if (filter.ChallengeProvider != null)
+            {
+                conditions.Add(" EXISTS (SELECT 1 FROM jsonb_array_elements(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeProvider'=@challengeProvider)");
+                queryParameters.Add(new NpgsqlParameter("@challengeProvider", filter.ChallengeProvider));
+            }
+
+            if (filter.StoredCredentialKey != null)
+            {
+                conditions.Add(" EXISTS (SELECT 1 FROM jsonb_array_elements(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeCredentialKey'=@challengeCredentialKey)");
+                queryParameters.Add(new NpgsqlParameter("@challengeCredentialKey", filter.StoredCredentialKey));
+            }
+
+            if (conditions.Any())
+            {
+                sql += " WHERE ";
+                bool isFirstCondition = true;
+                foreach (var c in conditions)
+                {
+                    sql += (!isFirstCondition ? " AND " + c : c);
+
+                    isFirstCondition = false;
+                }
+            }
+
+            sql += $" ORDER BY Name ASC";
 
             if (filter?.PageIndex != null && filter?.PageSize != null)
             {
-                sql += $" LIMIT {filter.PageSize} OFFSET {filter.PageIndex}";
-                //sql += $" WHERE id NOT IN (SELECT id FROM manageditem ORDER BY id ASC LIMIT {filter.PageSize * filter.PageIndex}) ORDER BY id ASC LIMIT {filter.PageIndex}";
+                sql += $" LIMIT {filter.PageSize} OFFSET {filter.PageIndex * filter.PageSize}";
+            }
+            else if (filter?.MaxResults > 0)
+            {
+                sql += $" LIMIT {filter.MaxResults}";
             }
 
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -113,10 +183,7 @@ namespace Certify.Datastore.Postgres
 
                 using (var cmd = new NpgsqlCommand(sql, conn))
                 {
-                    if (!string.IsNullOrEmpty(filter?.Keyword))
-                    {
-                        cmd.Parameters.Add(new NpgsqlParameter("@keyword", filter.Keyword));
-                    }
+                    cmd.Parameters.AddRange(queryParameters.ToArray());
 
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
@@ -175,9 +242,27 @@ namespace Certify.Datastore.Postgres
 
         public async Task<bool> IsInitialised()
         {
-            _log?.Warning("Postgres: IsInitialised not implemented");
-            // TODO: open connection and check for read/write
-            return await Task.FromResult(true);
+            var sql = @"SELECT * from manageditem LIMIT 1;";
+            bool queryOK = false;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.OpenAsync();
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    try
+                    {
+                        await cmd.ExecuteReaderAsync();
+                        queryOK = true;
+                    }
+                    catch
+                    {
+
+                    }
+                }
+                await conn.CloseAsync();
+            }
+            return await Task.FromResult(queryOK);
         }
 
         public Task PerformMaintenance()
@@ -186,9 +271,12 @@ namespace Certify.Datastore.Postgres
             return Task.CompletedTask;
         }
 
-        public Task StoreAll(IEnumerable<ManagedCertificate> list)
+        public async Task StoreAll(IEnumerable<ManagedCertificate> list)
         {
-            throw new NotImplementedException();
+           foreach(var item in list)
+            {
+                await Update(item);
+            }
         }
 
         public async Task<ManagedCertificate> Update(ManagedCertificate managedCertificate)
@@ -248,13 +336,10 @@ namespace Certify.Datastore.Postgres
 
                             try
                             {
-                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb), primary_subject=@primary_subject WHERE id=@id;", conn))
+                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id;", conn))
                                 {
                                     cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
                                     cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
-
-                                    cmd.Parameters.Add(new NpgsqlParameter("@primary_subject", managedCertificate.RequestConfig.PrimaryDomain));
-                                    //cmd.Parameters.Add(new NpgsqlParameter("@date_expiry", managedCertificate.DateExpiry));
 
                                     await cmd.ExecuteNonQueryAsync();
                                 }
@@ -272,13 +357,10 @@ namespace Certify.Datastore.Postgres
                         {
                             try
                             {
-                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id,config,primary_subject) VALUES(@id,@config,@primary_subject);", conn))
+                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id,config) VALUES(@id,@config);", conn))
                                 {
                                     cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
                                     cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
-
-                                    cmd.Parameters.Add(new NpgsqlParameter("@primary_subject", managedCertificate.RequestConfig.PrimaryDomain));
-                                    //cmd.Parameters.Add(new NpgsqlParameter("@date_expiry", managedCertificate.DateExpiry));
 
                                     await cmd.ExecuteNonQueryAsync();
                                 }
@@ -292,17 +374,12 @@ namespace Certify.Datastore.Postgres
                                 throw;
                             }
                         }
-
-
                     }
 
                     await conn.CloseAsync();
                 }
             }
             //);
-
-
-
 
             return managedCertificate;
         }
