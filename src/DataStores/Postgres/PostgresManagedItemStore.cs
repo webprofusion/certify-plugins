@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Certify.Datastore.Postgres
 {
-    public class PostgresItemManager : IManagedItemStore, IDisposable
+    public class PostgresManagedItemStore : IManagedItemStore, IDisposable
     {
         private readonly ILog _log;
         private readonly string _connectionString;
@@ -22,7 +22,7 @@ namespace Certify.Datastore.Postgres
                 System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
             });
 
-        public PostgresItemManager(string connectionString = null, ILog log = null)
+        public PostgresManagedItemStore(string connectionString = null, ILog log = null)
         {
 
             _log = log;

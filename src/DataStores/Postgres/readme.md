@@ -9,6 +9,7 @@ Recommended only if you are familiar with postgres and require database scaling 
 - create a new user e.g. `certify_app` in postgres specifically for reading/writing the Certify database
 - create `certify` database
 
+## Managed Items
 Run script to create table:
 
 ```
@@ -42,4 +43,20 @@ CREATE TABLE IF NOT EXISTS manageditem
 
 -- Grant user permission to work with the `manageditem` table:
 GRANT ALL ON TABLE manageditem TO certify_app;
+```
+
+## Stored Credentials
+
+```
+CREATE TABLE IF NOT EXISTS public.credential
+(
+    id text NOT NULL,
+    config jsonb NOT NULL,
+    protectedvalue text NOT NULL,
+    CONSTRAINT credential_pkey PRIMARY KEY (id)
+);
+
+```
+```
+GRANT ALL ON TABLE public.credential TO certify_app;
 ```
