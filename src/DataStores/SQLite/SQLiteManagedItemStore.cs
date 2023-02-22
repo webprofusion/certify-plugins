@@ -18,11 +18,11 @@ namespace Certify.Management
     /// <summary>
     /// SQLiteItemManager is the storage service implementation for Managed Certificate information using SQLite
     /// </summary>
-    public class SQLiteItemManager : IManagedItemStore
+    public class SQLiteManagedItemStore : IManagedItemStore
     {
         public const string ITEMMANAGERCONFIG = "manageditems";
 
-        public string _storageSubFolder = ""; //if specified will be appended to AppData path as subfolder to load/save to
+        private string _storageSubFolder = ""; //if specified will be appended to AppData path as subfolder to load/save to
         public bool IsSingleInstanceMode { get; set; } = true; //if true, access to this resource is centralised so we can make assumptions about when reload of settings is required etc
 
         // TODO: make db path configurable on service start
@@ -37,7 +37,7 @@ namespace Certify.Management
 
         private bool _initialised { get; set; } = false;
 
-        public SQLiteItemManager(string storageSubfolder = null, ILog log = null, bool highPerformanceMode = true)
+        public SQLiteManagedItemStore(string storageSubfolder = null, ILog log = null, bool highPerformanceMode = false)
         {
             _log = log;
 

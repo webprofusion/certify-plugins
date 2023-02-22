@@ -1,5 +1,6 @@
 ﻿using Certify.Models;
 using Certify.Models.Config;
+using Certify.Models.Providers;
 using Certify.Providers;
 using Newtonsoft.Json;
 using System;
@@ -12,20 +13,21 @@ using System.Threading.Tasks;
 
 namespace Certify.Management
 {
-    public class SQLiteCredentialsManager : CredentialsManagerBase, ICredentialsManager
+    public class SQLiteCredentialStore : CredentialsManagerBase, ICredentialsManager
     {
         public const string CREDENTIALSTORE = "cred";
         private const string PROTECTIONENTROPY = "Certify.Credentials";
-        public string StorageSubfolder = "credentials"; //if specified will be appended to AppData path as subfolder to load/save to
-
-        public SQLiteCredentialsManager(bool useWindowsNativeFeatures = true) : base(useWindowsNativeFeatures)
+        private string _storageSubFolder = "credentials"; //if specified will be appended to AppData path as subfolder to load/save to
+        private readonly ILog _log;
+        public SQLiteCredentialStore(bool useWindowsNativeFeatures = true, string storageSubfolder = "credentials", ILog log = null) : base(useWindowsNativeFeatures)
         {
-
+            _storageSubFolder = storageSubfolder;
+            _log = log;
         }
 
         private string GetDbPath()
         {
-            var appDataPath = EnvironmentUtil.GetAppDataFolder(StorageSubfolder);
+            var appDataPath = EnvironmentUtil.GetAppDataFolder(_storageSubFolder);
             return Path.Combine(appDataPath, $"{CREDENTIALSTORE}.db");
         }
 
@@ -77,7 +79,7 @@ namespace Certify.Management
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public async Task<List<StoredCredential>> GetCredentials(string type = null)
+        public async Task<List<StoredCredential>> GetCredentials(string type = null,string storageKey = null)
         {
             var path = GetDbPath();
 
@@ -88,14 +90,46 @@ namespace Certify.Management
                 using (var db = new SQLiteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
-                    using (var cmd = new SQLiteCommand("SELECT id, json FROM credential", db))
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    
+                    var queryParameters = new List<SQLiteParameter>();
+                    var conditions = new List<string>();
+                    var sql = @"SELECT id, json FROM credential ";
+
+                    if (!string.IsNullOrEmpty(storageKey))
                     {
-                        while (await reader.ReadAsync())
+                        conditions.Add("id = @id");
+                        queryParameters.Add(new SQLiteParameter("@id", storageKey));
+                    }
+
+                    if (!string.IsNullOrEmpty(type))
+                    {
+                        conditions.Add(" json->>'ProviderType' = @providerType");
+                        queryParameters.Add(new SQLiteParameter("@providerType", type));
+                    }
+
+                    if (conditions.Any())
+                    {
+                        sql += " WHERE ";
+                        bool isFirstCondition = true;
+                        foreach (var c in conditions)
                         {
-                            var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["json"]);
-                            if (string.IsNullOrEmpty(type) || type == storedCredential.ProviderType)
+                            sql += (!isFirstCondition ? " AND " + c : c);
+
+                            isFirstCondition = false;
+                        }
+                    }
+
+                    sql += $" ORDER BY json->>'Title' ASC";
+
+                    using (var cmd = new SQLiteCommand(sql, db))
+                    {
+                        cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
                             {
+                                var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["json"]);
                                 credentials.Add(storedCredential);
                             }
                         }
