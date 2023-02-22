@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
+    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
   </ItemGroup>
 
 </Project>

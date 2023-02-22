@@ -3,7 +3,6 @@ using Certify.Models.Providers;
 using Certify.Providers;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
-
 using Polly;
 using Polly.Retry;
 using System;
@@ -14,7 +13,7 @@ using System.Threading.Tasks;
 namespace Certify.Datastore.SQLServer
 {
 
-    public class SQLServerItemManager : IManagedItemStore, IDisposable
+    public class SQLServerManagedItemStore : IManagedItemStore, IDisposable
     {
         private readonly ILog _log;
         private readonly string _connectionString;
@@ -24,7 +23,7 @@ namespace Certify.Datastore.SQLServer
                                                 System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
                                             });
 
-        public SQLServerItemManager(string connectionString = null, ILog log = null)
+        public SQLServerManagedItemStore(string connectionString = null, ILog log = null)
         {
 
             _log = log;
