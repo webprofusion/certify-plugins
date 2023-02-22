@@ -27,11 +27,8 @@ namespace DeploymentTaskTests
         {
             var destPath = ConfigSettings["TestUNCPath"];
 
-            var credentialsManager = new SQLiteCredentialsManager
-            {
-                StorageSubfolder = "credentials\\test"
-            };
-
+            var credentialsManager = new SQLiteCredentialStore(storageSubfolder: "credentials\\test");
+            
             var storedCred = await credentialsManager.GetUnlockedCredentialsDictionary(ConfigSettings["TestCredentialsKey_UNC"]);
 
             // create a test temp file
@@ -62,10 +59,7 @@ namespace DeploymentTaskTests
         [TestMethod, TestCategory("NetworkFileCopy")]
         public async Task TestSftpFileCopy()
         {
-            var credentialsManager = new SQLiteCredentialsManager
-            {
-                StorageSubfolder = "credentials\\test"
-            };
+            var credentialsManager = new SQLiteCredentialStore(storageSubfolder: "credentials\\test");
 
             string destPath = ConfigSettings["TestSSHPath"];
 

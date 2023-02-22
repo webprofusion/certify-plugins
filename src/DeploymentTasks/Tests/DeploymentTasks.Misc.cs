@@ -26,10 +26,7 @@ namespace DeploymentTaskTests
         [TestMethod, TestCategory("TestCredentials")]
         public async Task CreateTestCredentials()
         {
-            var credentialsManager = new SQLiteCredentialsManager
-            {
-                StorageSubfolder = "credentials\\test"
-            };
+            var credentialsManager = new SQLiteCredentialStore(storageSubfolder: "credentials\\test");
 
             var secrets = new Dictionary<string, string>
             {
