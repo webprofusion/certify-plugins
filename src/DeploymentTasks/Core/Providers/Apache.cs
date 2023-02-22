@@ -31,6 +31,7 @@ namespace Certify.Providers.DeploymentTasks
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
+                SupportsRemoteTarget = true,
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {
                      new ProviderParameter{ Key="path_cert", Name="Output filepath for cert", IsRequired=true, IsCredential=false, Description="e.g. /somewhere/cert.pem" },

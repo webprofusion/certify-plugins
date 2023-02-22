@@ -28,6 +28,7 @@ namespace Certify.Providers.DeploymentTasks
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
+                SupportsRemoteTarget = true,
                 ProviderParameters = Apache.Definition.ProviderParameters
             };
 

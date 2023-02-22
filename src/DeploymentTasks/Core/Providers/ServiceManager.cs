@@ -19,6 +19,7 @@ namespace Certify.Providers.DeploymentTasks
 
 
             // TODO: current user may not have access
+            // TODO: remote services, which would need credentials up front before querying services
             try
             {
                 // populate options list with list of current services
@@ -48,6 +49,7 @@ namespace Certify.Providers.DeploymentTasks
                 HasDynamicParameters = true,
                 UsageType = DeploymentProviderUsage.Any,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
+                SupportsRemoteTarget = false,
                 Description = "Used to restart a service affected by certificate updates.",
                 ProviderParameters = new List<ProviderParameter>
                 {

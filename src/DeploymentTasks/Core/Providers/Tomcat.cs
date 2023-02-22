@@ -33,6 +33,7 @@ namespace Certify.Providers.DeploymentTasks
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
+                SupportsRemoteTarget = true,
                 Description = "Deploy latest certificate to a local or remote Tomcat server",
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {

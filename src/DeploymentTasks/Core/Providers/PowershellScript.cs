@@ -21,6 +21,7 @@ namespace Certify.Providers.DeploymentTasks
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.Any,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
+                SupportsRemoteTarget = false,
                 Description = "Run a Powershell script",
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {
