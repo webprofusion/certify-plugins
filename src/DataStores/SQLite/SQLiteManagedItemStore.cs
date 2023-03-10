@@ -13,7 +13,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Certify.Management
+namespace Certify.Datastore.SQLite
 {
     /// <summary>
     /// SQLiteItemManager is the storage service implementation for Managed Certificate information using SQLite

@@ -1,16 +1,17 @@
-﻿using Certify.Models;
+﻿using Certify.Management;
+using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Providers;
+using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 
-namespace Certify.Management
+namespace Certify.Datastore.SQLServer
 {
     public class SQLServerCredentialStore : CredentialsManagerBase, ICredentialsManager
     {

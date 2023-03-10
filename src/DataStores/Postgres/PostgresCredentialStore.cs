@@ -1,4 +1,5 @@
-﻿using Certify.Models;
+﻿using Certify.Management;
+using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Providers;
@@ -11,7 +12,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
-namespace Certify.Management
+namespace Certify.Datastore.Postgres
 {
     public class PostgresCredentialStore : CredentialsManagerBase, ICredentialsManager
     {
