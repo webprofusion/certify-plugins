@@ -30,6 +30,7 @@ namespace Certify.Providers.DeploymentTasks
                 ProviderParameters = new List<ProviderParameter>
                 {
                     new ProviderParameter{ Key="vault_uri", Name="Vault URI", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="e.g. http://127.0.0.1:8200" },
+                    new ProviderParameter{ Key="vault_namespace", Name="Vault Namespace", IsRequired=false, IsCredential=false, Type= OptionType.String, Description="(optional) e.g. admin" },
                     new ProviderParameter{ Key="vault_secret_path", Name="Path to Secret", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="e.g. /v1/secret/data/examplecert" },
 
                 }
@@ -57,9 +58,16 @@ namespace Certify.Providers.DeploymentTasks
             }
             string vaultUri = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
             string vaultPath = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_secret_path")?.Value;
+            string vaultNamespace = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_namespace")?.Value;
 
             var httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("X-Vault-Token", execParams.Credentials["api_token"]);
+
+            if (!string.IsNullOrEmpty(vaultNamespace))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-Vault-Namespace", execParams.Credentials["vault_namespace"]);
+            }
+            
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             var vaultUrl = $"{vaultUri}{vaultPath}";
@@ -67,6 +75,16 @@ namespace Certify.Providers.DeploymentTasks
             byte[] pfxData = File.ReadAllBytes(managedCert.CertificatePath);
 
             var pfxPwd = "";
+
+            // get PFX password if in use
+            if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId))
+            {
+                var pwdCred = await execParams.CredentialsManager.GetUnlockedCredentialsDictionary(managedCert.CertificatePasswordCredentialId);
+                if (pwdCred != null)
+                {
+                    pfxPwd = pwdCred["password"];
+                }
+            }
 
             var secret = new
             {
