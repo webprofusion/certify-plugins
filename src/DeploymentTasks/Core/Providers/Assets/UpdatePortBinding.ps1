@@ -20,4 +20,4 @@ $ipport ="${ip}:${port}"
 & netsh http delete sslcert ipport=$ipport
 
 # set the current certificate:
-& netsh http add sslcert ipport=$ipport certhash=$thumb appid=`{$appid`}
+& netsh http add sslcert ipport=$ipport certhash=$thumb appid="{$appid}"

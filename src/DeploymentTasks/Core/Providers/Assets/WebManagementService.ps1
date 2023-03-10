@@ -50,7 +50,7 @@ $guid = [guid]::NewGuid()
 & netsh http delete sslcert ipport=0.0.0.0:8172
 
 # set the current certificate:
-& netsh http add sslcert ipport=0.0.0.0:8172 certhash=$thumb appid=`{$guid`}
+& netsh http add sslcert ipport=0.0.0.0:8172 certhash=$thumb appid="{$guid}"
 
 ## Set registry key so Web Management Service UI in IIS matches the new certificate selection
 
