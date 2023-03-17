@@ -15,15 +15,49 @@ namespace Certify.Datastore.SQLServer
 {
     public class SQLServerCredentialStore : CredentialsManagerBase, ICredentialsManager
     {
-        private readonly ILog _log;
-        private readonly string _connectionString;
+        private ILog _log;
+        private string _connectionString;
 
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
-        public SQLServerCredentialStore(string connectionString, bool useWindowsNativeFeatures = true, ILog log = null) : base(useWindowsNativeFeatures)
+        public static ProviderDefinition Definition
+        {
+            get
+            {
+                return new ProviderDefinition
+                {
+                    Id = "Plugin.DataStores.CredentialStore.SQLServer",
+                    ProviderCategoryId = "sqlserver",
+                    Title = "SQL Server",
+                    Description = "SQL Server DataStore provider"
+                };
+            }
+        }
+
+        public SQLServerCredentialStore() { }
+        public bool Init(string connectionString, bool useWindowsNativeFeatures, ILog log)
         {
             _log = log;
             _connectionString = connectionString;
+            _useWindowsNativeFeatures = useWindowsNativeFeatures;
+            return true;
+        }
+        public async Task<bool> IsInitialised()
+        {
+            try
+            {
+                await GetCredentials();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public SQLServerCredentialStore(string connectionString, bool useWindowsNativeFeatures = true, ILog log = null) : base(useWindowsNativeFeatures)
+        {
+            Init(connectionString, useWindowsNativeFeatures, log);
         }
 
         /// <summary>
@@ -101,7 +135,7 @@ namespace Certify.Datastore.SQLServer
                 if (conditions.Any())
                 {
                     sql += " WHERE ";
-                    bool isFirstCondition = true;
+                    var isFirstCondition = true;
                     foreach (var c in conditions)
                     {
                         sql += (!isFirstCondition ? " AND " + c : c);
@@ -235,8 +269,9 @@ namespace Certify.Datastore.SQLServer
 
                         try
                         {
-                            using (var cmd = new SqlCommand("UPDATE credential SET config = CAST(@config as jsonb), protectedvalue= @protectedvalue WHERE id=@id;", conn))
+                            using (var cmd = new SqlCommand("UPDATE credential SET config = @config, protectedvalue= @protectedvalue WHERE id=@id;", conn))
                             {
+                                cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
                                 cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
                                 cmd.Parameters.Add(new SqlParameter("@protectedvalue", protectedContent));

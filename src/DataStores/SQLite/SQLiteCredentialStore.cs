@@ -17,12 +17,52 @@ namespace Certify.Management
     {
         public const string CREDENTIALSTORE = "cred";
         private const string PROTECTIONENTROPY = "Certify.Credentials";
-        private string _storageSubFolder = "credentials"; //if specified will be appended to AppData path as subfolder to load/save to
-        private readonly ILog _log;
+
+        /// <summary>
+        /// if specified will be appended to AppData path as subfolder to load/save to
+        /// </summary>
+        private string _storageSubFolder = "credentials";
+
+        private ILog _log;
+
+        public static ProviderDefinition Definition
+        {
+            get
+            {
+                return new ProviderDefinition
+                {
+                    Id = "Plugin.DataStores.CredentialStore.SQLite",
+                    ProviderCategoryId = "sqlite",
+                    Title = "SQLite",
+                    Description = "SQLite DataStore provider"
+                };
+            }
+        }
+        public SQLiteCredentialStore() { }
+        public bool Init(string connectionString, bool useWindowsNativeFeatures, ILog log)
+        {
+            _log = log;
+            _storageSubFolder = connectionString;
+            _useWindowsNativeFeatures = useWindowsNativeFeatures;
+            return true;
+        }
+
+        public async Task<bool> IsInitialised()
+        {
+            try
+            {
+                await GetCredentials();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public SQLiteCredentialStore(bool useWindowsNativeFeatures = true, string storageSubfolder = "credentials", ILog log = null) : base(useWindowsNativeFeatures)
         {
-            _storageSubFolder = storageSubfolder;
-            _log = log;
+            Init(storageSubfolder, useWindowsNativeFeatures, log);
         }
 
         private string GetDbPath()
@@ -79,7 +119,7 @@ namespace Certify.Management
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public async Task<List<StoredCredential>> GetCredentials(string type = null,string storageKey = null)
+        public async Task<List<StoredCredential>> GetCredentials(string type = null, string storageKey = null)
         {
             var path = GetDbPath();
 
@@ -90,7 +130,7 @@ namespace Certify.Management
                 using (var db = new SQLiteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
-                    
+
                     var queryParameters = new List<SQLiteParameter>();
                     var conditions = new List<string>();
                     var sql = @"SELECT id, json FROM credential ";
@@ -110,7 +150,7 @@ namespace Certify.Management
                     if (conditions.Any())
                     {
                         sql += " WHERE ";
-                        bool isFirstCondition = true;
+                        var isFirstCondition = true;
                         foreach (var c in conditions)
                         {
                             sql += (!isFirstCondition ? " AND " + c : c);

@@ -7,7 +7,6 @@ using Newtonsoft.Json;
 using Npgsql;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -16,15 +15,50 @@ namespace Certify.Datastore.Postgres
 {
     public class PostgresCredentialStore : CredentialsManagerBase, ICredentialsManager
     {
-        private readonly ILog _log;
-        private readonly string _connectionString;
+        private ILog _log;
+        private string _connectionString;
 
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
-        public PostgresCredentialStore(string connectionString, bool useWindowsNativeFeatures = true, ILog log = null) : base(useWindowsNativeFeatures)
+        public static ProviderDefinition Definition
+        {
+            get
+            {
+                return new ProviderDefinition
+                {
+                    Id = "Plugin.DataStores.CredentialStore.Postgres",
+                    ProviderCategoryId = "postgres",
+                    Title = "Postgres",
+                    Description = "Postgres DataStore provider"
+                };
+            }
+        }
+
+        public PostgresCredentialStore() { }
+        public bool Init(string connectionString, bool useWindowsNativeFeatures, ILog log)
         {
             _log = log;
             _connectionString = connectionString;
+            _useWindowsNativeFeatures = useWindowsNativeFeatures;
+            return true;
+        }
+
+        public PostgresCredentialStore(string connectionString, bool useWindowsNativeFeatures = true, ILog log = null) : base(useWindowsNativeFeatures)
+        {
+            Init(connectionString, useWindowsNativeFeatures, log);
+        }
+
+        public async Task<bool> IsInitialised()
+        {
+            try
+            {
+                await GetCredentials();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -101,7 +135,7 @@ namespace Certify.Datastore.Postgres
                 if (conditions.Any())
                 {
                     sql += " WHERE ";
-                    bool isFirstCondition = true;
+                    var isFirstCondition = true;
                     foreach (var c in conditions)
                     {
                         sql += (!isFirstCondition ? " AND " + c : c);

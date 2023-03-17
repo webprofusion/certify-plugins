@@ -1,4 +1,5 @@
 using Certify.Models;
+using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Providers;
 using Microsoft.Data.SqlClient;
@@ -15,19 +16,39 @@ namespace Certify.Datastore.SQLServer
 
     public class SQLServerManagedItemStore : IManagedItemStore, IDisposable
     {
-        private readonly ILog _log;
-        private readonly string _connectionString;
+        private ILog _log;
+        private string _connectionString;
         private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<Exception>()
                                             .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
                                             {
                                                 System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
                                             });
+        public static ProviderDefinition Definition
+        {
+            get
+            {
+                return new ProviderDefinition
+                {
+                    Id = "Plugin.DataStores.ManagedItem.SQLServer",
+                    ProviderCategoryId = "sqlserver",
+                    Title = "SQL Server",
+                    Description = "SQL Server DataStore provider"
+                };
+            }
+        }
+
+        public bool Init(string connectionString, ILog log)
+        {
+            _connectionString = connectionString;
+            _log = log;
+            return true;
+        }
+
+        public SQLServerManagedItemStore() { }
 
         public SQLServerManagedItemStore(string connectionString = null, ILog log = null)
         {
-
-            _log = log;
-            _connectionString = connectionString;
+            Init(connectionString, log);
         }
 
         public async Task Delete(ManagedCertificate item)
@@ -135,7 +156,7 @@ namespace Certify.Datastore.SQLServer
 
             if (filter.ChallengeType != null)
             {
-                conditions.Add(" EXISTS (SELECT 1 FROM OPENJSON(config,'$.RequestConfig.Challenges') WHERE JSON_VALUE(value,'$.ChallengeType')=@challengeType)"); 
+                conditions.Add(" EXISTS (SELECT 1 FROM OPENJSON(config,'$.RequestConfig.Challenges') WHERE JSON_VALUE(value,'$.ChallengeType')=@challengeType)");
                 queryParameters.Add(new SqlParameter("@challengeType", filter.ChallengeType));
             }
 
@@ -154,7 +175,7 @@ namespace Certify.Datastore.SQLServer
             if (conditions.Any())
             {
                 sql += " WHERE ";
-                bool isFirstCondition = true;
+                var isFirstCondition = true;
                 foreach (var c in conditions)
                 {
                     sql += (!isFirstCondition ? " AND " + c : c);
@@ -172,7 +193,7 @@ namespace Certify.Datastore.SQLServer
             else if (filter?.MaxResults > 0)
             {
                 sql += $" OFFSET 0 ROWS FETCH NEXT {filter.MaxResults} ROWS ONLY;";
-            } 
+            }
 
             using (var conn = new SqlConnection(_connectionString))
             {
@@ -240,9 +261,30 @@ namespace Certify.Datastore.SQLServer
 
         public async Task<bool> IsInitialised()
         {
-            _log?.Warning("SQL Server: IsInitialised not implemented");
-            // TODO: open connection and check for read/write
-            return await Task.FromResult(true);
+
+            var sql = @"SELECT TOP 1 * from manageditem;";
+            var queryOK = false;
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                await conn.OpenAsync();
+
+                using (var cmd = new SqlCommand(sql, conn))
+                {
+                    try
+                    {
+                        await cmd.ExecuteReaderAsync();
+                        queryOK = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Error("Failed to init data store: " + ex.Message);
+                    }
+                }
+                conn.Close();
+            }
+
+            return await Task.FromResult(queryOK);
+
         }
 
         public async Task PerformMaintenance()

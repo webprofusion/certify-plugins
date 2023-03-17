@@ -1,4 +1,5 @@
 ﻿using Certify.Models;
+using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Providers;
 using Newtonsoft.Json;
@@ -14,19 +15,38 @@ namespace Certify.Datastore.Postgres
 {
     public class PostgresManagedItemStore : IManagedItemStore, IDisposable
     {
-        private readonly ILog _log;
-        private readonly string _connectionString;
+        private ILog _log;
+        private string _connectionString;
         private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<ArgumentException>()
             .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
             {
                 System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
             });
 
+        public static ProviderDefinition Definition
+        {
+            get
+            {
+                return new ProviderDefinition
+                {
+                    Id = "Plugin.DataStores.ManagedItem.Postgres",
+                    ProviderCategoryId = "postgres",
+                    Title = "Postgres",
+                    Description = "Postgres DataStore provider"
+                };
+            }
+        }
+        public PostgresManagedItemStore() { }
+
+        public bool Init(string connectionString, ILog log)
+        {
+            _connectionString = connectionString;
+            _log = log;
+            return true;
+        }
         public PostgresManagedItemStore(string connectionString = null, ILog log = null)
         {
-
-            _log = log;
-            _connectionString = connectionString;
+            Init(connectionString, log);
         }
 
         public async Task Delete(ManagedCertificate item)
@@ -157,7 +177,7 @@ namespace Certify.Datastore.Postgres
             if (conditions.Any())
             {
                 sql += " WHERE ";
-                bool isFirstCondition = true;
+                var isFirstCondition = true;
                 foreach (var c in conditions)
                 {
                     sql += (!isFirstCondition ? " AND " + c : c);
@@ -243,7 +263,7 @@ namespace Certify.Datastore.Postgres
         public async Task<bool> IsInitialised()
         {
             var sql = @"SELECT * from manageditem LIMIT 1;";
-            bool queryOK = false;
+            var queryOK = false;
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 await conn.OpenAsync();
@@ -255,9 +275,9 @@ namespace Certify.Datastore.Postgres
                         await cmd.ExecuteReaderAsync();
                         queryOK = true;
                     }
-                    catch
+                    catch (Exception ex)
                     {
-
+                        _log.Error("Failed to init data store: " + ex.Message);
                     }
                 }
                 await conn.CloseAsync();
@@ -273,7 +293,7 @@ namespace Certify.Datastore.Postgres
 
         public async Task StoreAll(IEnumerable<ManagedCertificate> list)
         {
-           foreach(var item in list)
+            foreach (var item in list)
             {
                 await Update(item);
             }

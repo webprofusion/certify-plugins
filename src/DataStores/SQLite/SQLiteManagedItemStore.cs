@@ -1,4 +1,5 @@
 using Certify.Models;
+using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Providers;
 using Newtonsoft.Json;
@@ -26,19 +27,36 @@ namespace Certify.Datastore.SQLite
         public bool IsSingleInstanceMode { get; set; } = true; //if true, access to this resource is centralised so we can make assumptions about when reload of settings is required etc
 
         // TODO: make db path configurable on service start
-        private readonly string _dbPath = $"C:\\programdata\\certify\\{ITEMMANAGERCONFIG}.db";
-        private readonly string _connectionString;
+        private string _dbPath = $"C:\\programdata\\certify\\{ITEMMANAGERCONFIG}.db";
+        private string _connectionString;
 
         private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<SQLiteException>().WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1));
 
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
 
-        private readonly ILog _log;
+        private ILog _log;
 
         private bool _initialised { get; set; } = false;
+        private bool _highPerformanceMode { get; set; } = false;
 
-        public SQLiteManagedItemStore(string storageSubfolder = null, ILog log = null, bool highPerformanceMode = false)
+        public static ProviderDefinition Definition
         {
+            get
+            {
+                return new ProviderDefinition
+                {
+                    Id = "Plugin.DataStores.ManagedItem.SQLite",
+                    ProviderCategoryId = "sqlite",
+                    Title = "SQLite",
+                    Description = "SQLite DataStore provider"
+                };
+            }
+        }
+
+        public bool Init(string connectionString, ILog log)
+        {
+            var storageSubfolder = connectionString;
+
             _log = log;
 
             if (!string.IsNullOrEmpty(storageSubfolder))
@@ -50,7 +68,7 @@ namespace Certify.Datastore.SQLite
 
             _connectionString = $"Data Source={_dbPath};PRAGMA temp_store=MEMORY;Cache=Shared;PRAGMA journal_mode=WAL;";
 
-            if (highPerformanceMode)
+            if (_highPerformanceMode)
             {
                 // for tests only, not suitable for production. https://www.sqlite.org/faq.html#q19
                 _connectionString += "PRAGMA synchronous=OFF;";
@@ -58,7 +76,7 @@ namespace Certify.Datastore.SQLite
 
             try
             {
-                if (!highPerformanceMode)
+                if (!_highPerformanceMode)
                 {
                     if (File.Exists(_dbPath))
                     {
@@ -86,6 +104,15 @@ namespace Certify.Datastore.SQLite
 
                 _initialised = false;
             }
+
+            return _initialised;
+        }
+
+        public SQLiteManagedItemStore() { }
+        public SQLiteManagedItemStore(string storageSubfolder = null, ILog log = null, bool highPerformanceMode = false)
+        {
+            _highPerformanceMode = highPerformanceMode;
+            Init(storageSubfolder, log);
         }
 
         public Task<bool> IsInitialised()
@@ -357,8 +384,8 @@ namespace Certify.Datastore.SQLite
                 }
 
                 if (filter.ChallengeProvider != null)
-                {               
-                    conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeProvider'=@challengeProvider)"); 
+                {
+                    conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeProvider'=@challengeProvider)");
                     queryParameters.Add(new SQLiteParameter("@challengeProvider", filter.ChallengeProvider));
                 }
 
@@ -371,7 +398,7 @@ namespace Certify.Datastore.SQLite
                 if (conditions.Any())
                 {
                     sql += " WHERE ";
-                    bool isFirstCondition = true;
+                    var isFirstCondition = true;
                     foreach (var c in conditions)
                     {
                         sql += (!isFirstCondition ? " AND " + c : c);
