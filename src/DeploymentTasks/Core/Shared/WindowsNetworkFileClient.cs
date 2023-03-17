@@ -1,6 +1,5 @@
 using Certify.Models.Config;
 using Certify.Models.Providers;
-using Microsoft.Win32.SafeHandles;
 using Plugin.DeploymentTasks.Core.Shared.Model;
 using SimpleImpersonation;
 using System;
@@ -24,7 +23,7 @@ namespace Certify.Providers.Deployment.Core.Shared
         {
             var fileList = new List<string>();
 
-            using (SafeAccessTokenHandle userHandle = _credentials.LogonUser(_defaultLogonType))
+            using (var userHandle = _credentials.LogonUser(_defaultLogonType))
             {
                 WindowsIdentity.RunImpersonated(userHandle, () =>
                  {
@@ -61,7 +60,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                 // write new files as destination user
                 try
                 {
-                    using (SafeAccessTokenHandle userHandle = _credentials.LogonUser(_defaultLogonType))
+                    using (var userHandle = _credentials.LogonUser(_defaultLogonType))
                     {
                         var results = WindowsIdentity.RunImpersonated(userHandle, () =>
                           {
@@ -84,7 +83,7 @@ namespace Certify.Providers.Deployment.Core.Shared
 
             foreach (var dest in destFiles)
             {
-                string destPath = dest.Key;
+                var destPath = dest.Key;
                 try
                 {
                     destPath = Path.GetFullPath(dest.Key);

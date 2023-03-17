@@ -47,7 +47,7 @@ namespace DeploymentTaskTests
 
             var managedCert = GetMockManagedCertificate("Test", "123", PrimaryTestDomain, PrimaryIISRoot);
 
-            List<ActionResult> results = new List<ActionResult>();
+            var results = new List<ActionResult>();
             var task = new DeploymentTask(provider, restartTaskConfig, null);
 
             var validationResult = await task.TaskProvider.Validate(
@@ -127,7 +127,7 @@ namespace DeploymentTaskTests
             // perform preview deployments
             var managedCert = GetMockManagedCertificate("Test", "123", PrimaryTestDomain, PrimaryIISRoot);
 
-            List<ActionResult> results = new List<ActionResult>();
+            var results = new List<ActionResult>();
             foreach (var task in deploymentTasks)
             {
                 results.AddRange(await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false));

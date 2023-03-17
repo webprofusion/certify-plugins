@@ -36,7 +36,7 @@ namespace Certify.Providers.Deployment.Core.Shared
 
         public static SshConnectionConfig GetConnectionConfig(DeploymentTaskConfig config, Dictionary<string, string> credentials)
         {
-            int port = 22;
+            var port = 22;
             var host = config.TargetHost;
 
             if (config.TargetHost?.Contains(":") == true)
@@ -117,7 +117,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                 kbdi.AuthenticationPrompt += new EventHandler<AuthenticationPromptEventArgs>(
                     (Object sender, AuthenticationPromptEventArgs e) =>
                     {
-                        foreach (AuthenticationPrompt prompt in e.Prompts)
+                        foreach (var prompt in e.Prompts)
                         {
                             if (prompt.Request.IndexOf("Password:", StringComparison.InvariantCultureIgnoreCase) != -1)
                             {

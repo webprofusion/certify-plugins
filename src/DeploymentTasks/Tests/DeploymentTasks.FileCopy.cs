@@ -28,7 +28,7 @@ namespace DeploymentTaskTests
             var destPath = ConfigSettings["TestUNCPath"];
 
             var credentialsManager = new SQLiteCredentialStore(storageSubfolder: "credentials\\test");
-            
+
             var storedCred = await credentialsManager.GetUnlockedCredentialsDictionary(ConfigSettings["TestCredentialsKey_UNC"]);
 
             // create a test temp file
@@ -61,7 +61,7 @@ namespace DeploymentTaskTests
         {
             var credentialsManager = new SQLiteCredentialStore(storageSubfolder: "credentials\\test");
 
-            string destPath = ConfigSettings["TestSSHPath"];
+            var destPath = ConfigSettings["TestSSHPath"];
 
             var storedCred = await credentialsManager.GetUnlockedCredentialsDictionary(ConfigSettings["TestCredentialsKey_SSH"]);
 

@@ -50,7 +50,7 @@ namespace Certify.Providers.DeploymentTasks
             execParams.Log?.Information("Executing command via PowerShell");
 
             var account = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "account")?.Value;
-            
+
             var parameters = new Dictionary<string, object>
             {
                 { "account", account }

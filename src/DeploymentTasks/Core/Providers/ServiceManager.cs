@@ -67,7 +67,7 @@ namespace Certify.Providers.DeploymentTasks
 
             var definition = GetDefinition(execParams.Definition);
 
-            List<ActionResult> results = await Validate(execParams);
+            var results = await Validate(execParams);
             if (results.Any())
             {
                 return results;
@@ -81,7 +81,7 @@ namespace Certify.Providers.DeploymentTasks
             var servicename = settings.Parameters.FirstOrDefault(c => c.Key == "servicename")?.Value;
             var action = settings.Parameters.FirstOrDefault(c => c.Key == "action")?.Value;
 
-            ServiceController service = new ServiceController(servicename);
+            var service = new ServiceController(servicename);
 
             var ticks = System.TimeSpan.FromSeconds(durationSeconds);
 

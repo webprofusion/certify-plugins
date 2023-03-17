@@ -138,7 +138,7 @@ namespace Plugin.CertificateManagers
 
                                     var sn = ((System.Collections.ArrayList)cert.GetSubjectAlternativeNames());
 
-                                    List<string> sans = new List<string>();
+                                    var sans = new List<string>();
                                     foreach (System.Collections.ArrayList s in sn)
                                     {
                                         sans.Add(s[1].ToString());

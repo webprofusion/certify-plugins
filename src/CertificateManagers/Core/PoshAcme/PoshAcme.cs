@@ -112,7 +112,7 @@ namespace Plugin.CertificateManagers
 
         public async Task<bool> IsPresent()
         {
-            string settingsPath = Environment.GetEnvironmentVariable("POSHACME_HOME");
+            var settingsPath = Environment.GetEnvironmentVariable("POSHACME_HOME");
 
             if (string.IsNullOrEmpty(settingsPath))
             {

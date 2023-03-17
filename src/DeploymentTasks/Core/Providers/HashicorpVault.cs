@@ -56,9 +56,9 @@ namespace Certify.Providers.DeploymentTasks
                 return results;
 
             }
-            string vaultUri = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
-            string vaultPath = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_secret_path")?.Value;
-            string vaultNamespace = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_namespace")?.Value;
+            var vaultUri = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
+            var vaultPath = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_secret_path")?.Value;
+            var vaultNamespace = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_namespace")?.Value;
 
             var httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("X-Vault-Token", execParams.Credentials["api_token"]);
@@ -67,12 +67,12 @@ namespace Certify.Providers.DeploymentTasks
             {
                 httpClient.DefaultRequestHeaders.Add("X-Vault-Namespace", execParams.Credentials["vault_namespace"]);
             }
-            
+
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             var vaultUrl = $"{vaultUri}{vaultPath}";
 
-            byte[] pfxData = File.ReadAllBytes(managedCert.CertificatePath);
+            var pfxData = File.ReadAllBytes(managedCert.CertificatePath);
 
             var pfxPwd = "";
 
