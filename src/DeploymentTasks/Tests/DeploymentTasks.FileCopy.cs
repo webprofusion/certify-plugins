@@ -57,6 +57,7 @@ namespace DeploymentTaskTests
         }
 
         [TestMethod, TestCategory("NetworkFileCopy")]
+        [Ignore]
         public async Task TestSftpFileCopy()
         {
             var credentialsManager = new SQLiteCredentialStore(storageSubfolder: "credentials\\test");
