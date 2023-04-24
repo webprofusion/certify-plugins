@@ -23,8 +23,13 @@ CREATE TABLE dbo.manageditem
 
 Grant user permission to work with the database tables:
 ```
+USE [certify]
+CREATE USER [certify_app] FOR LOGIN [certify_app]
+GO
 ALTER ROLE [db_datareader] ADD MEMBER [certify_app]
+GO
 ALTER ROLE [db_datawriter] ADD MEMBER [certify_app]
+GO
 ```
 
 ## Stored Credentials
