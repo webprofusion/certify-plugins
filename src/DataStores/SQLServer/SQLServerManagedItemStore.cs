@@ -264,23 +264,24 @@ namespace Certify.Datastore.SQLServer
 
             var sql = @"SELECT TOP 1 * from manageditem;";
             var queryOK = false;
-            using (var conn = new SqlConnection(_connectionString))
+            try
             {
-                await conn.OpenAsync();
-
-                using (var cmd = new SqlCommand(sql, conn))
+                using (var conn = new SqlConnection(_connectionString))
                 {
-                    try
+                    await conn.OpenAsync();
+
+                    using (var cmd = new SqlCommand(sql, conn))
                     {
                         await cmd.ExecuteReaderAsync();
                         queryOK = true;
+
                     }
-                    catch (Exception ex)
-                    {
-                        _log.Error("Failed to init data store: " + ex.Message);
-                    }
+                    conn.Close();
                 }
-                conn.Close();
+            }
+            catch (Exception ex)
+            {
+                _log.Error("Failed to init data store: " + ex.Message);
             }
 
             return await Task.FromResult(queryOK);
