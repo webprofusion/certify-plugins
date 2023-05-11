@@ -9,6 +9,7 @@ using Polly.Retry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Certify.Datastore.Postgres
@@ -17,11 +18,12 @@ namespace Certify.Datastore.Postgres
     {
         private ILog _log;
         private string _connectionString;
-        private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<ArgumentException>()
-            .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
-            {
-                System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
-            });
+
+        private AsyncRetryPolicy _retryPolicy;
+
+        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
+
+        private const int _semaphoreMaxWaitMS = 10 * 1000;
 
         public static ProviderDefinition Definition
         {
@@ -42,8 +44,17 @@ namespace Certify.Datastore.Postgres
         {
             _connectionString = connectionString;
             _log = log;
+
+            _retryPolicy = Policy
+                    .Handle<ArgumentException>()
+                    .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
+                    {
+                        _log.Warning($"Retrying DB operation..{retryCount} {exception}");
+                    });
+
             return true;
         }
+
         public PostgresManagedItemStore(string connectionString = null, ILog log = null)
         {
             Init(connectionString, log);
@@ -52,22 +63,30 @@ namespace Certify.Datastore.Postgres
         public async Task Delete(ManagedCertificate item)
         {
             _log?.Warning("Deleting managed item", item);
-
-            using (var conn = new NpgsqlConnection(_connectionString))
+            try
             {
-                await conn.OpenAsync();
-                using (var tran = conn.BeginTransaction())
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id=@id", conn))
+                    await conn.OpenAsync();
+                    using (var tran = conn.BeginTransaction())
                     {
-                        cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
-                        await cmd.ExecuteNonQueryAsync();
+                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id=@id", conn))
+                        {
+                            cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
+                            await cmd.ExecuteNonQueryAsync();
 
-                        tran.Commit();
+                            tran.Commit();
+                        }
                     }
-                }
-                await conn.CloseAsync();
+                    await conn.CloseAsync();
 
+                }
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
         }
 
@@ -75,34 +94,52 @@ namespace Certify.Datastore.Postgres
         {
             _log?.Warning("Deleting all managed items");
 
-            using (var conn = new NpgsqlConnection(_connectionString))
+            try
             {
-                await conn.OpenAsync();
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                using (var cmd = new NpgsqlCommand("DELETE FROM manageditem", conn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    await cmd.ExecuteNonQueryAsync();
-                }
+                    await conn.OpenAsync();
 
-                await conn.CloseAsync();
+                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem", conn))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    await conn.CloseAsync();
+                }
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
         }
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            using (var db = new NpgsqlConnection(_connectionString))
+            try
             {
-                await db.OpenAsync();
-                using (var tran = db.BeginTransaction())
-                {
-                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE config ->>'Name' LIKE @nameStartsWith || '%' ", db))
-                    {
-                        cmd.Parameters.Add(new NpgsqlParameter("@nameStartsWith", nameStartsWith));
-                        await cmd.ExecuteNonQueryAsync();
-                    }
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                    tran.Commit();
+                using (var db = new NpgsqlConnection(_connectionString))
+                {
+                    await db.OpenAsync();
+                    using (var tran = db.BeginTransaction())
+                    {
+                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE config ->>'Name' LIKE @nameStartsWith || '%' ", db))
+                        {
+                            cmd.Parameters.Add(new NpgsqlParameter("@nameStartsWith", nameStartsWith));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        tran.Commit();
+                    }
                 }
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
         }
 
@@ -311,95 +348,104 @@ namespace Certify.Datastore.Postgres
                 managedCertificate.Id = Guid.NewGuid().ToString();
             }
 
-            managedCertificate.Version++;
-
-            if (managedCertificate.Version == long.MaxValue)
+            try
             {
-                // rollover version, unlikely but accomodate it anyway
-                managedCertificate.Version = -1;
-            }
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-            //await _retryPolicy.ExecuteAsync(async () =>
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
+                await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    await conn.OpenAsync();
-
-                    ManagedCertificate current = null;
-
-                    // get current version from DB
-                    using (var tran = conn.BeginTransaction())
+                    using (var conn = new NpgsqlConnection(_connectionString))
                     {
-                        using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
-                        {
-                            cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
+                        await conn.OpenAsync();
 
-                            using (var reader = await cmd.ExecuteReaderAsync())
+                        ManagedCertificate current = null;
+
+                        // get current version from DB
+                        using (var tran = conn.BeginTransaction())
+                        {
+                            using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
                             {
-                                if (await reader.ReadAsync())
+                                cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
+
+                                using (var reader = await cmd.ExecuteReaderAsync())
                                 {
-                                    current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-                                    current.IsChanged = false;
+                                    if (await reader.ReadAsync())
+                                    {
+                                        current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
+                                        current.IsChanged = false;
+                                    }
+
+                                    await reader.CloseAsync();
+                                }
+                            }
+
+                            if (current != null)
+                            {
+                                managedCertificate.Version = ++current.Version;
+
+                                if (managedCertificate.Version == long.MaxValue)
+                                {
+                                    // rollover version, unlikely but accomodate it anyway
+                                    managedCertificate.Version = -1;
                                 }
 
-                                await reader.CloseAsync();
+                                if (managedCertificate.Version != -1 && current.Version >= managedCertificate.Version)
+                                {
+                                    // version conflict
+                                    _log?.Error("Managed certificate DB version conflict - newer managed certificate version already stored.");
+                                }
+
+                                try
+                                {
+                                    using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id;", conn))
+                                    {
+                                        cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
+                                        cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
+
+                                        await cmd.ExecuteNonQueryAsync();
+                                    }
+
+                                    tran.Commit();
+                                }
+                                catch (NpgsqlException exp)
+                                {
+                                    await tran.RollbackAsync();
+                                    _log?.Error(exp.ToString());
+                                    throw;
+                                }
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id,config) VALUES(@id,@config);", conn))
+                                    {
+                                        cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
+                                        cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
+
+                                        await cmd.ExecuteNonQueryAsync();
+                                    }
+
+                                    tran.Commit();
+                                }
+                                catch (NpgsqlException exp)
+                                {
+                                    await tran.RollbackAsync();
+                                    _log?.Error(exp.ToString());
+                                    throw;
+                                }
                             }
                         }
 
-                        if (current != null)
-                        {
-                            if (managedCertificate.Version != -1 && current.Version >= managedCertificate.Version)
-                            {
-                                // version conflict
-                                _log?.Error("Managed certificate DB version conflict - newer managed certificate version already stored.");
-                            }
-
-                            try
-                            {
-                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id;", conn))
-                                {
-                                    cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
-                                    cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
-
-                                    await cmd.ExecuteNonQueryAsync();
-                                }
-
-                                tran.Commit();
-                            }
-                            catch (NpgsqlException exp)
-                            {
-                                await tran.RollbackAsync();
-                                _log?.Error(exp.ToString());
-                                throw;
-                            }
-                        }
-                        else
-                        {
-                            try
-                            {
-                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id,config) VALUES(@id,@config);", conn))
-                                {
-                                    cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
-                                    cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
-
-                                    await cmd.ExecuteNonQueryAsync();
-                                }
-
-                                tran.Commit();
-                            }
-                            catch (NpgsqlException exp)
-                            {
-                                await tran.RollbackAsync();
-                                _log?.Error(exp.ToString());
-                                throw;
-                            }
-                        }
+                        await conn.CloseAsync();
                     }
+                });
 
-                    await conn.CloseAsync();
-                }
             }
-            //);
+            finally
+            {
+                _dbMutex.Release();
+            }
 
             return managedCertificate;
         }

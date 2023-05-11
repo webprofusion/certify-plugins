@@ -30,7 +30,7 @@ namespace Certify.Datastore.SQLite
         private string _dbPath = $"C:\\programdata\\certify\\{ITEMMANAGERCONFIG}.db";
         private string _connectionString;
 
-        private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<SQLiteException>().WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1));
+        private AsyncRetryPolicy _retryPolicy;
 
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
 
@@ -58,6 +58,13 @@ namespace Certify.Datastore.SQLite
             var storageSubfolder = connectionString;
 
             _log = log;
+
+            _retryPolicy = Policy
+                    .Handle<ArgumentException>()
+                    .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
+                    {
+                        _log.Warning($"Retrying DB operation..{retryCount} {exception}");
+                    });
 
             if (!string.IsNullOrEmpty(storageSubfolder))
             {
@@ -568,19 +575,11 @@ namespace Certify.Datastore.SQLite
 
             try
             {
-
                 await _dbMutex.WaitAsync(10 * 1000).ConfigureAwait(false);
 
                 if (managedCertificate.Id == null)
                 {
                     managedCertificate.Id = Guid.NewGuid().ToString();
-                }
-
-                managedCertificate.Version++;
-                if (managedCertificate.Version == long.MaxValue)
-                {
-                    // rollover version, unlikely but accomodate it anyway
-                    managedCertificate.Version = -1;
                 }
 
                 await _retryPolicy.ExecuteAsync(async () =>
@@ -612,10 +611,18 @@ namespace Certify.Datastore.SQLite
 
                             if (current != null)
                             {
+                                managedCertificate.Version = ++current.Version;
+
+                                if (managedCertificate.Version == long.MaxValue)
+                                {
+                                    // rollover version, unlikely but accomodate it anyway
+                                    managedCertificate.Version = -1;
+                                }
+
                                 if (managedCertificate.Version != -1 && current.Version >= managedCertificate.Version)
                                 {
                                     // version conflict
-                                    _log?.Error("Managed certificate DB version conflict - newer managed certificate version already stored. UI may have updated item while request was in progress.");
+                                    _log?.Error("Managed certificate DB version conflict - newer managed certificate version already stored.");
                                 }
                             }
 

@@ -9,6 +9,7 @@ using Polly.Retry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Certify.Datastore.SQLServer
@@ -18,11 +19,11 @@ namespace Certify.Datastore.SQLServer
     {
         private ILog _log;
         private string _connectionString;
-        private readonly AsyncRetryPolicy _retryPolicy = Policy.Handle<Exception>()
-                                            .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"Retrying..{retryCount} {exception}");
-                                            });
+        private AsyncRetryPolicy _retryPolicy;
+
+        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
+        private const int _semaphoreMaxWaitMS = 10 * 1000;
+
         public static ProviderDefinition Definition
         {
             get
@@ -41,6 +42,14 @@ namespace Certify.Datastore.SQLServer
         {
             _connectionString = connectionString;
             _log = log;
+
+            _retryPolicy = Policy
+                    .Handle<ArgumentException>()
+                    .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
+                    {
+                        _log.Warning($"Retrying DB operation..{retryCount} {exception}");
+                    });
+
             return true;
         }
 
@@ -55,22 +64,31 @@ namespace Certify.Datastore.SQLServer
         {
             _log?.Warning("Deleting managed item", item);
 
-            using (var conn = new SqlConnection(_connectionString))
+            try
             {
-                await conn.OpenAsync();
-                using (var tran = conn.BeginTransaction())
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                using (var conn = new SqlConnection(_connectionString))
                 {
-                    using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id=@id", conn))
+                    await conn.OpenAsync();
+                    using (var tran = conn.BeginTransaction())
                     {
-                        cmd.Transaction = tran;
-                        cmd.Parameters.Add(new SqlParameter("@id", item.Id));
-                        await cmd.ExecuteNonQueryAsync();
+                        using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id=@id", conn))
+                        {
+                            cmd.Transaction = tran;
+                            cmd.Parameters.Add(new SqlParameter("@id", item.Id));
+                            await cmd.ExecuteNonQueryAsync();
 
-                        tran.Commit();
+                            tran.Commit();
+                        }
                     }
-                }
-                conn.Close();
+                    conn.Close();
 
+                }
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
         }
 
@@ -78,35 +96,53 @@ namespace Certify.Datastore.SQLServer
         {
             _log?.Warning("Deleting all managed items");
 
-            using (var conn = new SqlConnection(_connectionString))
+            try
             {
-                await conn.OpenAsync();
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                using (var cmd = new SqlCommand("DELETE FROM manageditem", conn))
+                using (var conn = new SqlConnection(_connectionString))
                 {
-                    await cmd.ExecuteNonQueryAsync();
-                }
+                    await conn.OpenAsync();
 
-                conn.Close();
+                    using (var cmd = new SqlCommand("DELETE FROM manageditem", conn))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    conn.Close();
+                }
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
         }
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            using (var db = new SqlConnection(_connectionString))
+            try
             {
-                await db.OpenAsync();
-                using (var tran = db.BeginTransaction())
-                {
-                    using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE JSON_VALUE(config, '$.Name') LIKE @nameStartsWith + '%' ", db))
-                    {
-                        cmd.Transaction = tran;
-                        cmd.Parameters.Add(new SqlParameter("@nameStartsWith", nameStartsWith));
-                        await cmd.ExecuteNonQueryAsync();
-                    }
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                    tran.Commit();
+                using (var db = new SqlConnection(_connectionString))
+                {
+                    await db.OpenAsync();
+                    using (var tran = db.BeginTransaction())
+                    {
+                        using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE JSON_VALUE(config, '$.Name') LIKE @nameStartsWith + '%' ", db))
+                        {
+                            cmd.Transaction = tran;
+                            cmd.Parameters.Add(new SqlParameter("@nameStartsWith", nameStartsWith));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        tran.Commit();
+                    }
                 }
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
         }
 
@@ -304,108 +340,119 @@ namespace Certify.Datastore.SQLServer
 
         public async Task<ManagedCertificate> Update(ManagedCertificate managedCertificate)
         {
-            if (managedCertificate == null)
+            try
             {
-                return null;
-            }
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-            if (managedCertificate.Id == null)
-            {
-                managedCertificate.Id = Guid.NewGuid().ToString();
-            }
-
-            managedCertificate.Version++;
-
-            if (managedCertificate.Version == long.MaxValue)
-            {
-                // rollover version, unlikely but accomodate it anyway
-                managedCertificate.Version = -1;
-            }
-
-            using (var conn = new SqlConnection(_connectionString))
-            {
-                await conn.OpenAsync();
-
-                ManagedCertificate current = null;
-
-                // get current version from DB
-                using (var tran = conn.BeginTransaction())
+                if (managedCertificate == null)
                 {
-                    using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
-                    {
-                        cmd.Transaction = tran;
-                        cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
-
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            if (await reader.ReadAsync())
-                            {
-                                current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-                                current.IsChanged = false;
-                            }
-
-                            reader.Close();
-                        }
-                    }
-
-                    if (current != null)
-                    {
-                        if (managedCertificate.Version != -1 && current.Version >= managedCertificate.Version)
-                        {
-                            // version conflict
-                            _log?.Error("Managed certificate DB version conflict - newer managed certificate version already stored.");
-                        }
-
-                        try
-                        {
-                            using (var cmd = new SqlCommand("UPDATE manageditem SET config = @config WHERE id=@id", conn))
-                            {
-                                cmd.Transaction = tran;
-
-                                cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
-                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
-
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            tran.Commit();
-                        }
-                        catch (SqlException exp)
-                        {
-                            tran.Rollback();
-                            _log?.Error(exp.ToString());
-                            throw;
-                        }
-                    }
-                    else
-                    {
-
-                        try
-                        {
-                            using (var cmd = new SqlCommand("INSERT INTO manageditem(id,config) VALUES(@id,@config)", conn))
-                            {
-                                cmd.Transaction = tran;
-                                cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
-                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
-
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            tran.Commit();
-                        }
-                        catch (SqlException exp)
-                        {
-                            tran.Rollback();
-                            _log?.Error(exp.ToString());
-                            throw;
-                        }
-                    }
+                    return null;
                 }
 
-                conn.Close();
-            }
+                if (managedCertificate.Id == null)
+                {
+                    managedCertificate.Id = Guid.NewGuid().ToString();
+                }
 
-            return managedCertificate;
+                await _retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var conn = new SqlConnection(_connectionString))
+                    {
+                        await conn.OpenAsync();
+
+                        ManagedCertificate current = null;
+
+                        // get current version from DB
+                        using (var tran = conn.BeginTransaction())
+                        {
+                            using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
+                            {
+                                cmd.Transaction = tran;
+                                cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
+
+                                using (var reader = await cmd.ExecuteReaderAsync())
+                                {
+                                    if (await reader.ReadAsync())
+                                    {
+                                        current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
+                                        current.IsChanged = false;
+                                    }
+
+                                    reader.Close();
+                                }
+                            }
+
+                            if (current != null)
+                            {
+                                managedCertificate.Version = ++current.Version;
+
+                                if (managedCertificate.Version == long.MaxValue)
+                                {
+                                    // rollover version, unlikely but accomodate it anyway
+                                    managedCertificate.Version = -1;
+                                }
+
+                                if (managedCertificate.Version != -1 && current.Version >= managedCertificate.Version)
+                                {
+                                    // version conflict
+                                    _log?.Error("Managed certificate DB version conflict - newer managed certificate version already stored.");
+                                }
+
+                                try
+                                {
+                                    using (var cmd = new SqlCommand("UPDATE manageditem SET config = @config WHERE id=@id", conn))
+                                    {
+                                        cmd.Transaction = tran;
+
+                                        cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
+                                        cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+
+                                        await cmd.ExecuteNonQueryAsync();
+                                    }
+
+                                    tran.Commit();
+                                }
+                                catch (SqlException exp)
+                                {
+                                    tran.Rollback();
+                                    _log?.Error(exp.ToString());
+                                    throw;
+                                }
+                            }
+                            else
+                            {
+
+                                try
+                                {
+                                    using (var cmd = new SqlCommand("INSERT INTO manageditem(id,config) VALUES(@id,@config)", conn))
+                                    {
+                                        cmd.Transaction = tran;
+                                        cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
+                                        cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+
+                                        await cmd.ExecuteNonQueryAsync();
+                                    }
+
+                                    tran.Commit();
+                                }
+                                catch (SqlException exp)
+                                {
+                                    tran.Rollback();
+                                    _log?.Error(exp.ToString());
+                                    throw;
+                                }
+                            }
+                        }
+
+                        conn.Close();
+                    }
+                });
+                return managedCertificate;
+            }
+            finally
+            {
+                _dbMutex.Release();
+            }
         }
     }
 }
