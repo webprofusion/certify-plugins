@@ -33,6 +33,7 @@ namespace Certify.Datastore.SQLite
         private AsyncRetryPolicy _retryPolicy;
 
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
+        private const int _semaphoreMaxWaitMS = 10 * 1000;
 
         private ILog _log;
 
@@ -138,22 +139,23 @@ namespace Certify.Datastore.SQLite
                         db.Open();
 
                         var backupFile = $"{_dbPath}.bak";
-
-                        // archive previous backup if it looks valid
-                        if (File.Exists(backupFile) && new System.IO.FileInfo(backupFile).Length > 1024)
-                        {
-                            File.Copy($"{_dbPath}.bak", $"{_dbPath}.bak.old", true);
-                        }
-
-                        // remove previous backup (invalid backups can be corrupt and cause subsequent backups to fail)
-                        if (File.Exists(backupFile))
-                        {
-                            File.Delete(backupFile);
-                        }
-
-                        // create new backup
                         try
                         {
+                            // archive previous backup if it looks valid
+                            if (File.Exists(backupFile) && new System.IO.FileInfo(backupFile).Length > 1024)
+                            {
+
+                                File.Copy($"{_dbPath}.bak", $"{_dbPath}.bak.old", true);
+                            }
+
+                            // remove previous backup (invalid backups can be corrupt and cause subsequent backups to fail)
+                            if (File.Exists(backupFile))
+                            {
+                                File.Delete(backupFile);
+                            }
+
+                            // create new backup
+
                             using (var backupDB = new SQLiteConnection($"Data Source ={backupFile}"))
                             {
                                 backupDB.Open();
@@ -165,7 +167,7 @@ namespace Certify.Datastore.SQLite
                         }
                         catch (Exception exp)
                         {
-                            _log?.Information($"Failed to performed db backup to {backupFile}. Check file permissions and delete old file if there is a conflict. " + exp.ToString());
+                            _log?.Error($"Failed to performed db backup to {backupFile}. Check file permissions and delete old file if there is a conflict. " + exp.ToString());
 
                         }
 
@@ -427,7 +429,7 @@ namespace Certify.Datastore.SQLite
 
                 try
                 {
-                    await _dbMutex.WaitAsync(10 * 1000).ConfigureAwait(false);
+                    await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
                     using (var db = new SQLiteConnection(_connectionString))
                     using (var cmd = new SQLiteCommand(sql, db))
@@ -575,7 +577,7 @@ namespace Certify.Datastore.SQLite
 
             try
             {
-                await _dbMutex.WaitAsync(10 * 1000).ConfigureAwait(false);
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
                 if (managedCertificate.Id == null)
                 {
@@ -652,20 +654,28 @@ namespace Certify.Datastore.SQLite
 
         public async Task Delete(ManagedCertificate site)
         {
-            // save modified items into settings database
-            using (var db = new SQLiteConnection(_connectionString))
+            try
             {
-                await db.OpenAsync();
-                using (var tran = db.BeginTransaction())
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                // save modified items into settings database
+                using (var db = new SQLiteConnection(_connectionString))
                 {
-                    using (var cmd = new SQLiteCommand("DELETE FROM manageditem WHERE id=@id", db))
+                    await db.OpenAsync();
+                    using (var tran = db.BeginTransaction())
                     {
-                        cmd.Parameters.Add(new SQLiteParameter("@id", site.Id));
-                        await cmd.ExecuteNonQueryAsync();
-                    }
+                        using (var cmd = new SQLiteCommand("DELETE FROM manageditem WHERE id=@id", db))
+                        {
+                            cmd.Parameters.Add(new SQLiteParameter("@id", site.Id));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
 
-                    tran.Commit();
+                        tran.Commit();
+                    }
                 }
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
         }
 
