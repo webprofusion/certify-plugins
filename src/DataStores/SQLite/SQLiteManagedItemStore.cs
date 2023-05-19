@@ -18,6 +18,7 @@ namespace Certify.Datastore.SQLite
 {
     /// <summary>
     /// SQLiteItemManager is the storage service implementation for Managed Certificate information using SQLite
+    /// This provider features use of semaphore and retry policies as the underlying SQLite file database is susceptible to interference/locking from external apps like windows real-time protection etc.
     /// </summary>
     public class SQLiteManagedItemStore : IManagedItemStore
     {
@@ -431,36 +432,39 @@ namespace Certify.Datastore.SQLite
                 {
                     await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                    using (var db = new SQLiteConnection(_connectionString))
-                    using (var cmd = new SQLiteCommand(sql, db))
+                    await _retryPolicy.ExecuteAsync(async () =>
                     {
-                        cmd.Parameters.AddRange(queryParameters.ToArray());
-
-                        await db.OpenAsync();
-
-                        using (var reader = await cmd.ExecuteReaderAsync())
+                        using (var db = new SQLiteConnection(_connectionString))
+                        using (var cmd = new SQLiteCommand(sql, db))
                         {
-                            while (await reader.ReadAsync())
+                            cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                            await db.OpenAsync();
+
+                            using (var reader = await cmd.ExecuteReaderAsync())
                             {
-                                var itemId = (string)reader["id"];
-
-                                var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
-
-                                // in some cases users may have previously manipulated the id, causing
-                                // duplicates. Correct the ID here (database Id is unique):
-                                if (managedCertificate.Id != itemId)
+                                while (await reader.ReadAsync())
                                 {
-                                    managedCertificate.Id = itemId;
-                                    Debug.WriteLine("LoadSettings: Corrected managed site id: " + managedCertificate.Name);
+                                    var itemId = (string)reader["id"];
+
+                                    var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
+
+                                    // in some cases users may have previously manipulated the id, causing
+                                    // duplicates. Correct the ID here (database Id is unique):
+                                    if (managedCertificate.Id != itemId)
+                                    {
+                                        managedCertificate.Id = itemId;
+                                        Debug.WriteLine("LoadSettings: Corrected managed site id: " + managedCertificate.Name);
+                                    }
+
+                                    managedCertificates.Add(managedCertificate);
                                 }
 
-                                managedCertificates.Add(managedCertificate);
+                                reader.Close();
                             }
-
-                            reader.Close();
+                            db.Close();
                         }
-                        db.Close();
-                    }
+                    });
 
                     foreach (var site in managedCertificates)
                     {
@@ -536,23 +540,26 @@ namespace Certify.Datastore.SQLite
         {
             ManagedCertificate managedCertificate = null;
 
-            using (var db = new SQLiteConnection(_connectionString))
-            using (var cmd = new SQLiteCommand("SELECT json FROM manageditem WHERE id=@id", db))
+            await _retryPolicy.ExecuteAsync(async () =>
             {
-                cmd.Parameters.Add(new SQLiteParameter("@id", siteId));
-
-                await db.OpenAsync();
-                using (var reader = await cmd.ExecuteReaderAsync())
+                using (var db = new SQLiteConnection(_connectionString))
+                using (var cmd = new SQLiteCommand("SELECT json FROM manageditem WHERE id=@id", db))
                 {
-                    if (await reader.ReadAsync())
-                    {
-                        managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
-                        managedCertificate.IsChanged = false;
-                    }
+                    cmd.Parameters.Add(new SQLiteParameter("@id", siteId));
 
-                    reader.Close();
+                    await db.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
+                            managedCertificate.IsChanged = false;
+                        }
+
+                        reader.Close();
+                    }
                 }
-            }
+            });
 
             return managedCertificate;
         }
