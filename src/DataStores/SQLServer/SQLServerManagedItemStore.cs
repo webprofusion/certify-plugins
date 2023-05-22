@@ -68,23 +68,26 @@ namespace Certify.Datastore.SQLServer
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                using (var conn = new SqlConnection(_connectionString))
+                await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    await conn.OpenAsync();
-                    using (var tran = conn.BeginTransaction())
+                    using (var conn = new SqlConnection(_connectionString))
                     {
-                        using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id=@id", conn))
+                        await conn.OpenAsync();
+                        using (var tran = conn.BeginTransaction())
                         {
-                            cmd.Transaction = tran;
-                            cmd.Parameters.Add(new SqlParameter("@id", item.Id));
-                            await cmd.ExecuteNonQueryAsync();
+                            using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id=@id", conn))
+                            {
+                                cmd.Transaction = tran;
+                                cmd.Parameters.Add(new SqlParameter("@id", item.Id));
+                                await cmd.ExecuteNonQueryAsync();
 
-                            tran.Commit();
+                                tran.Commit();
+                            }
                         }
-                    }
-                    conn.Close();
+                        conn.Close();
 
-                }
+                    }
+                });
             }
             finally
             {
@@ -231,37 +234,40 @@ namespace Certify.Datastore.SQLServer
                 sql += $" OFFSET 0 ROWS FETCH NEXT {filter.MaxResults} ROWS ONLY;";
             }
 
-            using (var conn = new SqlConnection(_connectionString))
+            await _retryPolicy.ExecuteAsync(async () =>
             {
-
-                await conn.OpenAsync();
-
-                using (var cmd = new SqlCommand(sql, conn))
+                using (var conn = new SqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddRange(queryParameters.ToArray());
 
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    await conn.OpenAsync();
+
+                    using (var cmd = new SqlCommand(sql, conn))
                     {
-                        while (await reader.ReadAsync())
+                        cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            var itemId = (string)reader["id"];
-
-                            var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-
-                            // in some cases users may have previously manipulated the id, causing
-                            // duplicates. Correct the ID here (database Id is unique):
-                            if (managedCertificate.Id != itemId)
+                            while (await reader.ReadAsync())
                             {
-                                managedCertificate.Id = itemId;
-                                _log?.Debug("SQL Server: Corrected managed item id: " + managedCertificate.Name);
-                            }
+                                var itemId = (string)reader["id"];
 
-                            managedCertificates.Add(managedCertificate);
+                                var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
+
+                                // in some cases users may have previously manipulated the id, causing
+                                // duplicates. Correct the ID here (database Id is unique):
+                                if (managedCertificate.Id != itemId)
+                                {
+                                    managedCertificate.Id = itemId;
+                                    _log?.Debug("SQL Server: Corrected managed item id: " + managedCertificate.Name);
+                                }
+
+                                managedCertificates.Add(managedCertificate);
+                            }
                         }
                     }
+                    conn.Close();
                 }
-                conn.Close();
-            }
+            });
 
             return managedCertificates;
         }
@@ -270,27 +276,29 @@ namespace Certify.Datastore.SQLServer
         {
             ManagedCertificate managedCertificate = null;
 
-            using (var conn = new SqlConnection(_connectionString))
+            await _retryPolicy.ExecuteAsync(async () =>
             {
-                await conn.OpenAsync();
-                using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
+                using (var conn = new SqlConnection(_connectionString))
                 {
-                    cmd.Parameters.Add(new SqlParameter("@id", itemId));
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    await conn.OpenAsync();
+                    using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
                     {
-                        if (await reader.ReadAsync())
+                        cmd.Parameters.Add(new SqlParameter("@id", itemId));
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-                            managedCertificate.IsChanged = false;
+                            if (await reader.ReadAsync())
+                            {
+                                managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
+                                managedCertificate.IsChanged = false;
+                            }
+
+                            reader.Close();
                         }
-
-                        reader.Close();
                     }
+                    conn.Close();
                 }
-                conn.Close();
-
-            }
+            });
 
             return managedCertificate;
         }
@@ -302,18 +310,21 @@ namespace Certify.Datastore.SQLServer
             var queryOK = false;
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    await conn.OpenAsync();
-
-                    using (var cmd = new SqlCommand(sql, conn))
+                    using (var conn = new SqlConnection(_connectionString))
                     {
-                        await cmd.ExecuteReaderAsync();
-                        queryOK = true;
+                        await conn.OpenAsync();
 
+                        using (var cmd = new SqlCommand(sql, conn))
+                        {
+                            await cmd.ExecuteReaderAsync();
+                            queryOK = true;
+
+                        }
+                        conn.Close();
                     }
-                    conn.Close();
-                }
+                });
             }
             catch (Exception ex)
             {

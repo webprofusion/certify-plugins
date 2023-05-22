@@ -234,37 +234,39 @@ namespace Certify.Datastore.Postgres
                 sql += $" LIMIT {filter.MaxResults}";
             }
 
-            using (var conn = new NpgsqlConnection(_connectionString))
+            await _retryPolicy.ExecuteAsync(async () =>
             {
-                await conn.OpenAsync();
-
-                using (var cmd = new NpgsqlCommand(sql, conn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddRange(queryParameters.ToArray());
+                    await conn.OpenAsync();
 
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        while (await reader.ReadAsync())
+                        cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            var itemId = (string)reader["id"];
-
-                            var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-
-                            // in some cases users may have previously manipulated the id, causing
-                            // duplicates. Correct the ID here (database Id is unique):
-                            if (managedCertificate.Id != itemId)
+                            while (await reader.ReadAsync())
                             {
-                                managedCertificate.Id = itemId;
-                                _log?.Debug("Postgres: Corrected managed item id: " + managedCertificate.Name);
-                            }
+                                var itemId = (string)reader["id"];
 
-                            managedCertificates.Add(managedCertificate);
+                                var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
+
+                                // in some cases users may have previously manipulated the id, causing
+                                // duplicates. Correct the ID here (database Id is unique):
+                                if (managedCertificate.Id != itemId)
+                                {
+                                    managedCertificate.Id = itemId;
+                                    _log?.Debug("Postgres: Corrected managed item id: " + managedCertificate.Name);
+                                }
+
+                                managedCertificates.Add(managedCertificate);
+                            }
                         }
                     }
+                    await conn.CloseAsync();
                 }
-                await conn.CloseAsync();
-            }
-
+            });
             return managedCertificates;
         }
 
@@ -272,27 +274,30 @@ namespace Certify.Datastore.Postgres
         {
             ManagedCertificate managedCertificate = null;
 
-            using (var conn = new NpgsqlConnection(_connectionString))
+            await _retryPolicy.ExecuteAsync(async () =>
             {
-                await conn.OpenAsync();
-                using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.Add(new NpgsqlParameter("@id", itemId));
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    await conn.OpenAsync();
+                    using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
                     {
-                        if (await reader.ReadAsync())
+                        cmd.Parameters.Add(new NpgsqlParameter("@id", itemId));
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-                            managedCertificate.IsChanged = false;
+                            if (await reader.ReadAsync())
+                            {
+                                managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
+                                managedCertificate.IsChanged = false;
+                            }
+
+                            await reader.CloseAsync();
                         }
-
-                        await reader.CloseAsync();
                     }
-                }
-                await conn.CloseAsync();
+                    await conn.CloseAsync();
 
-            }
+                }
+            });
 
             return managedCertificate;
         }
@@ -301,24 +306,29 @@ namespace Certify.Datastore.Postgres
         {
             var sql = @"SELECT * from manageditem LIMIT 1;";
             var queryOK = false;
-            using (var conn = new NpgsqlConnection(_connectionString))
-            {
-                await conn.OpenAsync();
 
-                using (var cmd = new NpgsqlCommand(sql, conn))
+            await _retryPolicy.ExecuteAsync(async () =>
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    try
+                    await conn.OpenAsync();
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        await cmd.ExecuteReaderAsync();
-                        queryOK = true;
+                        try
+                        {
+                            await cmd.ExecuteReaderAsync();
+                            queryOK = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.Error("Failed to init data store: " + ex.Message);
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        _log.Error("Failed to init data store: " + ex.Message);
-                    }
+                    await conn.CloseAsync();
                 }
-                await conn.CloseAsync();
-            }
+            });
+
             return await Task.FromResult(queryOK);
         }
 
