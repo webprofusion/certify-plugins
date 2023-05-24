@@ -26,12 +26,12 @@ namespace Plugin.DeploymentTasks.Azure
             Definition = new DeploymentProviderDefinition
             {
                 Id = "Certify.Providers.DeploymentTasks.AzureAppService",
-                Title = "Deploy to Azure App Service",
+                Title = "Deploy to Azure App Service [deprecated]",
                 IsExperimental = true,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = "ExternalAuth.Azure.ClientSecret",
-                Description = "Apply a certificate to an Azure App Service",
+                Description = "Apply a certificate to an Azure App Service. Note: We recommend you deploy to Azure KeyVault or use the free Azure App Service Managed Certificates feature instead.",
                 ProviderParameters = new List<ProviderParameter>
                 {
                     new ProviderParameter{ Key="service_name", Name="App Service Name", IsRequired=true, IsCredential=false,  Description="e.g. my-example-app", Type= OptionType.String },
