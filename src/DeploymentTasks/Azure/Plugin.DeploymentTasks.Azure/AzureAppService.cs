@@ -93,6 +93,7 @@ namespace Plugin.DeploymentTasks.Azure
             var appServiceType = "webapp";
             string appServiceId = null;
 
+
             var webapps = await azure.WebApps.ListAsync();
 
             // target could be web app/web app slot, function app/ function app slot
@@ -110,6 +111,12 @@ namespace Plugin.DeploymentTasks.Azure
                     appServiceId = targetFunction.Id;
                     appServiceType = "function";
 
+                }
+                else
+                {
+                    var webAppNames = string.Join(",", webapps.Select(a => a.Name.ToLower()));
+                    var functionNames = string.Join(",", functions.Select(a => a.Name.ToLower()));
+                    execParams.Log.Warning($"Azure App Service: webapp/function not found in list of apps [{webAppNames}] or functions [{functionNames}]");
                 }
             }
             else
