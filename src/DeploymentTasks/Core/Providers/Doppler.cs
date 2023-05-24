@@ -66,7 +66,7 @@ namespace Certify.Providers.DeploymentTasks
             var secretname_pfx = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "secretname_pfx")?.Value;
 
             var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("authorization",$"Bearer {execParams.Credentials["api_token"]}");
+            httpClient.DefaultRequestHeaders.Add("authorization", $"Bearer {execParams.Credentials["api_token"]}");
 
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
