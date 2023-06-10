@@ -80,9 +80,9 @@ namespace Certify.Providers.DeploymentTasks
             if (!string.IsNullOrWhiteSpace(chainPath?.Value) && !results.Any(r => r.IsSuccess == false))
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
+                settings.Parameters.Find(p => p.Key == "type").Value = "pemintermediates";
 
-                execParams.Log.Information(definition.Title + ":: exporting PEM format chain file");
+                execParams.Log.Information(definition.Title + ":: exporting PEM format CA chain file (intermediates)");
                 results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 

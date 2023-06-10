@@ -92,7 +92,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     key = GetEncodedCertComponent("pemkey", pfxData, pfxPwd),
                     cert = GetEncodedCertComponent("pemcrt", pfxData, pfxPwd),
-                    intermediates = GetEncodedCertComponent("pemchain", pfxData, pfxPwd),
+                    intermediates = GetEncodedCertComponent("pemintermediates", pfxData, pfxPwd),
                     pfx = GetEncodedCertComponent("pfxfull", pfxData, pfxPwd)
                 }
             };
@@ -136,6 +136,10 @@ namespace Certify.Providers.DeploymentTasks
             else if (exportType == "pemchain")
             {
                 exportString = CertUtils.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate);
+            }
+            else if (exportType == "pemintermediates")
+            {
+                exportString = CertUtils.GetCertComponentsAsPEMString(pfxData, certPwd, ExportFlags.IntermediateCertificates);
             }
             else if (exportType == "pemcrt")
             {
