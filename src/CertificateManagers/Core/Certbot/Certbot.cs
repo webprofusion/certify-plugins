@@ -136,10 +136,11 @@ namespace Plugin.CertificateManagers
                                         PrimaryDomain = parsedCert.SubjectName.Name
                                     };
 
-                                    var sn = ((System.Collections.ArrayList)cert.GetSubjectAlternativeNames());
+                                    var sn = cert.GetSubjectAlternativeNames();
+                                    
 
                                     var sans = new List<string>();
-                                    foreach (System.Collections.ArrayList s in sn)
+                                    foreach (var s in sn)
                                     {
                                         sans.Add(s[1].ToString());
                                     }
