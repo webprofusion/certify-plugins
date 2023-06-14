@@ -391,11 +391,11 @@ namespace Certify.Datastore.Postgres
 
                             if (current != null)
                             {
-                                managedCertificate.Version = ++current.Version;
+                                managedCertificate.Version = current.Version + 1;
 
                                 if (managedCertificate.Version == long.MaxValue)
                                 {
-                                    // rollover version, unlikely but accomodate it anyway
+                                    // rollover version, unlikely but accommodate it anyway
                                     managedCertificate.Version = -1;
                                 }
 

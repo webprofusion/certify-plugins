@@ -137,7 +137,7 @@ namespace Plugin.CertificateManagers
                                     };
 
                                     var sn = cert.GetSubjectAlternativeNames();
-                                    
+
 
                                     var sans = new List<string>();
                                     foreach (var s in sn)
