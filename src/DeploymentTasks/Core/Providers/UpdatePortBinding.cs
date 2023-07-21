@@ -31,7 +31,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                       new ProviderParameter{ Key="ip", Name="IP", IsRequired=true, IsCredential=false, Value="0.0.0.0", Description="e.g. 0.0.0.0 would bind for all IPs"},
                       new ProviderParameter{ Key="port", Name="Port", IsRequired=true, IsCredential=false},
-                      new ProviderParameter{ Key="appid", Name="App Id (Guid)", IsRequired=true, IsCredential=false, Description="(optional app id, without {} brackets)"},
+                      new ProviderParameter{ Key="appid", Name="App Id (Guid)", IsRequired=true, IsCredential=false, Description="(optional)"},
                 }
             };
         }
