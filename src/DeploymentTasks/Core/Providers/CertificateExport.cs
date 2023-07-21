@@ -230,9 +230,8 @@ namespace Certify.Providers.DeploymentTasks
                             log.Error(err);
 
                             return new List<ActionResult>{
-                            new ActionResult { IsSuccess = false, Message = err
-}
-                        };
+                                new ActionResult { IsSuccess = false, Message = err }
+                            };
                         }
                     }
 
