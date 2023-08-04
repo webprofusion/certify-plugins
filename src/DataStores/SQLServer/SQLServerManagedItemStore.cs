@@ -8,6 +8,7 @@ using Polly;
 using Polly.Retry;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -154,11 +155,14 @@ namespace Certify.Datastore.SQLServer
 
         }
 
-        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
+        public (string sql, List<SqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
-            var managedCertificates = new List<ManagedCertificate>();
-
             var sql = @"SELECT * FROM (SELECT id, config, JSON_VALUE(config, '$.Name') as Name FROM manageditem) i ";
+
+            if (countMode)
+            {
+                sql = @"SELECT COUNT(1) as numItems FROM(SELECT id, config, JSON_VALUE(config, '$.Name') as Name FROM manageditem) i ";
+            }
 
             var queryParameters = new List<SqlParameter>();
             var conditions = new List<string>();
@@ -223,7 +227,57 @@ namespace Certify.Datastore.SQLServer
                 }
             }
 
-            sql += $" ORDER BY Name ASC";
+            if (!countMode)
+            {
+                sql += $" ORDER BY Name ASC";
+            }
+
+            return (sql, queryParameters);
+        }
+
+        public async Task<long> CountAll(ManagedCertificateFilter filter)
+        {
+            long count = 0;
+
+            var watch = Stopwatch.StartNew();
+
+            (string sql, List<SqlParameter> queryParameters) = BuildQuery(filter, countMode: true);
+
+            try
+            {
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                await _retryPolicy.ExecuteAsync(async () =>
+                {
+
+                    using (var db = new SqlConnection(_connectionString))
+                    using (var cmd = new SqlCommand(sql, db))
+                    {
+                        cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                        await db.OpenAsync();
+                        count = (int)await cmd.ExecuteScalarAsync();
+
+                        db.Close();
+                    }
+                });
+            }
+            finally
+            {
+                _dbMutex.Release();
+            }
+
+
+            Debug.WriteLine($"CountAll[SQL Server] took {watch.ElapsedMilliseconds}ms for {count} records");
+
+            return count;
+        }
+
+        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
+        {
+            var managedCertificates = new List<ManagedCertificate>();
+
+            (string sql, List<SqlParameter> queryParameters) = BuildQuery(filter, countMode: false);
 
             if (filter?.PageIndex != null && filter?.PageSize != null)
             {
