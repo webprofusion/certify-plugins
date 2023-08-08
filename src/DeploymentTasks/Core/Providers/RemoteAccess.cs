@@ -24,11 +24,12 @@ namespace Certify.Providers.DeploymentTasks
                 DefaultTitle = "Deploy to Remote Access Services",
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
-                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser,
+                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to RAS using Powershell (Set-RemoteAccess)",
                 ProviderParameters = new List<ProviderParameter>
                 {
                     new ProviderParameter { Key = "restartServices", Name = "Include Service Restart?", Type= OptionType.Boolean, IsCredential = false, Value="false" },
+                    new ProviderParameter { Key = "logontype", Name = "Impersonation LogonType", IsRequired= false, IsCredential= false, Type= OptionType.Select, Value="interactive", OptionsList=Helpers.LogonTypeOptions }
                 }
             };
         }
@@ -50,8 +51,9 @@ namespace Certify.Providers.DeploymentTasks
             execParams.Log?.Information("Executing command via PowerShell");
 
             var parameters = new Dictionary<string, object>();
+            var logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
 
-            var scriptResult = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
+            var scriptResult = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials, logonType: logonType);
 
             return new List<ActionResult> { scriptResult };
 

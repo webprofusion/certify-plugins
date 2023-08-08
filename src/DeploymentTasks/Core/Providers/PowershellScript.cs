@@ -1,6 +1,7 @@
 ﻿using Certify.Management;
 using Certify.Models;
 using Certify.Models.Config;
+using Plugin.DeploymentTasks.Shared;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     new ProviderParameter{ Key="scriptpath", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
                     new ProviderParameter{ Key="inputresult", Name="Pass Result as First Arg", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="true"  },
-                    new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList="network=Network;newcredentials=New Credentials;service=Service;interactive=Interactive;batch=Batch"  },
+                    new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList=Helpers.LogonTypeOptions  },
                     new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
                     new ProviderParameter{ Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
                     new ProviderParameter{ Key="newprocess", Name="Launch New Process", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false" }
