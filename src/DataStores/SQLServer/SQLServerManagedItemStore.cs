@@ -184,13 +184,13 @@ namespace Certify.Datastore.SQLServer
             if (filter.LastOCSPCheckMins != null)
             {
                 conditions.Add(" CAST(JSON_VALUE(i.config, '$.DateLastOcspCheck')  AS datetimeoffset(7)) < @ocspCheckDate");
-                queryParameters.Add(new SqlParameter("@ocspCheckDate", DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
+                queryParameters.Add(new SqlParameter("@ocspCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastOCSPCheckMins)));
             }
 
             if (filter.LastRenewalInfoCheckMins != null)
             {
                 conditions.Add(" CAST(JSON_VALUE(i.config, '$.DateLastRenewalInfoCheck')  AS datetimeoffset(7)) < @renewalInfoCheckDate");
-                queryParameters.Add(new SqlParameter("@renewalInfoCheckDate", DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
+                queryParameters.Add(new SqlParameter("@renewalInfoCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastRenewalInfoCheckMins)));
             }
 
             if (filter.ChallengeType != null)

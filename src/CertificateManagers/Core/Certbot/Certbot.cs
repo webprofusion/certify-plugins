@@ -116,15 +116,17 @@ namespace Plugin.CertificateManagers
                                 try
                                 {
                                     var cert = Certify.Management.CertificateManager.ReadCertificateFromPem(certFile.FullName);
-                                    var parsedCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(cert.GetEncoded()); managedCert.DateStart = cert.NotBefore;
-                                    managedCert.DateExpiry = cert.NotAfter;
-                                    managedCert.DateRenewed = cert.NotBefore;
-                                    managedCert.DateLastRenewalAttempt = cert.NotBefore;
+                                    var parsedCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(cert.GetEncoded());
+
+                                    managedCert.DateStart = new DateTimeOffset(cert.NotBefore);
+                                    managedCert.DateExpiry = new DateTimeOffset(cert.NotAfter);
+                                    managedCert.DateRenewed = new DateTimeOffset(cert.NotBefore);
+                                    managedCert.DateLastRenewalAttempt = new DateTimeOffset(cert.NotBefore);
                                     managedCert.CertificateThumbprintHash = parsedCert.Thumbprint;
                                     managedCert.CertificatePath = certFile.FullName;
                                     managedCert.LastRenewalStatus = RequestState.Success;
 
-                                    if (cert.NotAfter < DateTime.Now.AddDays(29))
+                                    if (cert.NotAfter < DateTime.UtcNow.AddDays(29))
                                     {
                                         // assume certs with less than 30 days left have failed to renew
                                         managedCert.LastRenewalStatus = RequestState.Error;

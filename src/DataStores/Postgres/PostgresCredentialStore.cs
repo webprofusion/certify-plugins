@@ -232,7 +232,7 @@ namespace Certify.Datastore.Postgres
                 return null;
             }
 
-            credentialInfo.DateCreated = DateTime.Now;
+            credentialInfo.DateCreated = DateTime.UtcNow;
 
             var protectedContent = Protect(credentialInfo.Secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
 
