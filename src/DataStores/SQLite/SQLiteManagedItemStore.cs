@@ -345,7 +345,11 @@ namespace Certify.Datastore.SQLite
 
         public (string sql, List<SQLiteParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
-            var sql = @"SELECT i.id, i.json, i.json ->> 'Name' as Name FROM manageditem i ";
+            var sql = @"SELECT i.id, i.json, i.json ->> 'Name' as Name, 
+                datetime(i.json ->> 'DateRenewed') as DateRenewed, 
+                datetime(i.json ->> 'DateLastRenewalAttempt') as DateLastRenewalAttempt ,
+                datetime(i.json ->> 'DateExpiry') as DateExpiry 
+                FROM manageditem i ";
 
             if (countMode)
             {
@@ -417,7 +421,14 @@ namespace Certify.Datastore.SQLite
 
             if (!countMode)
             {
-                sql += $" ORDER BY Name COLLATE NOCASE ASC";
+                if (filter.OrderBy == ManagedCertificateFilter.SortMode.NAME_ASC)
+                {
+                    sql += $" ORDER BY Name COLLATE NOCASE ASC";
+                }
+                else if (filter.OrderBy == ManagedCertificateFilter.SortMode.RENEWAL_ASC)
+                {
+                    sql += $" ORDER BY DateLastRenewalAttempt ASC";
+                }
             }
 
             return (sql, queryParameters);
@@ -624,8 +635,7 @@ namespace Certify.Datastore.SQLite
 
         public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
         {
-            var items = await LoadAllManagedCertificates(filter);
-            return items.ToList();
+            return (await LoadAllManagedCertificates(filter)) as List<ManagedCertificate>;
         }
 
         public async Task<ManagedCertificate> Update(ManagedCertificate managedCertificate)

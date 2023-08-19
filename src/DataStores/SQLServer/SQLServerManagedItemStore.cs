@@ -157,7 +157,12 @@ namespace Certify.Datastore.SQLServer
 
         public (string sql, List<SqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
-            var sql = @"SELECT * FROM (SELECT id, config, JSON_VALUE(config, '$.Name') as Name FROM manageditem) i ";
+            var sql = @"SELECT * FROM (
+                        SELECT id, config, JSON_VALUE(config, '$.Name') as [Name], 
+                        CAST(JSON_VALUE(config, '$.DateRenewed') AS datetimeoffset(7)) as [DateRenewed], 
+                        CAST(JSON_VALUE(config, '$.DateLastRenewalAttempt') AS datetimeoffset(7)) as [DateLastRenewalAttempt] ,
+                        CAST(JSON_VALUE(config, '$.DateExpiry') AS datetimeoffset(7)) as [DateExpiry] 
+            FROM manageditem) i ";
 
             if (countMode)
             {
@@ -229,7 +234,14 @@ namespace Certify.Datastore.SQLServer
 
             if (!countMode)
             {
-                sql += $" ORDER BY Name ASC";
+                if (filter.OrderBy == ManagedCertificateFilter.SortMode.NAME_ASC)
+                {
+                    sql += $" ORDER BY Name ASC";
+                }
+                else if (filter.OrderBy == ManagedCertificateFilter.SortMode.RENEWAL_ASC)
+                {
+                    sql += $" ORDER BY DateLastRenewalAttempt ASC";
+                }
             }
 
             return (sql, queryParameters);
