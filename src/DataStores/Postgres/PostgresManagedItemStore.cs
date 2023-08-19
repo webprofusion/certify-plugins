@@ -162,7 +162,10 @@ namespace Certify.Datastore.Postgres
                          (SELECT subquery.id, subquery.config, 
                                                         subquery.config ->> 'Name' as Name, 
                                                         (subquery.config ->> 'DateLastOcspCheck')::timestamp with time zone  as dateLastOcspCheck,
-                                                        (subquery.config ->> 'DateLastRenewalInfoCheck')::timestamp with time zone as dateLastRenewalInfoCheck 
+                                                        (subquery.config ->> 'DateLastRenewalInfoCheck')::timestamp with time zone as dateLastRenewalInfoCheck ,
+                                                        (subquery.config ->> 'DateRenewed')::timestamp with time zone as dateRenewed,
+                                                        (subquery.config ->> 'DateLastRenewalAttempt')::timestamp with time zone as dateLastRenewalAttempt,
+                                                        (subquery.config ->> 'DateExpiry')::timestamp with time zone as dateExpiry
                                                    FROM manageditem subquery  
                           ) AS i ";
 
@@ -231,7 +234,14 @@ namespace Certify.Datastore.Postgres
 
             if (!countMode)
             {
-                sql += $" ORDER BY Name ASC";
+                if (filter.OrderBy == ManagedCertificateFilter.SortMode.NAME_ASC)
+                {
+                    sql += $" ORDER BY Name ASC";
+                }
+                else if (filter.OrderBy == ManagedCertificateFilter.SortMode.RENEWAL_ASC)
+                {
+                    sql += $" ORDER BY dateLastRenewalAttempt ASC";
+                }
             }
 
             return (sql, queryParameters);
