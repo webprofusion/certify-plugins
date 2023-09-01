@@ -151,7 +151,7 @@ namespace Certify.Datastore.Postgres
 
         }
 
-        public (string sql, List<NpgsqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
+        private static (string sql, List<NpgsqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
             var sql = @"SELECT * FROM ";
 
@@ -255,7 +255,7 @@ namespace Certify.Datastore.Postgres
 
             var watch = Stopwatch.StartNew();
 
-            (string sql, List<NpgsqlParameter> queryParameters) = BuildQuery(filter, countMode: true);
+            var (sql, queryParameters) = BuildQuery(filter, countMode: true);
 
             try
             {
@@ -271,7 +271,7 @@ namespace Certify.Datastore.Postgres
                         await db.OpenAsync();
                         count = (long)await cmd.ExecuteScalarAsync();
 
-                        db.Close();
+                        await db.CloseAsync();
                     }
                 });
             }
@@ -289,7 +289,7 @@ namespace Certify.Datastore.Postgres
         {
             var managedCertificates = new List<ManagedCertificate>();
 
-            (string sql, List<NpgsqlParameter> queryParameters) = BuildQuery(filter, countMode: false);
+            var (sql, queryParameters) = BuildQuery(filter, countMode: false);
 
             if (filter?.PageIndex != null && filter?.PageSize != null)
             {
@@ -371,7 +371,7 @@ namespace Certify.Datastore.Postgres
 
         public async Task<bool> IsInitialised()
         {
-            var sql = @"SELECT * from manageditem LIMIT 1;";
+            const string sql = @"SELECT * from manageditem LIMIT 1;";
             var queryOK = false;
 
             await _retryPolicy.ExecuteAsync(async () =>
@@ -483,7 +483,7 @@ namespace Certify.Datastore.Postgres
                                         await cmd.ExecuteNonQueryAsync();
                                     }
 
-                                    tran.Commit();
+                                    await tran.CommitAsync();
                                 }
                                 catch (NpgsqlException exp)
                                 {
@@ -504,7 +504,7 @@ namespace Certify.Datastore.Postgres
                                         await cmd.ExecuteNonQueryAsync();
                                     }
 
-                                    tran.Commit();
+                                    await tran.CommitAsync();
                                 }
                                 catch (NpgsqlException exp)
                                 {
