@@ -156,7 +156,7 @@ namespace Certify.Datastore.SQLServer
 
         }
 
-        public (string sql, List<SqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
+        private static (string sql, List<SqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
             var sql = @"SELECT * FROM (
                         SELECT id, config, JSON_VALUE(config, '$.Name') as [Name], 
@@ -254,7 +254,7 @@ namespace Certify.Datastore.SQLServer
 
             var watch = Stopwatch.StartNew();
 
-            (string sql, List<SqlParameter> queryParameters) = BuildQuery(filter, countMode: true);
+            var (sql, queryParameters) = BuildQuery(filter, countMode: true);
 
             try
             {
@@ -290,7 +290,7 @@ namespace Certify.Datastore.SQLServer
         {
             var managedCertificates = new List<ManagedCertificate>();
 
-            (string sql, List<SqlParameter> queryParameters) = BuildQuery(filter, countMode: false);
+            var (sql, queryParameters) = BuildQuery(filter, countMode: false);
 
             if (filter?.PageIndex != null && filter?.PageSize != null)
             {
@@ -373,7 +373,7 @@ namespace Certify.Datastore.SQLServer
         public async Task<bool> IsInitialised()
         {
 
-            var sql = @"SELECT TOP 1 * from manageditem;";
+            const string sql = @"SELECT TOP 1 * from manageditem;";
             var queryOK = false;
             try
             {
@@ -402,10 +402,10 @@ namespace Certify.Datastore.SQLServer
 
         }
 
-        public async Task PerformMaintenance()
+        public Task PerformMaintenance()
         {
             _log?.Warning("SQL Server: Maintenance not implemented");
-
+            return Task.CompletedTask;
         }
 
         public async Task StoreAll(IEnumerable<ManagedCertificate> list)
