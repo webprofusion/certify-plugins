@@ -38,22 +38,17 @@ namespace Certify.Datastore.SQLite
 
         private ILog _log;
 
-        private bool _initialised { get; set; } = false;
-        private bool _highPerformanceMode { get; set; } = false;
+        private bool _initialised = false;
+        private readonly bool _highPerformanceMode = false;
 
-        public static ProviderDefinition Definition
-        {
-            get
+        public static ProviderDefinition Definition =>
+            new ProviderDefinition
             {
-                return new ProviderDefinition
-                {
-                    Id = "Plugin.DataStores.ManagedItem.SQLite",
-                    ProviderCategoryId = "sqlite",
-                    Title = "SQLite",
-                    Description = "SQLite DataStore provider"
-                };
-            }
-        }
+                Id = "Plugin.DataStores.ManagedItem.SQLite",
+                ProviderCategoryId = "sqlite",
+                Title = "SQLite",
+                Description = "SQLite DataStore provider"
+            };
 
         public bool Init(string connectionString, ILog log)
         {
@@ -231,7 +226,7 @@ namespace Certify.Datastore.SQLite
                 _log?.Error("An error occurred during database maintenance. Check storage free space and disk IO. " + exp);
             }
 
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
 
         private string GetDbPath()
@@ -343,7 +338,7 @@ namespace Certify.Datastore.SQLite
             }
         }
 
-        public (string sql, List<SQLiteParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
+        public static (string sql, List<SQLiteParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
             var sql = @"SELECT i.id, i.json, i.json ->> 'Name' as Name, 
                 datetime(i.json ->> 'DateRenewed') as DateRenewed, 
@@ -442,7 +437,7 @@ namespace Certify.Datastore.SQLite
 
             if (File.Exists(_dbPath))
             {
-                (string sql, List<SQLiteParameter> queryParameters) = BuildQuery(filter, countMode: true);
+                var (sql, queryParameters) = BuildQuery(filter, countMode: true);
 
                 try
                 {
@@ -481,7 +476,7 @@ namespace Certify.Datastore.SQLite
 
             if (File.Exists(_dbPath))
             {
-                (string sql, List<SQLiteParameter> queryParameters) = BuildQuery(filter, countMode: false);
+                var (sql, queryParameters) = BuildQuery(filter, countMode: false);
 
                 if (filter?.PageIndex != null && filter?.PageSize != null)
                 {
