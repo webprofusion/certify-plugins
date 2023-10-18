@@ -4,6 +4,7 @@ using Certify.Models.Config.AccessControl;
 using Certify.Models.Providers;
 using Certify.Providers;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
@@ -251,41 +252,22 @@ namespace Certify.Management
 
         public async Task Update<T>(string itemType, T item)
         {
-            if (item is SecurityPrinciple)
+
+            if (item is AccessStoreItem)
             {
-                var i = item as SecurityPrinciple;
+
                 var configItem = new ConfigurationItem
                 {
-                    Id = i.Id,
-                    ItemType = nameof(SecurityPrinciple),
-                    Json = JsonConvert.SerializeObject(i)
+                    Id = (item as AccessStoreItem).Id,
+                    ItemType = typeof(T).Name,
+                    Json = JsonConvert.SerializeObject(item)
                 };
 
                 await Update(configItem);
             }
-            else if (item is Role)
+            else
             {
-                var i = item as Role;
-                var configItem = new ConfigurationItem
-                {
-                    Id = i.Id,
-                    ItemType = nameof(Role),
-                    Json = JsonConvert.SerializeObject(i)
-                };
-
-                await Update(configItem);
-            }
-            else if (item is ResourcePolicy)
-            {
-                var i = item as ResourcePolicy;
-                var configItem = new ConfigurationItem
-                {
-                    Id = i.Id,
-                    ItemType = nameof(ResourcePolicy),
-                    Json = JsonConvert.SerializeObject(i)
-                };
-
-                await Update(configItem);
+                throw new Exception("Could not store item type");
             }
         }
 
