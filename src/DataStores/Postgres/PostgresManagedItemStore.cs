@@ -8,6 +8,7 @@ using Polly;
 using Polly.Retry;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,19 +26,15 @@ namespace Certify.Datastore.Postgres
 
         private const int _semaphoreMaxWaitMS = 10 * 1000;
 
-        public static ProviderDefinition Definition
-        {
-            get
+        public static ProviderDefinition Definition =>
+            new ProviderDefinition
             {
-                return new ProviderDefinition
-                {
-                    Id = "Plugin.DataStores.ManagedItem.Postgres",
-                    ProviderCategoryId = "postgres",
-                    Title = "Postgres",
-                    Description = "Postgres DataStore provider"
-                };
-            }
-        }
+                Id = "Plugin.DataStores.ManagedItem.Postgres",
+                ProviderCategoryId = "postgres",
+                Title = "Postgres",
+                Description = "Postgres DataStore provider"
+            };
+
         public PostgresManagedItemStore() { }
 
         public bool Init(string connectionString, ILog log)
@@ -77,7 +74,7 @@ namespace Certify.Datastore.Postgres
                             cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                             await cmd.ExecuteNonQueryAsync();
 
-                            tran.Commit();
+                            await tran.CommitAsync();
                         }
                     }
                     await conn.CloseAsync();
@@ -133,7 +130,7 @@ namespace Certify.Datastore.Postgres
                             await cmd.ExecuteNonQueryAsync();
                         }
 
-                        tran.Commit();
+                        await tran.CommitAsync();
                     }
                 }
             }
@@ -148,15 +145,23 @@ namespace Certify.Datastore.Postgres
 
         }
 
-        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
+        private static (string sql, List<NpgsqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
-            var managedCertificates = new List<ManagedCertificate>();
+            var sql = @"SELECT * FROM ";
 
-            var sql = @"SELECT * from 
+            if (countMode)
+            {
+                sql = "SELECT COUNT(1) as numItems FROM ";
+            }
+
+            sql += @"
                          (SELECT subquery.id, subquery.config, 
                                                         subquery.config ->> 'Name' as Name, 
                                                         (subquery.config ->> 'DateLastOcspCheck')::timestamp with time zone  as dateLastOcspCheck,
-                                                        (subquery.config ->> 'DateLastRenewalInfoCheck')::timestamp with time zone as dateLastRenewalInfoCheck 
+                                                        (subquery.config ->> 'DateLastRenewalInfoCheck')::timestamp with time zone as dateLastRenewalInfoCheck ,
+                                                        (subquery.config ->> 'DateRenewed')::timestamp with time zone as dateRenewed,
+                                                        (subquery.config ->> 'DateLastRenewalAttempt')::timestamp with time zone as dateLastRenewalAttempt,
+                                                        (subquery.config ->> 'DateExpiry')::timestamp with time zone as dateExpiry
                                                    FROM manageditem subquery  
                           ) AS i ";
 
@@ -223,7 +228,62 @@ namespace Certify.Datastore.Postgres
                 }
             }
 
-            sql += $" ORDER BY Name ASC";
+            if (!countMode)
+            {
+                if (filter.OrderBy == ManagedCertificateFilter.SortMode.NAME_ASC)
+                {
+                    sql += $" ORDER BY Name ASC";
+                }
+                else if (filter.OrderBy == ManagedCertificateFilter.SortMode.RENEWAL_ASC)
+                {
+                    sql += $" ORDER BY dateLastRenewalAttempt ASC";
+                }
+            }
+
+            return (sql, queryParameters);
+        }
+
+        public async Task<long> CountAll(ManagedCertificateFilter filter)
+        {
+            long count = 0;
+
+            var watch = Stopwatch.StartNew();
+
+            var (sql, queryParameters) = BuildQuery(filter, countMode: true);
+
+            try
+            {
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                await _retryPolicy.ExecuteAsync(async () =>
+                {
+                    using (var db = new NpgsqlConnection(_connectionString))
+                    using (var cmd = new NpgsqlCommand(sql, db))
+                    {
+                        cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                        await db.OpenAsync();
+                        count = (long)await cmd.ExecuteScalarAsync();
+
+                        await db.CloseAsync();
+                    }
+                });
+            }
+            finally
+            {
+                _dbMutex.Release();
+            }
+
+            Debug.WriteLine($"CountAll [Postgres] took {watch.ElapsedMilliseconds}ms for {count} records");
+
+            return count;
+        }
+
+        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
+        {
+            var managedCertificates = new List<ManagedCertificate>();
+
+            var (sql, queryParameters) = BuildQuery(filter, countMode: false);
 
             if (filter?.PageIndex != null && filter?.PageSize != null)
             {
@@ -304,7 +364,7 @@ namespace Certify.Datastore.Postgres
 
         public async Task<bool> IsInitialised()
         {
-            var sql = @"SELECT * from manageditem LIMIT 1;";
+            const string sql = @"SELECT * from manageditem LIMIT 1;";
             var queryOK = false;
 
             await _retryPolicy.ExecuteAsync(async () =>
@@ -415,7 +475,7 @@ namespace Certify.Datastore.Postgres
                                         await cmd.ExecuteNonQueryAsync();
                                     }
 
-                                    tran.Commit();
+                                    await tran.CommitAsync();
                                 }
                                 catch (NpgsqlException exp)
                                 {
@@ -436,7 +496,7 @@ namespace Certify.Datastore.Postgres
                                         await cmd.ExecuteNonQueryAsync();
                                     }
 
-                                    tran.Commit();
+                                    await tran.CommitAsync();
                                 }
                                 catch (NpgsqlException exp)
                                 {

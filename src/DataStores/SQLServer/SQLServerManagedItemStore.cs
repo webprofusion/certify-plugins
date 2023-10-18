@@ -8,6 +8,7 @@ using Polly;
 using Polly.Retry;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,19 +25,14 @@ namespace Certify.Datastore.SQLServer
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
         private const int _semaphoreMaxWaitMS = 10 * 1000;
 
-        public static ProviderDefinition Definition
-        {
-            get
+        public static ProviderDefinition Definition =>
+            new ProviderDefinition
             {
-                return new ProviderDefinition
-                {
-                    Id = "Plugin.DataStores.ManagedItem.SQLServer",
-                    ProviderCategoryId = "sqlserver",
-                    Title = "SQL Server",
-                    Description = "SQL Server DataStore provider"
-                };
-            }
-        }
+                Id = "Plugin.DataStores.ManagedItem.SQLServer",
+                ProviderCategoryId = "sqlserver",
+                Title = "SQL Server",
+                Description = "SQL Server DataStore provider"
+            };
 
         public bool Init(string connectionString, ILog log)
         {
@@ -154,11 +150,19 @@ namespace Certify.Datastore.SQLServer
 
         }
 
-        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
+        private static (string sql, List<SqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
-            var managedCertificates = new List<ManagedCertificate>();
+            var sql = @"SELECT * FROM (
+                        SELECT id, config, JSON_VALUE(config, '$.Name') as [Name], 
+                        CAST(JSON_VALUE(config, '$.DateRenewed') AS datetimeoffset(7)) as [DateRenewed], 
+                        CAST(JSON_VALUE(config, '$.DateLastRenewalAttempt') AS datetimeoffset(7)) as [DateLastRenewalAttempt] ,
+                        CAST(JSON_VALUE(config, '$.DateExpiry') AS datetimeoffset(7)) as [DateExpiry] 
+            FROM manageditem) i ";
 
-            var sql = @"SELECT * FROM (SELECT id, config, JSON_VALUE(config, '$.Name') as Name FROM manageditem) i ";
+            if (countMode)
+            {
+                sql = @"SELECT COUNT(1) as numItems FROM(SELECT id, config, JSON_VALUE(config, '$.Name') as Name FROM manageditem) i ";
+            }
 
             var queryParameters = new List<SqlParameter>();
             var conditions = new List<string>();
@@ -223,7 +227,64 @@ namespace Certify.Datastore.SQLServer
                 }
             }
 
-            sql += $" ORDER BY Name ASC";
+            if (!countMode)
+            {
+                if (filter.OrderBy == ManagedCertificateFilter.SortMode.NAME_ASC)
+                {
+                    sql += $" ORDER BY Name ASC";
+                }
+                else if (filter.OrderBy == ManagedCertificateFilter.SortMode.RENEWAL_ASC)
+                {
+                    sql += $" ORDER BY DateLastRenewalAttempt ASC";
+                }
+            }
+
+            return (sql, queryParameters);
+        }
+
+        public async Task<long> CountAll(ManagedCertificateFilter filter)
+        {
+            long count = 0;
+
+            var watch = Stopwatch.StartNew();
+
+            var (sql, queryParameters) = BuildQuery(filter, countMode: true);
+
+            try
+            {
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                await _retryPolicy.ExecuteAsync(async () =>
+                {
+
+                    using (var db = new SqlConnection(_connectionString))
+                    using (var cmd = new SqlCommand(sql, db))
+                    {
+                        cmd.Parameters.AddRange(queryParameters.ToArray());
+
+                        await db.OpenAsync();
+                        count = (int)await cmd.ExecuteScalarAsync();
+
+                        db.Close();
+                    }
+                });
+            }
+            finally
+            {
+                _dbMutex.Release();
+            }
+
+
+            Debug.WriteLine($"CountAll[SQL Server] took {watch.ElapsedMilliseconds}ms for {count} records");
+
+            return count;
+        }
+
+        public async Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter)
+        {
+            var managedCertificates = new List<ManagedCertificate>();
+
+            var (sql, queryParameters) = BuildQuery(filter, countMode: false);
 
             if (filter?.PageIndex != null && filter?.PageSize != null)
             {
@@ -306,7 +367,7 @@ namespace Certify.Datastore.SQLServer
         public async Task<bool> IsInitialised()
         {
 
-            var sql = @"SELECT TOP 1 * from manageditem;";
+            const string sql = @"SELECT TOP 1 * from manageditem;";
             var queryOK = false;
             try
             {
@@ -335,10 +396,10 @@ namespace Certify.Datastore.SQLServer
 
         }
 
-        public async Task PerformMaintenance()
+        public Task PerformMaintenance()
         {
             _log?.Warning("SQL Server: Maintenance not implemented");
-
+            return Task.CompletedTask;
         }
 
         public async Task StoreAll(IEnumerable<ManagedCertificate> list)
