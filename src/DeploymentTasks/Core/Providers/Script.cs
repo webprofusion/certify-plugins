@@ -29,7 +29,7 @@ namespace Certify.Providers.DeploymentTasks
                 Title = "Run...",
                 IsExperimental = true,
                 UsageType = DeploymentProviderUsage.PostRequest,
-                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.SSH,
+                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
                 SupportsRemoteTarget = true,
                 Description = "Run a program, batch file or custom script",
                 ProviderParameters = new List<ProviderParameter>

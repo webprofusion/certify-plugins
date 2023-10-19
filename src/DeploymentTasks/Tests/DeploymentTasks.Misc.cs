@@ -38,7 +38,7 @@ namespace DeploymentTaskTests
             {
                 StorageKey = "atestsshuser",
                 Title = "Test: SSH",
-                DateCreated = DateTime.Now,
+                DateCreated = DateTime.UtcNow,
                 ProviderType = "SSH",
                 Secret = JsonConvert.SerializeObject(secrets)
             });
@@ -53,7 +53,7 @@ namespace DeploymentTaskTests
             {
                 StorageKey = ConfigSettings["TestCredentialsKey_UNC"],
                 Title = "Test: UNC testuser",
-                DateCreated = DateTime.Now,
+                DateCreated = DateTime.UtcNow,
                 ProviderType = "Windows",
                 Secret = JsonConvert.SerializeObject(secrets)
             });

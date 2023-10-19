@@ -8,6 +8,7 @@ namespace Plugin.DeploymentTasks.Shared
 {
     public class Helpers
     {
+        public static string LogonTypeOptions = "network=Network;newcredentials=New Credentials;service=Service;interactive=Interactive;batch=Batch";
         /// <summary>
         /// Fetch embedded resource text file
         /// </summary>

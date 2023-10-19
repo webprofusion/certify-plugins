@@ -24,12 +24,13 @@ namespace Certify.Providers.DeploymentTasks
                 DefaultTitle = "Deploy to Exchange",
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
-                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser,
+                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to MS Exchange Services",
                 ProviderParameters = new List<ProviderParameter>
                 {
                       new ProviderParameter{ Key="services", Name="Services", IsRequired=true, IsCredential=false, Value="POP,IMAP,SMTP,IIS"},
-                      new ProviderParameter{ Key="donotrequiressl", Name="Do Not Require Ssl", IsRequired=false, Type= OptionType.Boolean, IsCredential = false,Value="false" }
+                      new ProviderParameter{ Key="donotrequiressl", Name="Do Not Require Ssl", IsRequired=false, Type= OptionType.Boolean, IsCredential = false,Value="false" },
+                      new ProviderParameter { Key = "logontype", Name = "Impersonation LogonType", IsRequired= false, IsCredential= false, Type= OptionType.Select, Value="interactive", OptionsList=Helpers.LogonTypeOptions },
                 }
             };
         }
@@ -52,6 +53,7 @@ namespace Certify.Providers.DeploymentTasks
 
             var services = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "services")?.Value;
             var doNotRequireSsl = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "donotrequiressl")?.Value;
+            var logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
 
             var parameters = new Dictionary<string, object>
             {
@@ -59,7 +61,7 @@ namespace Certify.Providers.DeploymentTasks
                 { "addDoNotRequireSslFlag", doNotRequireSsl }
             };
 
-            var scriptResult = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
+            var scriptResult = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials, logonType: logonType);
 
             return new List<ActionResult> { scriptResult };
         }

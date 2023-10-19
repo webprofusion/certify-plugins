@@ -184,13 +184,13 @@ namespace Certify.Datastore.Postgres
             if (filter.LastOCSPCheckMins != null)
             {
                 conditions.Add(" dateLastOcspCheck < @ocspCheckDate");
-                queryParameters.Add(new NpgsqlParameter("@ocspCheckDate", DateTime.Now.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
+                queryParameters.Add(new NpgsqlParameter("@ocspCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastOCSPCheckMins)));
             }
 
             if (filter.LastRenewalInfoCheckMins != null)
             {
                 conditions.Add(" dateLastRenewalInfoCheck < @renewalInfoCheckDate");
-                queryParameters.Add(new NpgsqlParameter("@renewalInfoCheckDate", DateTime.Now.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
+                queryParameters.Add(new NpgsqlParameter("@renewalInfoCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastRenewalInfoCheckMins)));
             }
 
             if (filter.ChallengeType != null)
