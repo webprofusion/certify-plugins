@@ -70,6 +70,7 @@ namespace Certify.Management.Servers
         {
             // TODO: move this to a utility with common code from the Script.cs core deployment task
             var output = "";
+            var errorOutput = "";
 
             var shell = "cmd.exe";
 
@@ -81,7 +82,8 @@ namespace Certify.Management.Servers
             }
             else
             {
-                command = $"{command.Replace("\"", "\\\"")}";
+                // TODO: It would be best if we could configure the location of nginx for Windows, similar to NginxManager does for the config path
+                command = $"/C \"{command.Replace("\"", "\\\"").Replace("nginx", "C:\\nginx\\nginx.exe")}\""; ;
             }
 
 
@@ -100,7 +102,7 @@ namespace Certify.Management.Servers
 
             process.OutputDataReceived += (obj, a) =>
             {
-                if (a.Data != null)
+                if (!String.IsNullOrWhiteSpace(a.Data))
                 {
                     _log?.Information(a.Data);
                     output += a.Data;
@@ -109,31 +111,42 @@ namespace Certify.Management.Servers
 
             process.ErrorDataReceived += (obj, a) =>
             {
-                if (!string.IsNullOrWhiteSpace(a.Data))
+                if (!String.IsNullOrWhiteSpace(a.Data))
                 {
                     _log?.Error($"Error: {a.Data}");
+                    errorOutput += a.Data;
                 }
             };
 
             try
             {
-                var timeoutMS = 1000 * 5;
-
                 process.Start();
 
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
-                process.WaitForExit(timeoutMS);
+                // It is noted in the .NET API documentation that when using asynchronous output streams for Process,
+                // it is best to call WaitForExit(), as specifying a timeout by using the WaitForExit(Int32) overload
+                // does not ensure the output buffer has been flushed. 
+                // See https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.errordatareceived?view=net-7.0#remarks
+                process.WaitForExit();
             }
             catch (Exception exp)
             {
                 _log?.Error("Error Running Script: " + exp.ToString());
             }
 
-            return output;
-
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return output;
+            }
+            else
+            {
+                // Note: For some reason, nginx for Windows outputs the results of 'nginx -v' to the error stream rather than the output stream
+                return errorOutput;
+            }
         }
+
         public async Task<Version> GetServerVersion()
         {
             // get nginx version e.g. "nginx version: nginx/1.18.0 (Ubuntu)"

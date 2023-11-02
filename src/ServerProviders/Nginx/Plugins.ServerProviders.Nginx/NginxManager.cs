@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace Certify.Plugins.Server.Nginx
@@ -23,11 +24,11 @@ namespace Certify.Plugins.Server.Nginx
         private string _configPath { get; set; }
         private string _siteConfigSubfolder { get; set; } = "sites-available";
         private string _primaryConfigFile { get; set; } = "nginx.conf";
-
+        private readonly bool _isWindows;
         public NginxManager(string configPath)
         {
             _configPath = configPath;
-
+            _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
             AutodiscoverConfig();
         }
 
@@ -38,9 +39,19 @@ namespace Certify.Plugins.Server.Nginx
         {
             if (string.IsNullOrEmpty(_configPath))
             {
-                if (Directory.Exists("/etc/nginx"))
+                if (_isWindows)
                 {
-                    _configPath = "/etc/nginx";
+                    if (Directory.Exists("C:\\nginx\\conf"))
+                    {
+                        _configPath = "C:\\nginx\\conf";
+                    }
+                }
+                else
+                {
+                    if (Directory.Exists("/etc/nginx"))
+                    {
+                        _configPath = "/etc/nginx";
+                    }
                 }
             }
         }
@@ -212,7 +223,7 @@ namespace Certify.Plugins.Server.Nginx
             }
 
             // find config files, read nginx main config, then included config files
-            var primaryConfigPath = Path.Combine(_configPath, _primaryConfigFile).Replace("\\", "/");
+            var primaryConfigPath = _isWindows ? Path.Combine(_configPath, _primaryConfigFile) : Path.Combine(_configPath, _primaryConfigFile).Replace("\\", "/");
             if (File.Exists(primaryConfigPath))
             {
 
@@ -231,12 +242,7 @@ namespace Certify.Plugins.Server.Nginx
 
                     var server_name = locationBlock.Properties.FirstOrDefault(p => p.Key == "server_name");
 
-                    var isHttps = false;
-
-                    if (props.Any(p => p.Key == "ssl_certificate") && props.Any(p => p.Key == "ssl_certificate_key"))
-                    {
-                        isHttps = true;
-                    }
+                    bool isHttps = props.Any(p => p.Key == "ssl_certificate") && props.Any(p => p.Key == "ssl_certificate_key");
 
                     // attempt to parse IP listening ip:ports
                     var ipV4Listen = props.FirstOrDefault(p => p.Key == "listen" && !p.Value.Trim().StartsWith("["));
@@ -312,7 +318,7 @@ namespace Certify.Plugins.Server.Nginx
             }
 
             // find config files, read nginx main config, then included config files
-            var primaryConfigPath = Path.Combine(_configPath, _primaryConfigFile).Replace("\\", "/");
+            var primaryConfigPath = _isWindows ? Path.Combine(_configPath, _primaryConfigFile) : Path.Combine(_configPath, _primaryConfigFile).Replace("\\", "/");
             if (File.Exists(primaryConfigPath))
             {
 
@@ -331,12 +337,7 @@ namespace Certify.Plugins.Server.Nginx
 
                     var server_name = locationBlock.Properties.FirstOrDefault(p => p.Key == "server_name");
 
-                    var isHttps = false;
-
-                    if (props.Any(p => p.Key == "ssl_certificate") && props.Any(p => p.Key == "ssl_certificate_key"))
-                    {
-                        isHttps = true;
-                    }
+                    bool isHttps = props.Any(p => p.Key == "ssl_certificate") && props.Any(p => p.Key == "ssl_certificate_key");
 
                     var siteInfo = new SiteInfo
                     {
@@ -378,7 +379,7 @@ namespace Certify.Plugins.Server.Nginx
             ";
 
             config = config.Replace("[DOMAINS]", string.Join(" ", hostnames));
-            config = config.Replace("[PATH]", phyPath.Replace("\\", "/"));
+            config = _isWindows ? config.Replace("[PATH]", phyPath) : config.Replace("[PATH]", phyPath.Replace("\\", "/"));
             config = config.Replace("[PORT]", port.ToString());
 
             var outputPath = System.IO.Path.Combine(_configPath, _siteConfigSubfolder, hostnames[0]);
