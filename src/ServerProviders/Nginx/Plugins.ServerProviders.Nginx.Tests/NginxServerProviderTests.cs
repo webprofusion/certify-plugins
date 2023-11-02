@@ -1,12 +1,12 @@
-﻿using System;
+﻿using Certify.Management.Servers;
+using Certify.Models;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Certify.Management.Servers;
-using Certify.Models;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Certify.Plugins.Server.Nginx.Tests
 {
