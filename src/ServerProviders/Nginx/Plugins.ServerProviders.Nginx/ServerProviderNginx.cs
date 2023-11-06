@@ -66,24 +66,29 @@ namespace Certify.Management.Servers
             return await _nginxManager.GetPrimarySites();
         }
 
+        // TODO: add this method to a single util class
+        private bool IsWindows()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        }
+
         private string GetShellCommandOutput(string command)
         {
             // TODO: move this to a utility with common code from the Script.cs core deployment task
             var output = "";
+            var errorOutput = "";
 
             var shell = "cmd.exe";
 
-            // if running on *nix, identify if shell available : TODO: expand search method
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            if (IsWindows())
+            {
+                command = $"/C {command.Replace("\"", "\\\"")}";
+            }
+            else // if running on *nix, identify if shell available : TODO: expand search method
             {
                 shell = System.IO.File.Exists("/usr/bin/bash") ? "/usr/bin/bash" : "/bin/sh";
                 command = $"-c {command.Replace("\"", "\\\"")}";
             }
-            else
-            {
-                command = $"{command.Replace("\"", "\\\"")}";
-            }
-
 
             var startInfo = new ProcessStartInfo()
             {
@@ -100,7 +105,7 @@ namespace Certify.Management.Servers
 
             process.OutputDataReceived += (obj, a) =>
             {
-                if (a.Data != null)
+                if (!string.IsNullOrWhiteSpace(a.Data))
                 {
                     _log?.Information(a.Data);
                     output += a.Data;
@@ -112,6 +117,7 @@ namespace Certify.Management.Servers
                 if (!string.IsNullOrWhiteSpace(a.Data))
                 {
                     _log?.Error($"Error: {a.Data}");
+                    errorOutput += a.Data;
                 }
             };
 
@@ -131,15 +137,24 @@ namespace Certify.Management.Servers
                 _log?.Error("Error Running Script: " + exp.ToString());
             }
 
-            return output;
+            if (IsWindows() && command.Contains("nginx"))
+            {                    
+                // Note: For some reason, nginx for Windows outputs the results of 'nginx -v' to the error stream rather than the output stream
+                return errorOutput;
+            }
 
+            return output;
         }
+
         public async Task<Version> GetServerVersion()
         {
             // get nginx version e.g. "nginx version: nginx/1.18.0 (Ubuntu)"
+            // TODO: It would be best if we could configure the location of nginx for Windows, similar to NginxManager does for the config path
+            string command = IsWindows() ? "C:\\nginx\\nginx.exe -v" : "nginx -v";
+            
             var versionOutputString = await Task.Run<string>(() =>
             {
-                return GetShellCommandOutput("nginx -v");
+                return GetShellCommandOutput(command);
             });
 
             return GetServerVersion(versionOutputString);
