@@ -138,7 +138,7 @@ namespace Certify.Management.Servers
             }
 
             if (IsWindows() && command.Contains("nginx"))
-            {                    
+            {
                 // Note: For some reason, nginx for Windows outputs the results of 'nginx -v' to the error stream rather than the output stream
                 return errorOutput;
             }
@@ -151,7 +151,7 @@ namespace Certify.Management.Servers
             // get nginx version e.g. "nginx version: nginx/1.18.0 (Ubuntu)"
             // TODO: It would be best if we could configure the location of nginx for Windows, similar to NginxManager does for the config path
             string command = IsWindows() ? "C:\\nginx\\nginx.exe -v" : "nginx -v";
-            
+
             var versionOutputString = await Task.Run<string>(() =>
             {
                 return GetShellCommandOutput(command);
