@@ -133,6 +133,11 @@ namespace Certify.Providers.DeploymentTasks
                     {
                         certPwd = cred["password"];
                     }
+                    else
+                    {
+                        results.Add(new ActionResult($"Export - the credentials for this task could not be unlocked or were not accessible {managedCert.CertificatePasswordCredentialId}.", false));
+                        return results;
+                    }
                 }
 
 
