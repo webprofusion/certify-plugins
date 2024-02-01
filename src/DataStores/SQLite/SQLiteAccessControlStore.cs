@@ -242,7 +242,14 @@ namespace Certify.Management
         {
             var items = await GetItems(itemType, id);
             var item = items.FirstOrDefault();
-            return JsonConvert.DeserializeObject<T>(item.Json);
+            if (item != null)
+            {
+                return JsonConvert.DeserializeObject<T>(item.Json);
+            }
+            else
+            {
+                return default;
+            }
         }
 
         public async Task Add<T>(string itemType, T item)
