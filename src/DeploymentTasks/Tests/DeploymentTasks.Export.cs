@@ -1,4 +1,4 @@
-﻿using Certify.Config;
+using Certify.Config;
 using Certify.Core.Management.DeploymentTasks;
 using Certify.Models;
 using Certify.Models.Config;
@@ -6,6 +6,7 @@ using Certify.Providers.DeploymentTasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -104,6 +105,47 @@ namespace DeploymentTaskTests
             File.Delete(outputPath + ".crt");
             File.Delete(outputPath + ".key");
             File.Delete(outputPath + ".chain");
+        }
+
+
+        [TestMethod, TestCategory("Export")]
+        public async Task TestPemApacheExportValidaton()
+        {
+
+            var outputPath = ConfigSettings["TestLocalPath"] + "\\test_pfx_export";
+
+            var config = new DeploymentTaskConfig
+            {
+                TaskTypeId = Certify.Providers.DeploymentTasks.Apache.Definition.Id.ToLower(),
+                TaskName = "A test Apache export task",
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+
+                Parameters = new List<ProviderParameterSetting>
+                {
+                    new ProviderParameterSetting("path_chain", outputPath+".chain")
+                }
+            };
+
+            var provider = DeploymentTaskProviderFactory.Create(Certify.Providers.DeploymentTasks.Apache.Definition.Id.ToLower(), _pluginManager.DeploymentTaskProviders);
+            var task = new DeploymentTask(provider, config, null);
+
+            // perform preview deployments
+            var managedCert = GetMockManagedCertificate("LocalApacheDeploymentTest", "123", PrimaryTestDomain, PrimaryIISRoot);
+
+            var results = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: true);
+
+            // result should have a validation failure
+            Assert.IsTrue(results.Any(r => r.IsSuccess == false), "Results should have validation failure for missing cert path");
+
+            // add cert path and try again
+            config.Parameters.Add(new ProviderParameterSetting("path_cert", outputPath + ".crt"));
+            task = new DeploymentTask(provider, config, null);
+
+            // perform preview deployments
+            results = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: true);
+
+            // result should not have a validation failure
+            Assert.IsFalse(results.Any(r => r.IsSuccess == false), "Results should not have validation failure");
         }
 
         [TestMethod, TestCategory("Export")]

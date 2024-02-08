@@ -111,16 +111,20 @@ namespace Certify.Providers.DeploymentTasks
             settings.Parameters.Add(new ProviderParameterSetting("path", null));
             settings.Parameters.Add(new ProviderParameterSetting("type", null));
 
-            var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_cert");
-            if (string.IsNullOrEmpty(certPath.Value) && string.IsNullOrEmpty(settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain")?.Value))
+            // validate that we have at least a cert or fullchain being exported
+            if (string.IsNullOrWhiteSpace(settings.Parameters.FirstOrDefault(p => p.Key == "path_cert")?.Value)
+                 && string.IsNullOrWhiteSpace(settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain")?.Value))
             {
                 results.Add(new ActionResult
                 {
                     IsSuccess = false,
                     Message = $"Required: {Definition.ProviderParameters.First(f => f.Key == "path_cert").Name} or {Definition.ProviderParameters.First(f => f.Key == "path_fullchain").Name}"
                 });
+                return results;
             }
-            else
+
+            var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_cert");
+            if (!string.IsNullOrWhiteSpace(certPath?.Value))
             {
                 settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemcrt";
@@ -128,44 +132,44 @@ namespace Certify.Providers.DeploymentTasks
             }
 
             var keyPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_key");
-            if (string.IsNullOrEmpty(keyPath.Value))
+            if (string.IsNullOrWhiteSpace(keyPath?.Value))
             {
+                // key export is always required
+
                 results.Add(new ActionResult
                 {
                     IsSuccess = false,
                     Message = "Required: " + Definition.ProviderParameters.First(f => f.Key == "path_key").Name
                 });
+
+                return results;
             }
             else
             {
-                if (keyPath != null && !results.Any(r => r.IsSuccess == false))
-                {
+                settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
+                settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
+                results.AddRange(await base.Validate(execParams));
+            }
 
-                    settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
-                    settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
+            // if we have no validation errors so far, check for chain and fullchain exports
+            if (!results.Any(r => r.IsSuccess == false))
+            {
+                var chainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_chain");
+                if (!string.IsNullOrWhiteSpace(chainPath?.Value))
+                {
+                    settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
+                    settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
+                    results.AddRange(await base.Validate(execParams));
+                }
+
+                var fullchainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain");
+                if (!string.IsNullOrWhiteSpace(fullchainPath?.Value))
+                {
+                    settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
+                    settings.Parameters.Find(p => p.Key == "type").Value = "pemfullnokey";
                     results.AddRange(await base.Validate(execParams));
                 }
             }
-
-            var chainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_chain");
-            if (chainPath != null && !results.Any(r => r.IsSuccess == false))
-            {
-                settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
-                results.AddRange(await base.Validate(execParams));
-
-            }
-
-
-            var fullchainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain");
-            if (fullchainPath != null && !results.Any(r => r.IsSuccess == false))
-            {
-                settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemfullnokey";
-                results.AddRange(await base.Validate(execParams));
-
-            }
-
             return results;
         }
 
