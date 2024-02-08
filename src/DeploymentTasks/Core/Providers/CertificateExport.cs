@@ -64,10 +64,11 @@ namespace Certify.Providers.DeploymentTasks
             else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
             {
                 //if windows network and paths are not UNC, fail validation
-                var path = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
-                if (!path.StartsWith("\\\\"))
+                var path = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
+                
+                if (string.IsNullOrWhiteSpace(path) || !path.Trim().StartsWith("\\\\"))
                 {
-                    results.Add(new ActionResult { IsSuccess = false, Message = "UNC Path Expected for Windows Network resource" });
+                    results.Add(new ActionResult { IsSuccess = false, Message = "UNC Path (e.g. \\\\SERVERNAME\\Share) is expected for Windows Network resource paths" });
                 }
             }
 
