@@ -202,7 +202,7 @@ namespace Certify.Datastore.SQLServer
 
             try
             {
-                return Unprotect(protectedString, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
+                return Unprotect(protectedString, PROTECTIONENTROPY);
             }
             catch (Exception exp)
             {
@@ -234,7 +234,7 @@ namespace Certify.Datastore.SQLServer
 
             credentialInfo.DateCreated = DateTime.UtcNow;
 
-            var protectedContent = Protect(credentialInfo.Secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
+            var protectedContent = Protect(credentialInfo.Secret, PROTECTIONENTROPY);
 
             credentialInfo.Secret = "protected";
 
