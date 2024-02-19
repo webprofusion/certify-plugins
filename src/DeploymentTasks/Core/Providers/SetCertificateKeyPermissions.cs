@@ -20,8 +20,8 @@ namespace Certify.Providers.DeploymentTasks
             Definition = new DeploymentProviderDefinition
             {
                 Id = "Certify.Providers.DeploymentTasks.SetCertificateKeyPermissions",
-                Title = "Set Certificate Key Permissions",
-                DefaultTitle = "Set Certificate Key Permissions",
+                Title = "Set Certificate Key Permissions (RSA)",
+                DefaultTitle = "Set Certificate Key Permissions (RSA)",
                 IsExperimental = true,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService,
