@@ -73,7 +73,7 @@ namespace Certify.Management
 
         private string GetDbPath()
         {
-            var appDataPath = EnvironmentUtil.GetAppDataFolder(_storageSubFolder ?? "");
+            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder ?? "");
             return Path.Combine(appDataPath, $"{STOREDBNAME}.db");
         }
 
