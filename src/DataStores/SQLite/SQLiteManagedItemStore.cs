@@ -236,7 +236,7 @@ namespace Certify.Datastore.SQLite
 
         private string GetDbPath()
         {
-            var appDataPath = EnvironmentUtil.GetAppDataFolder(_storageSubFolder);
+            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder);
             return Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.db");
         }
 
@@ -483,7 +483,7 @@ namespace Certify.Datastore.SQLite
 
         private async Task<bool> UpgradeSettings()
         {
-            var appDataPath = EnvironmentUtil.GetAppDataFolder(_storageSubFolder);
+            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder);
 
             var json = Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.json");
             var db = Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.db");
