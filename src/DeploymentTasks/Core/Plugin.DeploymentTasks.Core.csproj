@@ -14,7 +14,6 @@
     <None Remove="Providers\Assets\RDPListenerService.ps1" />
     <None Remove="Providers\Assets\RemoteAccess.ps1" />
     <None Remove="Providers\Assets\RemoteAccess.xaml" />
-    <None Remove="Providers\Assets\SetCertificateKeyPermissions.ps1" />
     <None Remove="Providers\Assets\UpdatePortBinding.ps1" />
     <None Remove="Providers\Assets\WebManagementService.ps1" />
   </ItemGroup>
@@ -29,9 +28,6 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="Providers\Assets\RemoteAccess.ps1" />
-    <EmbeddedResource Include="Providers\Assets\SetCertificateKeyPermissions.ps1">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
     <EmbeddedResource Include="Providers\Assets\UpdatePortBinding.ps1">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
