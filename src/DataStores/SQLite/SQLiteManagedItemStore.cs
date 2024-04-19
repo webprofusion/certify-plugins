@@ -322,6 +322,12 @@ namespace Certify.Datastore.SQLite
                     }
 
                     // perform any further schema checks and upgrades..
+
+                    if (cols.Count == 0)
+                    {
+                        // no columns. table doesn't exist
+                        await CreateManagedItemsSchema();
+                    }
                 }
                 catch
                 {
