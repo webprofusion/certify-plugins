@@ -84,6 +84,9 @@ namespace Certify.Providers.Deployment.Core.Shared
             foreach (var dest in destFiles)
             {
                 var destPath = dest.Key;
+                var dirErrorMsg = $"Cannot write file to a directory name [{destPath}]. Please specify the full destination path and file name in the Task Parameters and ensure the target directory exists.";
+                var pathIsDirectory = false;
+
                 try
                 {
                     destPath = Path.GetFullPath(dest.Key);
@@ -95,8 +98,19 @@ namespace Certify.Providers.Deployment.Core.Shared
 
                         if (attr.HasFlag(FileAttributes.Directory))
                         {
-                            throw new Exception("Cannot write file to a directory name. Please specify the full file path.");
+                            pathIsDirectory = true;
                         }
+                    }
+                    else if (Directory.Exists(destPath))
+                    {
+                        pathIsDirectory = true;
+                    }
+
+                    if (pathIsDirectory)
+                    {
+                        log.Error(dirErrorMsg);
+                        results.Add(new ActionResult(dirErrorMsg, false));
+                        break;
                     }
 
                 }
@@ -117,7 +131,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                 }
                 catch (Exception exp)
                 {
-                    var msg = "Failed to copy to destination file: " + destPath + ":" + exp.Message;
+                    var msg = $"Failed to copy to destination file. Ensure the target directory exists: {destPath}: {exp.Message}";
                     log.Error(msg);
                     results.Add(new ActionResult(msg, false));
                     break;
