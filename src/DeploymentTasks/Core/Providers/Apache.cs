@@ -62,7 +62,7 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemcrt";
 
-                execParams.Log.Information(definition.Title + ":: exporting PEM format certificate file");
+                execParams.Log.Information(definition.Title + ":: Exporting PEM format certificate file");
                 results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
@@ -72,7 +72,7 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
 
-                execParams.Log.Information(definition.Title + ":: exporting PEM format key file");
+                execParams.Log.Information(definition.Title + ":: Exporting PEM format key file");
                 results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
@@ -82,7 +82,7 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemintermediates";
 
-                execParams.Log.Information(definition.Title + ":: exporting PEM format CA chain file (intermediates)");
+                execParams.Log.Information(definition.Title + ":: Exporting PEM format CA chain file (intermediates)");
                 results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
@@ -92,7 +92,7 @@ namespace Certify.Providers.DeploymentTasks
                 settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
                 settings.Parameters.Find(p => p.Key == "type").Value = "pemcrtpartialchain";
 
-                execParams.Log.Information(definition.Title + ":: exporting PEM format full chain file (excluding root)");
+                execParams.Log.Information(definition.Title + ":: Exporting PEM format full chain file (excluding root)");
                 results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
             }
 
