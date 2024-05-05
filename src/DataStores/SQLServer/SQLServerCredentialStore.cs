@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
@@ -10,6 +10,10 @@ using Certify.Models.Providers;
 using Certify.Providers;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Certify.Datastore.SQLServer
 {
