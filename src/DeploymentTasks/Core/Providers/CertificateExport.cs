@@ -65,7 +65,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 //if windows network and paths are not UNC, fail validation
                 var path = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
-                
+
                 if (string.IsNullOrWhiteSpace(path) || !path.Trim().StartsWith("\\\\"))
                 {
                     results.Add(new ActionResult { IsSuccess = false, Message = "UNC Path (e.g. \\\\SERVERNAME\\Share) is expected for Windows Network resource paths" });
