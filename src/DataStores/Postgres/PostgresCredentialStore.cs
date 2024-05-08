@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Certify.Datastore.Postgres
 {
-    public class PostgresCredentialStore : CredentialsManagerBase, ICredentialsManager
+    public class PostgresCredentialStore : ICredentialsManager
     {
         private ILog _log;
         private string _connectionString;
@@ -35,17 +35,16 @@ namespace Certify.Datastore.Postgres
         }
 
         public PostgresCredentialStore() { }
-        public bool Init(string connectionString, bool useWindowsNativeFeatures, ILog log)
+        public bool Init(string connectionString, ILog log)
         {
             _log = log;
             _connectionString = connectionString;
-            _useWindowsNativeFeatures = useWindowsNativeFeatures;
             return true;
         }
 
-        public PostgresCredentialStore(string connectionString, bool useWindowsNativeFeatures = true, ILog log = null) : base(useWindowsNativeFeatures)
+        public PostgresCredentialStore(string connectionString, ILog log = null)
         {
-            Init(connectionString, useWindowsNativeFeatures, log);
+            Init(connectionString, log);
         }
 
         public async Task<bool> IsInitialised()
@@ -68,7 +67,7 @@ namespace Certify.Datastore.Postgres
         /// <returns></returns>
         public async Task<bool> Delete(IManagedItemStore itemStore, string storageKey)
         {
-            var inUse = await IsCredentialInUse(itemStore, storageKey);
+            var inUse = await CredentialsUtil.IsCredentialInUse(itemStore, storageKey);
 
             if (!inUse)
             {
@@ -167,7 +166,7 @@ namespace Certify.Datastore.Postgres
 
         }
 
-        public override async Task<StoredCredential> GetCredential(string storageKey)
+        public async Task<StoredCredential> GetCredential(string storageKey)
         {
             var credentials = await GetCredentials(type: null, storageKey: storageKey);
             return credentials.FirstOrDefault(c => c.StorageKey == storageKey);
@@ -202,7 +201,7 @@ namespace Certify.Datastore.Postgres
 
             try
             {
-                return Unprotect(protectedString, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
+                return CredentialsUtil.Unprotect(protectedString, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
             }
             catch (Exception exp)
             {
@@ -210,7 +209,7 @@ namespace Certify.Datastore.Postgres
             }
         }
 
-        public override async Task<Dictionary<string, string>> GetUnlockedCredentialsDictionary(string storageKey)
+        public async Task<Dictionary<string, string>> GetUnlockedCredentialsDictionary(string storageKey)
         {
             try
             {
@@ -234,7 +233,7 @@ namespace Certify.Datastore.Postgres
 
             credentialInfo.DateCreated = DateTime.UtcNow;
 
-            var protectedContent = Protect(credentialInfo.Secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
+            var protectedContent = CredentialsUtil.Protect(credentialInfo.Secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
 
             credentialInfo.Secret = "protected";
 
