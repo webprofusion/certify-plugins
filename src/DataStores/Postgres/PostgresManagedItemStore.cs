@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
+using Certify.Models.Reporting;
 using Certify.Providers;
 using Newtonsoft.Json;
 using Npgsql;
@@ -526,6 +527,14 @@ namespace Certify.Datastore.Postgres
             }
 
             return managedCertificate;
+        }
+
+        public async Task<Summary> GetSummary(ManagedCertificateFilter filter)
+        { 
+            var summary = new Summary();
+
+            summary.Total = (int)await CountAll(filter);
+            return summary;
         }
     }
 }
