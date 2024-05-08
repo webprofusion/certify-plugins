@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace Certify.Datastore.SQLServer
 {
-    public class SQLServerCredentialStore : CredentialsManagerBase, ICredentialsManager
+    public class SQLServerCredentialStore : ICredentialsManager
     {
         private ILog _log;
         private string _connectionString;
@@ -39,11 +39,10 @@ namespace Certify.Datastore.SQLServer
         }
 
         public SQLServerCredentialStore() { }
-        public bool Init(string connectionString, bool useWindowsNativeFeatures, ILog log)
+        public bool Init(string connectionString, ILog log)
         {
             _log = log;
             _connectionString = connectionString;
-            _useWindowsNativeFeatures = useWindowsNativeFeatures;
             return true;
         }
 
@@ -60,9 +59,9 @@ namespace Certify.Datastore.SQLServer
             }
         }
 
-        public SQLServerCredentialStore(string connectionString, bool useWindowsNativeFeatures = true, ILog log = null) : base(useWindowsNativeFeatures)
+        public SQLServerCredentialStore(string connectionString, ILog log = null)
         {
-            Init(connectionString, useWindowsNativeFeatures, log);
+            Init(connectionString, log);
         }
 
         /// <summary>
@@ -72,7 +71,7 @@ namespace Certify.Datastore.SQLServer
         /// <returns></returns>
         public async Task<bool> Delete(IManagedItemStore itemStore, string storageKey)
         {
-            var inUse = await IsCredentialInUse(itemStore, storageKey);
+            var inUse = await CredentialsUtil.IsCredentialInUse(itemStore, storageKey);
 
             if (!inUse)
             {
@@ -172,7 +171,7 @@ namespace Certify.Datastore.SQLServer
 
         }
 
-        public override async Task<StoredCredential> GetCredential(string storageKey)
+        public async Task<StoredCredential> GetCredential(string storageKey)
         {
             var credentials = await GetCredentials(type: null, storageKey: storageKey);
             return credentials.FirstOrDefault(c => c.StorageKey == storageKey);
@@ -207,7 +206,7 @@ namespace Certify.Datastore.SQLServer
 
             try
             {
-                return Unprotect(protectedString, PROTECTIONENTROPY);
+                return CredentialsUtil.Unprotect(protectedString, PROTECTIONENTROPY);
             }
             catch (Exception exp)
             {
@@ -215,7 +214,7 @@ namespace Certify.Datastore.SQLServer
             }
         }
 
-        public override async Task<Dictionary<string, string>> GetUnlockedCredentialsDictionary(string storageKey)
+        public async Task<Dictionary<string, string>> GetUnlockedCredentialsDictionary(string storageKey)
         {
             try
             {
@@ -239,7 +238,7 @@ namespace Certify.Datastore.SQLServer
 
             credentialInfo.DateCreated = DateTime.UtcNow;
 
-            var protectedContent = Protect(credentialInfo.Secret, PROTECTIONENTROPY);
+            var protectedContent = CredentialsUtil.Protect(credentialInfo.Secret, PROTECTIONENTROPY);
 
             credentialInfo.Secret = "protected";
 
