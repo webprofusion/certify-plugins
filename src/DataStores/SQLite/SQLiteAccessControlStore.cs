@@ -11,20 +11,19 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Certify.Management
+namespace Certify.Datastore.SQLite
 {
-    public class SQLiteAccessControlStore : IAccessControlStore
+    class ConfigurationItem
     {
-        public const string STOREDBNAME = "accesscontrol";
-        private const string PROTECTIONENTROPY = "Certify.AccessControl";
+        public string Id { get; set; }
+        public string ItemType { get; set; }
+        public string Config { get; set; }
+    }
 
-        /// <summary>
-        /// if specified will be appended to AppData path as subfolder to load/save to
-        /// </summary>
-        private string _storageSubFolder = "credentials";
-
-        private ILog _log;
-        private bool _useWindowsNativeFeatures = false;
+    public class SQLiteAccessControlStore : SQLiteStoreBase, IAccessControlStore
+    {
+        public SQLiteAccessControlStore() { }
+        public SQLiteAccessControlStore(string storageSubfolder = null, ILog log = null) : base(storageSubfolder, log) { }
 
         public static ProviderDefinition Definition
         {
@@ -40,25 +39,7 @@ namespace Certify.Management
             }
         }
 
-        public SQLiteAccessControlStore()
-        {
-        }
-
-        public SQLiteAccessControlStore(bool useWindowsNativeFeatures = true, string storageSubfolder = "credentials",
-            ILog log = null)
-        {
-            Init(storageSubfolder, useWindowsNativeFeatures, log);
-        }
-
-        public bool Init(string connectionString, bool useWindowsNativeFeatures, ILog log)
-        {
-            _log = log;
-            _storageSubFolder = connectionString;
-            _useWindowsNativeFeatures = useWindowsNativeFeatures;
-            return true;
-        }
-
-        public async Task<bool> IsInitialised()
+        public new async Task<bool> IsInitialised()
         {
             try
             {
@@ -71,11 +52,6 @@ namespace Certify.Management
             }
         }
 
-        private string GetDbPath()
-        {
-            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder ?? "");
-            return Path.Combine(appDataPath, $"{STOREDBNAME}.db");
-        }
 
         /// <summary>
         /// Delete item by key
@@ -84,42 +60,20 @@ namespace Certify.Management
         /// <returns></returns>
         public async Task<bool> Delete<T>(string itemType, string id)
         {
-            //delete item in database
-            var path = GetDbPath();
-
-            if (File.Exists(path))
+            try
             {
-                using (var db = new SQLiteConnection($"Data Source={path}"))
-                {
-                    await db.OpenAsync();
-                    using (var tran = db.BeginTransaction())
-                    {
-                        using (var cmd = new SQLiteCommand("DELETE FROM configurationitem WHERE itemtype=@itemtype AND id=@id", db))
-                        {
-                            cmd.Parameters.Add(new SQLiteParameter("@id", id));
-                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", itemType));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        tran.Commit();
-                    }
-
-                    db.Close();
-                }
+                await base.Delete(id, itemType);
+                return true;
             }
-
-            return true;
+            catch
+            {
+                return false;
+            }
         }
 
-        class ConfigurationItem
-        {
-            public string Id { get; set; }
-            public string ItemType { get; set; }
-            public string Json { get; set; }
-        }
 
         /// <summary>
-        /// Return summary list of stored credentials (excluding secrets) for given type 
+        /// Return list of items for given type 
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
@@ -137,10 +91,9 @@ namespace Certify.Management
 
                     var queryParameters = new List<SQLiteParameter>();
                     var conditions = new List<string>();
-                    var sql = @"SELECT id, itemtype, json FROM configurationitem ";
+                    var sql = @"SELECT id, itemtype, config FROM manageditem ";
 
-                    conditions.Add("itemtype = @itemType");
-                    queryParameters.Add(new SQLiteParameter("@itemType", itemType));
+                    queryParameters.Add(new SQLiteParameter("@itemType", itemType.ToLowerInvariant()));
 
                     if (id != null)
                     {
@@ -148,15 +101,13 @@ namespace Certify.Management
                         queryParameters.Add(new SQLiteParameter("@id", id));
                     }
 
+                    sql += $" WHERE itemtype='{itemType.ToLowerInvariant()}' ";
+
                     if (conditions.Any())
                     {
-                        sql += " WHERE ";
-                        var isFirstCondition = true;
                         foreach (var c in conditions)
                         {
-                            sql += (!isFirstCondition ? " AND " + c : c);
-
-                            isFirstCondition = false;
+                            sql += $" AND {c} ";
                         }
                     }
 
@@ -172,7 +123,7 @@ namespace Certify.Management
                                 {
                                     Id = (string)reader["id"],
                                     ItemType = (string)reader["itemtype"],
-                                    Json = (string)reader["json"]
+                                    Config = (string)reader["config"]
                                 };
                                 items.Add(configItem);
                             }
@@ -190,49 +141,35 @@ namespace Certify.Management
         {
             var path = GetDbPath();
 
-            //create database if it doesn't exist
-            if (!File.Exists(path))
+            try
             {
-                try
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                // save new/modified item into credentials database
+                using (var db = new SQLiteConnection($"Data Source={path}"))
                 {
-                    using (var db = new SQLiteConnection($"Data Source={path}"))
+                    await db.OpenAsync();
+                    using (var tran = db.BeginTransaction())
                     {
-                        await db.OpenAsync();
                         using (var cmd = new SQLiteCommand(
-                                   "CREATE TABLE configurationitem (id TEXT NOT NULL UNIQUE PRIMARY KEY, itemtype TEXT NOT NULL, json TEXT NOT NULL)",
+                                   "INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)",
                                    db))
                         {
+                            cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
+                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", item.ItemType.ToLowerInvariant()));
+                            cmd.Parameters.Add(new SQLiteParameter("@config", item.Config));
+
                             await cmd.ExecuteNonQueryAsync();
                         }
+
+                        tran.Commit();
                     }
-                }
-                catch (SQLiteException)
-                {
-                    // already exists
+
+                    db.Close();
                 }
             }
-
-            // save new/modified item into credentials database
-            using (var db = new SQLiteConnection($"Data Source={path}"))
+            finally
             {
-                await db.OpenAsync();
-                using (var tran = db.BeginTransaction())
-                {
-                    using (var cmd = new SQLiteCommand(
-                               "INSERT OR REPLACE INTO configurationitem (id, itemtype, json) VALUES (@id, @itemtype, @json)",
-                               db))
-                    {
-                        cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
-                        cmd.Parameters.Add(new SQLiteParameter("@itemtype", item.ItemType));
-                        cmd.Parameters.Add(new SQLiteParameter("@json", item.Json));
-
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    tran.Commit();
-                }
-
-                db.Close();
+                _dbMutex.Release();
             }
 
             return item;
@@ -244,7 +181,7 @@ namespace Certify.Management
             var item = items.FirstOrDefault();
             if (item != null)
             {
-                return JsonConvert.DeserializeObject<T>(item.Json);
+                return JsonConvert.DeserializeObject<T>(item.Config);
             }
             else
             {
@@ -267,7 +204,7 @@ namespace Certify.Management
                 {
                     Id = (item as AccessStoreItem).Id,
                     ItemType = typeof(T).Name,
-                    Json = JsonConvert.SerializeObject(item)
+                    Config = JsonConvert.SerializeObject(item)
                 };
 
                 await Update(configItem);
@@ -281,7 +218,7 @@ namespace Certify.Management
         public async Task<List<T>> GetItems<T>(string itemType)
         {
             var items = await GetItems(itemType, null);
-            return items.Select(i => JsonConvert.DeserializeObject<T>(i.Json)).ToList();
+            return items.Select(i => JsonConvert.DeserializeObject<T>(i.Config)).ToList();
         }
     }
 }
