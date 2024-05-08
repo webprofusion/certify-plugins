@@ -1,4 +1,10 @@
-﻿using System;
+using Certify.Management;
+using Certify.Models;
+using Certify.Models.Config;
+using Certify.Models.Providers;
+using Certify.Providers;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
@@ -11,17 +17,13 @@ using Certify.Models.Providers;
 using Certify.Providers;
 using Newtonsoft.Json;
 
-namespace Certify.Management
+namespace Certify.Datastore.SQLite
 {
-    public class SQLiteCredentialStore : CredentialsManagerBase, ICredentialsManager
+    public class SQLiteCredentialStore : SQLiteStoreBase, ICredentialsManager
     {
-        public const string CREDENTIALSTORE = "cred";
-        private const string PROTECTIONENTROPY = "Certify.Credentials";
+        private const string _itemType = "credential";
 
-        /// <summary>
-        /// if specified will be appended to AppData path as subfolder to load/save to
-        /// </summary>
-        private string _storageSubFolder = "credentials";
+        private const string PROTECTIONENTROPY = "Certify.Credentials";
 
         private ILog _log;
 
@@ -39,15 +41,18 @@ namespace Certify.Management
             }
         }
         public SQLiteCredentialStore() { }
-        public bool Init(string connectionString, bool useWindowsNativeFeatures, ILog log)
+        public new bool Init(string connectionString, ILog log)
         {
             _log = log;
-            _storageSubFolder = connectionString;
-            _useWindowsNativeFeatures = useWindowsNativeFeatures;
+
+            base.Init(connectionString, log);
+
+            MigrateLegacyDB();
+
             return true;
         }
 
-        public async Task<bool> IsInitialised()
+        public new async Task<bool> IsInitialised()
         {
             try
             {
@@ -60,15 +65,76 @@ namespace Certify.Management
             }
         }
 
-        public SQLiteCredentialStore(bool useWindowsNativeFeatures = true, string storageSubfolder = "credentials", ILog log = null) : base(useWindowsNativeFeatures)
+        public SQLiteCredentialStore(string storageSubfolder = null, ILog log = null)
         {
-            Init(storageSubfolder, useWindowsNativeFeatures, log);
+            Init(storageSubfolder, log);
         }
 
-        private string GetDbPath()
+        private async Task MigrateLegacyDB()
         {
-            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder ?? "");
-            return Path.Combine(appDataPath, $"{CREDENTIALSTORE}.db");
+            // old dbs are stored as a seperate /credentials/cred.db and this becomes a configurationitem entry in the main manageditems.db
+            var appDataPath = EnvironmentUtil.CreateAppDataPath("credentials" ?? "");
+            var dbPath = Path.Combine(appDataPath, $"cred.db");
+
+            if (File.Exists(dbPath))
+            {
+                List<StoredCredential> credentials = new List<StoredCredential>();
+                // migrate content from legacy db to configurationitems
+                using (var db = new SQLiteConnection($"Data Source={dbPath}"))
+                {
+                    db.Open();
+
+                    var sql = @"SELECT id, json, protectedvalue FROM credential ";
+                    using (var cmd = new SQLiteCommand(sql, db))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["json"]);
+                                try
+                                {
+                                    var secret = (string)reader["protectedvalue"];
+                                    if (secret != null)
+                                    {
+                                        storedCredential.Secret = CredentialsUtil.Unprotect(secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
+                                    }
+
+                                    credentials.Add(storedCredential);
+                                }
+                                catch
+                                {
+                                    _log?.Error("Failed to decrypt stored credential during migration. Item will not be migrated. : {id} {title}", storedCredential.StorageKey, storedCredential.Title);
+                                }
+                            }
+                        }
+                    }
+
+                    db.Close();
+                }
+
+                if (credentials.Count > 0)
+                {
+
+                    // store credentials
+                    foreach (var c in credentials)
+                    {
+                        await Update(c);
+                    }
+
+                    _log?.Warning("Stored credentials database migrated to configuration items.");
+
+                    // check we have the credentials we just tried to store, then remove the old db
+                    File.Copy(dbPath, $"{dbPath}.bak", true);
+                    if (File.Exists($"{dbPath}.bak"))
+                    {
+                        File.Delete(dbPath);
+                        _log?.Warning("Legacy credentials database backup created.");
+                    }
+
+                }
+
+            }
         }
 
         /// <summary>
@@ -78,32 +144,11 @@ namespace Certify.Management
         /// <returns></returns>
         public async Task<bool> Delete(IManagedItemStore itemStore, string storageKey)
         {
-            var inUse = await IsCredentialInUse(itemStore, storageKey);
+            var inUse = await CredentialsUtil.IsCredentialInUse(itemStore, storageKey);
 
             if (!inUse)
             {
-                //delete credential in database
-                var path = GetDbPath();
-
-                if (File.Exists(path))
-                {
-                    using (var db = new SQLiteConnection($"Data Source={path}"))
-                    {
-                        await db.OpenAsync();
-                        using (var tran = db.BeginTransaction())
-                        {
-                            using (var cmd = new SQLiteCommand("DELETE FROM credential WHERE id=@id", db))
-                            {
-                                cmd.Parameters.Add(new SQLiteParameter("@id", storageKey));
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            tran.Commit();
-                        }
-
-                        db.Close();
-                    }
-                }
+                await Delete(storageKey, _itemType);
 
                 return true;
             }
@@ -133,7 +178,7 @@ namespace Certify.Management
 
                     var queryParameters = new List<SQLiteParameter>();
                     var conditions = new List<string>();
-                    var sql = @"SELECT id, json FROM credential ";
+                    var sql = @"SELECT id, config FROM manageditem ";
 
                     if (!string.IsNullOrEmpty(storageKey))
                     {
@@ -143,23 +188,21 @@ namespace Certify.Management
 
                     if (!string.IsNullOrEmpty(type))
                     {
-                        conditions.Add(" json->>'ProviderType' = @providerType");
+                        conditions.Add(" config->>'ProviderType' = @providerType");
                         queryParameters.Add(new SQLiteParameter("@providerType", type));
                     }
 
+                    sql += $" WHERE itemtype='{_itemType}' ";
+
                     if (conditions.Any())
                     {
-                        sql += " WHERE ";
-                        var isFirstCondition = true;
                         foreach (var c in conditions)
                         {
-                            sql += (!isFirstCondition ? " AND " + c : c);
-
-                            isFirstCondition = false;
+                            sql += $" AND {c}";
                         }
                     }
 
-                    sql += $" ORDER BY json->>'Title' ASC";
+                    sql += $" ORDER BY config->>'Title' ASC";
 
                     using (var cmd = new SQLiteCommand(sql, db))
                     {
@@ -169,7 +212,7 @@ namespace Certify.Management
                         {
                             while (await reader.ReadAsync())
                             {
-                                var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["json"]);
+                                var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["config"]);
                                 credentials.Add(storedCredential);
                             }
                         }
@@ -186,7 +229,7 @@ namespace Certify.Management
             }
         }
 
-        public override async Task<StoredCredential> GetCredential(string storageKey)
+        public async Task<StoredCredential> GetCredential(string storageKey)
         {
             var credentials = await GetCredentials();
             return credentials.FirstOrDefault(c => c.StorageKey == storageKey);
@@ -207,17 +250,18 @@ namespace Certify.Management
             if (File.Exists(path))
             {
                 using (var db = new SQLiteConnection($"Data Source={path}"))
-                using (var cmd = new SQLiteCommand("SELECT json, protectedvalue FROM credential WHERE id=@id", db))
+                using (var cmd = new SQLiteCommand("SELECT config, itemvalue FROM manageditem WHERE id=@id and itemtype=@itemtype", db))
                 {
                     cmd.Parameters.Add(new SQLiteParameter("@id", storageKey));
+                    cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
 
                     db.Open();
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
                         {
-                            var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["json"]);
-                            protectedString = (string)reader["protectedvalue"];
+                            var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["config"]);
+                            protectedString = (string)reader["itemvalue"];
                         }
                     }
 
@@ -227,7 +271,7 @@ namespace Certify.Management
 
             try
             {
-                return Unprotect(protectedString, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
+                return CredentialsUtil.Unprotect(protectedString, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
             }
             catch (Exception exp)
             {
@@ -235,7 +279,7 @@ namespace Certify.Management
             }
         }
 
-        public override async Task<Dictionary<string, string>> GetUnlockedCredentialsDictionary(string storageKey)
+        public async Task<Dictionary<string, string>> GetUnlockedCredentialsDictionary(string storageKey)
         {
             try
             {
@@ -259,50 +303,40 @@ namespace Certify.Management
 
             credentialInfo.DateCreated = DateTime.UtcNow;
 
-            var protectedContent = Protect(credentialInfo.Secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
+            var protectedContent = CredentialsUtil.Protect(credentialInfo.Secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
 
             credentialInfo.Secret = "protected";
 
-            var path = GetDbPath();
-
-            //create database if it doesn't exist
-            if (!File.Exists(path))
+            try
             {
-                try
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                var path = GetDbPath();
+
+                // save new/modified item into credentials database
+                using (var db = new SQLiteConnection($"Data Source={path}"))
                 {
-                    using (var db = new SQLiteConnection($"Data Source={path}"))
+                    await db.OpenAsync();
+                    using (var tran = db.BeginTransaction())
                     {
-                        await db.OpenAsync();
-                        using (var cmd = new SQLiteCommand("CREATE TABLE credential (id TEXT NOT NULL UNIQUE PRIMARY KEY, json TEXT NOT NULL, protectedvalue TEXT NOT NULL)", db))
+                        using (var cmd = new SQLiteCommand("INSERT OR REPLACE INTO manageditem (id, config, itemtype, itemvalue) VALUES (@id, @config, @itemtype, @itemvalue)", db))
                         {
+                            cmd.Parameters.Add(new SQLiteParameter("@id", credentialInfo.StorageKey));
+                            cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(credentialInfo)));
+                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
+                            cmd.Parameters.Add(new SQLiteParameter("@itemvalue", protectedContent));
                             await cmd.ExecuteNonQueryAsync();
                         }
+
+                        tran.Commit();
                     }
+
+                    db.Close();
                 }
-                catch (SQLiteException)
-                {
-                    // already exists
-                }
+
             }
-
-            // save new/modified item into credentials database
-            using (var db = new SQLiteConnection($"Data Source={path}"))
+            finally
             {
-                await db.OpenAsync();
-                using (var tran = db.BeginTransaction())
-                {
-                    using (var cmd = new SQLiteCommand("INSERT OR REPLACE INTO credential (id, json, protectedvalue) VALUES (@id, @json, @protectedvalue)", db))
-                    {
-                        cmd.Parameters.Add(new SQLiteParameter("@id", credentialInfo.StorageKey));
-                        cmd.Parameters.Add(new SQLiteParameter("@json", JsonConvert.SerializeObject(credentialInfo)));
-                        cmd.Parameters.Add(new SQLiteParameter("@protectedvalue", protectedContent));
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    tran.Commit();
-                }
-
-                db.Close();
+                _dbMutex.Release();
             }
 
             return credentialInfo;

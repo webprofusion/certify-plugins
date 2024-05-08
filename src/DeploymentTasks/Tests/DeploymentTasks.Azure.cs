@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Certify.Config;
 using Certify.Core.Management.DeploymentTasks;
+using Certify.Datastore.SQLite;
 using Certify.Management;
 using Certify.Models;
 using Certify.Models.Config;
