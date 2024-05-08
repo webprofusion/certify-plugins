@@ -20,26 +20,9 @@ namespace Certify.Datastore.SQLite
     /// SQLiteItemManager is the storage service implementation for Managed Certificate information using SQLite
     /// This provider features use of semaphore and retry policies as the underlying SQLite file database is susceptible to interference/locking from external apps like windows real-time protection etc.
     /// </summary>
-    public class SQLiteManagedItemStore : IManagedItemStore
+    public class SQLiteManagedItemStore : SQLiteStoreBase, IManagedItemStore
     {
-        public const string ITEMMANAGERCONFIG = "manageditems";
-
-        private string _storageSubFolder = ""; //if specified will be appended to AppData path as subfolder to load/save to
-        public bool IsSingleInstanceMode { get; set; } = true; //if true, access to this resource is centralised so we can make assumptions about when reload of settings is required etc
-
-        // TODO: make db path configurable on service start
-        private string _dbPath = $"C:\\programdata\\certify\\{ITEMMANAGERCONFIG}.db";
-        private string _connectionString;
-
-        private AsyncRetryPolicy _retryPolicy;
-
-        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
-        private const int _semaphoreMaxWaitMS = 10 * 1000;
-
-        private ILog _log;
-
-        private bool _initialised = false;
-        private readonly bool _highPerformanceMode = false;
+        private const string _itemType = "managedcertificate";
 
         public static ProviderDefinition Definition =>
             new ProviderDefinition
@@ -50,209 +33,8 @@ namespace Certify.Datastore.SQLite
                 Description = "SQLite DataStore provider"
             };
 
-        public bool Init(string connectionString, ILog log)
-        {
-            var storageSubfolder = connectionString;
-
-            _log = log;
-
-            _retryPolicy = Policy
-                    .Handle<ArgumentException>()
-                    .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
-                    {
-                        _log.Warning($"Retrying DB operation..{retryCount} {exception}");
-                    });
-
-            if (!string.IsNullOrEmpty(storageSubfolder))
-            {
-                _storageSubFolder = storageSubfolder;
-            }
-
-            _dbPath = GetDbPath();
-
-            _connectionString = $"Data Source={_dbPath};PRAGMA temp_store=MEMORY;Cache=Shared;PRAGMA journal_mode=WAL;";
-
-            if (_highPerformanceMode)
-            {
-                // for tests only, not suitable for production. https://www.sqlite.org/faq.html#q19
-                _connectionString += "PRAGMA synchronous=OFF;";
-            }
-
-            try
-            {
-                if (!_highPerformanceMode)
-                {
-                    if (File.Exists(_dbPath))
-                    {
-                        // upgrade schema if db exists
-                        var upgraded = UpgradeSchema().Result;
-                    }
-                    else
-                    {
-                        // upgrade from JSON storage if db doesn't exist yet
-                        var settingsUpgraded = UpgradeSettings().Result;
-                    }
-
-                    PerformDBBackup();
-                }
-
-                //enable write ahead logging mode
-                EnableDBWriteAheadLogging();
-
-                _initialised = true;
-            }
-            catch (Exception exp)
-            {
-                var msg = "Failed to initialise item manager. Database may be inaccessible. " + exp;
-                _log?.Error(msg);
-
-                _initialised = false;
-            }
-
-            return _initialised;
-        }
-
         public SQLiteManagedItemStore() { }
-        public SQLiteManagedItemStore(string storageSubfolder = null, ILog log = null, bool highPerformanceMode = false)
-        {
-            _highPerformanceMode = highPerformanceMode;
-            Init(storageSubfolder, log);
-        }
-
-        public Task<bool> IsInitialised()
-        {
-            return Task.FromResult(_initialised);
-        }
-
-        private void PerformDBBackup()
-        {
-            try
-            {
-                if (File.Exists(_dbPath))
-                {
-                    using (var db = new SQLiteConnection(_connectionString))
-                    {
-                        db.Open();
-
-                        var backupFile = $"{_dbPath}.bak";
-                        try
-                        {
-                            // archive previous backup if it looks valid
-                            if (File.Exists(backupFile) && new System.IO.FileInfo(backupFile).Length > 1024)
-                            {
-
-                                File.Copy($"{_dbPath}.bak", $"{_dbPath}.bak.old", true);
-                            }
-
-                            // remove previous backup (invalid backups can be corrupt and cause subsequent backups to fail)
-                            if (File.Exists(backupFile))
-                            {
-                                File.Delete(backupFile);
-                            }
-
-                            // create new backup
-
-                            using (var backupDB = new SQLiteConnection($"Data Source ={backupFile}"))
-                            {
-                                backupDB.Open();
-                                db.BackupDatabase(backupDB, "main", "main", -1, null, 1000);
-                                backupDB.Close();
-
-                                _log?.Information($"Performed db backup to {backupFile}. To switch to the backup, rename the old manageditems.db file and rename the .bak file as manageditems.db, then restart service to recover. ");
-                            }
-                        }
-                        catch (Exception exp)
-                        {
-                            _log?.Error($"Failed to performed db backup to {backupFile}. Check file permissions and delete old file if there is a conflict. " + exp.ToString());
-
-                        }
-
-                        db.Close();
-                    }
-                }
-            }
-            catch (SQLiteException exp)
-            {
-                _log?.Error("Failed to perform db backup: " + exp);
-            }
-        }
-
-        private void EnableDBWriteAheadLogging()
-        {
-            try
-            {
-                using (var db = new SQLiteConnection(_connectionString))
-                {
-                    db.Open();
-                    var walCmd = db.CreateCommand();
-                    walCmd.CommandText =
-                    @"
-                    PRAGMA journal_mode = 'wal';
-                ";
-                    walCmd.ExecuteNonQuery();
-                    db.Close();
-                }
-            }
-            catch (SQLiteException exp)
-            {
-                if (exp.ResultCode == SQLiteErrorCode.ReadOnly)
-                {
-                    _log?.Error($"Encountered a read only database. A backup of the original database was recently performed to {_dbPath}.bak, you should revert to this backup.");
-                }
-            }
-        }
-
-        public Task PerformMaintenance()
-        {
-            try
-            {
-                PerformDBBackup();
-
-                using (var db = new SQLiteConnection(_connectionString))
-                {
-                    db.Open();
-                    var walCmd = db.CreateCommand();
-                    walCmd.CommandText =
-                    @"
-                    PRAGMA wal_checkpoint(FULL);
-                    VACUUM;
-                ";
-                    walCmd.ExecuteNonQuery();
-                    db.Close();
-                }
-            }
-            catch (Exception exp)
-            {
-                _log?.Error("An error occurred during database maintenance. Check storage free space and disk IO. " + exp);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private string GetDbPath()
-        {
-            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder);
-            return Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.db");
-        }
-
-        private async Task CreateManagedItemsSchema()
-        {
-
-            try
-            {
-                using (var db = new SQLiteConnection(_connectionString))
-                {
-                    await db.OpenAsync();
-                    using (var cmd = new SQLiteCommand("CREATE TABLE manageditem (id TEXT NOT NULL UNIQUE PRIMARY KEY, json TEXT NOT NULL)", db))
-                    {
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    db.Close();
-                }
-            }
-            catch { }
-        }
+        public SQLiteManagedItemStore(string storageSubfolder = null, ILog log = null) : base(storageSubfolder, log) { }
 
         /// <summary>
         /// Perform a full backup and save of the current set of managed sites
@@ -277,64 +59,23 @@ namespace Certify.Datastore.SQLite
                 {
                     foreach (var item in list)
                     {
-                        using (var cmd = new SQLiteCommand("INSERT OR REPLACE INTO manageditem (id, json) VALUES (@id, @json)", db))
+                        using (var cmd = new SQLiteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
                         {
                             cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SQLiteParameter("@json", JsonConvert.SerializeObject(item)));
+                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
+                            cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(item)));
                             await cmd.ExecuteNonQueryAsync();
                         }
                     }
 
                     tran.Commit();
                 }
+                db.Close();
             }
 
             Debug.WriteLine($"StoreSettings[SQLite] took {watch.ElapsedMilliseconds}ms for {list.Count()} records");
         }
 
-        private async Task<bool> UpgradeSchema()
-        {
-            // attempt column upgrades
-            var cols = new List<string>();
-
-            using (var db = new SQLiteConnection(_connectionString))
-            {
-                await db.OpenAsync();
-                try
-                {
-                    using (var cmd = new SQLiteCommand("PRAGMA table_info(manageditem);", db))
-                    {
-
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-
-                            while (await reader.ReadAsync())
-                            {
-                                var colname = (string)reader["name"];
-                                cols.Add(colname);
-                            }
-                        }
-                    }
-
-                    // perform any further schema checks and upgrades..
-
-                    if (cols.Count == 0)
-                    {
-                        // no columns. table doesn't exist
-                        await CreateManagedItemsSchema();
-                    }
-                }
-                catch
-                {
-                    // error checking for upgrade, ensure table exists
-                    await CreateManagedItemsSchema();
-
-                    return false;
-                }
-            }
-
-            return true;
-        }
         public async Task DeleteAll()
         {
             var items = await Find(ManagedCertificateFilter.ALL);
@@ -346,15 +87,15 @@ namespace Certify.Datastore.SQLite
 
         public static (string sql, List<SQLiteParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
-            var sql = @"SELECT i.id, i.json, i.json ->> 'Name' as Name, 
-                datetime(i.json ->> 'DateRenewed') as DateRenewed, 
-                datetime(i.json ->> 'DateLastRenewalAttempt') as DateLastRenewalAttempt ,
-                datetime(i.json ->> 'DateExpiry') as DateExpiry 
+            var sql = @"SELECT i.id, i.config, i.config ->> 'Name' as Name, 
+                datetime(i.config ->> 'DateRenewed') as DateRenewed, 
+                datetime(i.config ->> 'DateLastRenewalAttempt') as DateLastRenewalAttempt ,
+                datetime(i.config ->> 'DateExpiry') as DateExpiry 
                 FROM manageditem i ";
 
             if (countMode)
             {
-                sql = "SELECT COUNT (1) as numItems, i.json ->> 'Name' as Name  FROM manageditem i ";
+                sql = "SELECT COUNT (1) as numItems, i.config ->> 'Name' as Name  FROM manageditem i ";
             }
 
             var queryParameters = new List<SQLiteParameter>();
@@ -380,43 +121,44 @@ namespace Certify.Datastore.SQLite
 
             if (filter.LastOCSPCheckMins != null)
             {
-                conditions.Add(" datetime(i.json ->> 'DateLastOcspCheck') < @ocspCheckDate");
+                conditions.Add(" datetime(i.config ->> 'DateLastOcspCheck') < @ocspCheckDate");
                 queryParameters.Add(new SQLiteParameter("@ocspCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
             }
 
             if (filter.LastRenewalInfoCheckMins != null)
             {
-                conditions.Add(" datetime(i.json ->> 'DateLastRenewalInfoCheck') < @renewalInfoCheckDate");
+                conditions.Add(" datetime(i.config ->> 'DateLastRenewalInfoCheck') < @renewalInfoCheckDate");
                 queryParameters.Add(new SQLiteParameter("@renewalInfoCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
             }
 
             if (filter.ChallengeType != null)
             {
-                conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeType'=@challengeType)"); // challenges.value->>'ChallengeType'=@challengeType
+                conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeType'=@challengeType)"); // challenges.value->>'ChallengeType'=@challengeType
                 queryParameters.Add(new SQLiteParameter("@challengeType", filter.ChallengeType));
             }
 
             if (filter.ChallengeProvider != null)
             {
-                conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeProvider'=@challengeProvider)");
+                conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeProvider'=@challengeProvider)");
                 queryParameters.Add(new SQLiteParameter("@challengeProvider", filter.ChallengeProvider));
             }
 
             if (filter.StoredCredentialKey != null)
             {
-                conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.json -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeCredentialKey'=@challengeCredentialKey)");
+                conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeCredentialKey'=@challengeCredentialKey)");
                 queryParameters.Add(new SQLiteParameter("@challengeCredentialKey", filter.StoredCredentialKey));
             }
 
+            sql += $" WHERE itemtype=@itemtype ";
+
+            queryParameters.Add(new SQLiteParameter("@itemtype", _itemType));
+
             if (conditions.Any())
             {
-                sql += " WHERE ";
-                var isFirstCondition = true;
+     
                 foreach (var c in conditions)
                 {
-                    sql += (!isFirstCondition ? " AND " + c : c);
-
-                    isFirstCondition = false;
+                    sql += $" AND {c} ";
                 }
             }
 
@@ -512,7 +254,7 @@ namespace Certify.Datastore.SQLite
                                 {
                                     var itemId = (string)reader["id"];
 
-                                    var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
+                                    var managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
 
                                     // in some cases users may have previously manipulated the id, causing
                                     // duplicates. Correct the ID here (database Id is unique):
@@ -546,7 +288,7 @@ namespace Certify.Datastore.SQLite
             return managedCertificates;
         }
 
-        private async Task<bool> UpgradeSettings()
+        protected override async Task<bool> UpgradeSettings()
         {
             var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder);
 
@@ -608,16 +350,17 @@ namespace Certify.Datastore.SQLite
             await _retryPolicy.ExecuteAsync(async () =>
             {
                 using (var db = new SQLiteConnection(_connectionString))
-                using (var cmd = new SQLiteCommand("SELECT json FROM manageditem WHERE id=@id", db))
+                using (var cmd = new SQLiteCommand("SELECT config FROM manageditem WHERE id=@id and itemtype=@itemtype", db))
                 {
                     cmd.Parameters.Add(new SQLiteParameter("@id", siteId));
+                    cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
 
                     await db.OpenAsync();
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
                         {
-                            managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
+                            managedCertificate = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
                             managedCertificate.IsChanged = false;
                         }
 
@@ -666,15 +409,16 @@ namespace Certify.Datastore.SQLite
                         // get current version from DB
                         using (var tran = db.BeginTransaction())
                         {
-                            using (var cmd = new SQLiteCommand("SELECT json FROM manageditem WHERE id=@id", db))
+                            using (var cmd = new SQLiteCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
                             {
                                 cmd.Parameters.Add(new SQLiteParameter("@id", managedCertificate.Id));
+                                cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
 
                                 using (var reader = await cmd.ExecuteReaderAsync())
                                 {
                                     if (await reader.ReadAsync())
                                     {
-                                        current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["json"]);
+                                        current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
                                         current.IsChanged = false;
                                     }
 
@@ -699,10 +443,11 @@ namespace Certify.Datastore.SQLite
                                 }
                             }
 
-                            using (var cmd = new SQLiteCommand("INSERT OR REPLACE INTO manageditem (id, json) VALUES (@id,@json)", db))
+                            using (var cmd = new SQLiteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
                             {
                                 cmd.Parameters.Add(new SQLiteParameter("@id", managedCertificate.Id));
-                                cmd.Parameters.Add(new SQLiteParameter("@json", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+                                cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
 
                                 await cmd.ExecuteNonQueryAsync();
                             }
@@ -725,29 +470,7 @@ namespace Certify.Datastore.SQLite
 
         public async Task Delete(ManagedCertificate site)
         {
-            try
-            {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-                // save modified items into settings database
-                using (var db = new SQLiteConnection(_connectionString))
-                {
-                    await db.OpenAsync();
-                    using (var tran = db.BeginTransaction())
-                    {
-                        using (var cmd = new SQLiteCommand("DELETE FROM manageditem WHERE id=@id", db))
-                        {
-                            cmd.Parameters.Add(new SQLiteParameter("@id", site.Id));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        tran.Commit();
-                    }
-                }
-            }
-            finally
-            {
-                _dbMutex.Release();
-            }
+            await Delete(site.Id, _itemType);
         }
 
         public async Task DeleteByName(string nameStartsWith)
@@ -757,15 +480,25 @@ namespace Certify.Datastore.SQLite
                 await db.OpenAsync();
                 using (var tran = db.BeginTransaction())
                 {
-                    using (var cmd = new SQLiteCommand("DELETE FROM manageditem WHERE json ->>'Name' LIKE @nameStartsWith || '%' ", db))
+                    using (var cmd = new SQLiteCommand($"DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
                     {
+                        cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
                         cmd.Parameters.Add(new SQLiteParameter("@nameStartsWith", nameStartsWith));
                         await cmd.ExecuteNonQueryAsync();
                     }
 
                     tran.Commit();
                 }
+                db.Close();
             }
+        }
+
+        public async Task<Summary> GetSummary(ManagedCertificateFilter filter)
+        {
+            var summary = new Summary();
+
+            summary.Total = (int)await CountAll(filter);
+            return summary;
         }
     }
 }
