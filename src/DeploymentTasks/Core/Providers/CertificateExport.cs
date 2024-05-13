@@ -127,7 +127,8 @@ namespace Certify.Providers.DeploymentTasks
 
                 var certPwd = "";
 
-                if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId))
+                // if credential used for private key, check if we can decrypt that (unless we exporting PFX which is just a file copy)
+                if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId) && exportType != "pfxfull")
                 {
                     var cred = await execParams.CredentialsManager.GetUnlockedCredentialsDictionary(managedCert.CertificatePasswordCredentialId);
                     if (cred != null)
