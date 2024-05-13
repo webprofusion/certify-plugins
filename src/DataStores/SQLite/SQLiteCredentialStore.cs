@@ -25,8 +25,6 @@ namespace Certify.Datastore.SQLite
 
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
-        private ILog _log;
-
         public static ProviderDefinition Definition
         {
             get
@@ -47,7 +45,7 @@ namespace Certify.Datastore.SQLite
 
             base.Init(connectionString, log);
 
-            MigrateLegacyDB();
+            MigrateLegacyDB().Wait(); ;
 
             return true;
         }
