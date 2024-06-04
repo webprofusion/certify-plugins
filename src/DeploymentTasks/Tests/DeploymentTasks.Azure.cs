@@ -62,7 +62,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var results = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false);
+                var results = await task.Execute(_log, null, managedCert,  new DeploymentContext { }, isPreviewOnly: false, cancellationToken: CancellationToken.None);
 
                 // assert new valid pfx exists in destination
                 Assert.IsTrue(results.All(r => r.IsSuccess));

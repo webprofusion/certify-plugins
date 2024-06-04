@@ -58,9 +58,9 @@ namespace DeploymentTaskTests
                     task.TaskConfig,
                     null,
                     isPreviewOnly: false,
-                    task.TaskProvider.GetDefinition(), CancellationToken.None,
-                    new DeploymentContext { }
-                )
+                    definition: task.TaskProvider.GetDefinition(), context: new DeploymentContext { }
+,
+                    cancellationToken: CancellationToken.None)
                 );
 
             Assert.IsFalse(validationResult.Any());
@@ -130,7 +130,7 @@ namespace DeploymentTaskTests
             var results = new List<ActionResult>();
             foreach (var task in deploymentTasks)
             {
-                results.AddRange(await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false));
+                results.AddRange(await task.Execute(_log, null, managedCert, new DeploymentContext { }, isPreviewOnly: false, cancellationToken: CancellationToken.None));
             }
 
             // assert output exists in destination
