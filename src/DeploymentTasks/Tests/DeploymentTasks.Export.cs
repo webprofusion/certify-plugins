@@ -54,7 +54,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var result = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false);
+                var result = await task.Execute(_log, null, managedCert, new DeploymentContext { }, isPreviewOnly: false, cancellationToken: CancellationToken.None);
             }
 
             // assert new valid pfx exists in destination
@@ -94,7 +94,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var result = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false);
+                var result = await task.Execute(_log, null, managedCert, new DeploymentContext { }, isPreviewOnly: false, cancellationToken: CancellationToken.None);
             }
 
             // assert output exists in destination
@@ -132,7 +132,7 @@ namespace DeploymentTaskTests
             // perform preview deployments
             var managedCert = GetMockManagedCertificate("LocalApacheDeploymentTest", "123", PrimaryTestDomain, PrimaryIISRoot);
 
-            var results = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: true);
+            var results = await task.Execute(_log, null, managedCert, new DeploymentContext { }, isPreviewOnly: true, cancellationToken: CancellationToken.None);
 
             // result should have a validation failure
             Assert.IsTrue(results.Any(r => r.IsSuccess == false), "Results should have validation failure for missing cert path");
@@ -142,7 +142,7 @@ namespace DeploymentTaskTests
             task = new DeploymentTask(provider, config, null);
 
             // perform preview deployments
-            results = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: true);
+            results = await task.Execute(_log, null, managedCert, new DeploymentContext { }, isPreviewOnly: true, cancellationToken: CancellationToken.None);
 
             // result should not have a validation failure
             Assert.IsFalse(results.Any(r => r.IsSuccess == false), "Results should not have validation failure");
@@ -179,7 +179,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var result = await task.Execute(_log, null, managedCert, CancellationToken.None, new DeploymentContext { }, isPreviewOnly: false);
+                var result = await task.Execute(_log, null, managedCert, new DeploymentContext { }, isPreviewOnly: false, cancellationToken: CancellationToken.None);
             }
 
             // assert output exists in destination
