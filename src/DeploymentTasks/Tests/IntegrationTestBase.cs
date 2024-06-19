@@ -13,7 +13,10 @@ namespace DeploymentTaskTests
 {
     public class IntegrationTestBase
     {
-        public string PrimaryTestDomain = "test.certifytheweb.com"; // TODO: get this from debug config as it changes per dev machine
+        /// <summary>
+        /// Example test domain, real tests will set CERTIFY_TESTDOMAIN env variable
+        /// </summary>
+        public string PrimaryTestDomain = "test.certifytheweb.com";
         public string PrimaryIISRoot = @"c:\inetpub\wwwroot\";
         public Dictionary<string, string> ConfigSettings = new Dictionary<string, string>();
         internal ILog _log;
@@ -21,9 +24,9 @@ namespace DeploymentTaskTests
 
         public IntegrationTestBase()
         {
-            if (Environment.GetEnvironmentVariable("CERTIFYSSLDOMAIN") != null)
+            if (Environment.GetEnvironmentVariable("CERTIFY_TESTDOMAIN") != null)
             {
-                PrimaryTestDomain = Environment.GetEnvironmentVariable("CERTIFYSSLDOMAIN");
+                PrimaryTestDomain = Environment.GetEnvironmentVariable("CERTIFY_TESTDOMAIN");
             }
 
             /* ConfigSettings.Add("AWS_ZoneId", "example");
