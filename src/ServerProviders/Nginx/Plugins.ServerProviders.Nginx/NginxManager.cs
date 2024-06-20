@@ -441,25 +441,25 @@ namespace Certify.Plugins.Server.Nginx
 
         public async Task<bool> RemoveHttpsBinding(string path, string startIndex, List<BindingInfo> bindings)
         {
-            return false;
+            return await Task.FromResult(false);
         }
 
         public async Task<bool> CheckPermissions()
         {
             // check main config can be written to.
-            return false;
+            return await Task.FromResult(false);
         }
 
         public async Task<bool> PerformConfigReload()
         {
-            return false;
+            return await Task.FromResult(false);
         }
 
         internal async Task<bool> SiteExists(string primaryHostname)
         {
             if (string.IsNullOrEmpty(_configPath))
             {
-                return false;
+                return await Task.FromResult(false);
             }
 
             var configPath = System.IO.Path.Combine(_configPath, _siteConfigSubfolder, primaryHostname);
