@@ -493,9 +493,9 @@ namespace Certify.Datastore.SQLite
             }
         }
 
-        public async Task<Summary> GetSummary(ManagedCertificateFilter filter)
+        public async Task<StatusSummary> GetSummary(ManagedCertificateFilter filter)
         {
-            var summary = new Summary();
+            var summary = new StatusSummary();
 
             summary.Total = (int)await CountAll(filter);
             return summary;
