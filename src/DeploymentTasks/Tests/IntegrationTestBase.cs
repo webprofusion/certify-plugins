@@ -1,6 +1,7 @@
 ﻿using Certify.Management;
 using Certify.Models;
 using Certify.Models.Providers;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Serilog;
@@ -37,12 +38,7 @@ namespace DeploymentTaskTests
 
             ConfigSettings = JsonConvert.DeserializeObject<Dictionary<string, string>>(System.IO.File.ReadAllText("C:\\temp\\Certify\\TestConfigSettings.json"));
 
-            var logImp = new LoggerConfiguration()
-           .WriteTo.Debug()
-           .CreateLogger();
-
-            _log = new Loggy(logImp);
-
+            _log = new Loggy(LoggerFactory.Create(builder => builder.AddDebug()).CreateLogger<IntegrationTestBase>());
         }
 
         [TestInitialize]
