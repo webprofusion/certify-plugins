@@ -1,5 +1,4 @@
 using Certify.Datastore.SQLite;
-using Certify.Management;
 using Certify.Providers.Deployment.Core.Shared;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Plugin.DeploymentTasks.Core.Shared.Model;
