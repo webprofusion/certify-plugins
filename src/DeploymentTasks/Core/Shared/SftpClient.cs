@@ -1,4 +1,4 @@
-﻿using Certify.Models.Providers;
+using Certify.Models.Providers;
 using Certify.Providers.DeploymentTasks;
 using Plugin.DeploymentTasks.Core.Shared.Model;
 using Renci.SshNet.Common;
@@ -50,7 +50,13 @@ namespace Certify.Providers.Deployment.Core.Shared
                     {
                         try
                         {
-                            sftp.WriteAllBytes(dest.Key, dest.Value);
+                            using (var ms = new MemoryStream(dest.Value))
+                            {
+                                sftp.UploadFile(ms, dest.Key, uploaded =>
+                                {
+                                    log?.Verbose($"Uploaded {(double)uploaded / ms.Length * 100}% of {dest.Key}.");
+                                });
+                            }
                         }
                         catch (SftpPathNotFoundException exp)
                         {
@@ -64,13 +70,14 @@ namespace Certify.Providers.Deployment.Core.Shared
                         catch (Exception exp)
                         {
 
-                            log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote [{connectionInfo.Host}:{connectionInfo.Port}]: {exp}");
+                            log?.Error($"SftpClient :: Failed to perform CopyLocalToRemote for {dest.Key} [{connectionInfo.Host}:{connectionInfo.Port}]: {exp}");
 
                             // failed to copy the file. TODO: retries
                             isSuccess = false;
                             break;
                         }
                     }
+
                     sftp.Disconnect();
                 }
                 catch (Exception exp)
@@ -82,7 +89,6 @@ namespace Certify.Providers.Deployment.Core.Shared
 
             return isSuccess;
         }
-
 
         /// <summary>
         /// List a remote directory in the console.
@@ -117,8 +123,8 @@ namespace Certify.Providers.Deployment.Core.Shared
                     log?.Error($"SftpClient.ListFiles :: Error listing files {e}");
                 }
             }
+
             return fileList;
         }
-
     }
 }
