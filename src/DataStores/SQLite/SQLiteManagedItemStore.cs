@@ -384,13 +384,13 @@ namespace Certify.Datastore.SQLite
                 if (filter.LastOCSPCheckMins != null)
                 {
                     conditions.Add(" datetime(i.json ->> 'DateLastOcspCheck') < @ocspCheckDate");
-                    queryParameters.Add(new SQLiteParameter("@ocspCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastOCSPCheckMins)));
+                    queryParameters.Add(new SQLiteParameter("@ocspCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
                 }
 
                 if (filter.LastRenewalInfoCheckMins != null)
                 {
                     conditions.Add(" datetime(i.json ->> 'DateLastRenewalInfoCheck') < @renewalInfoCheckDate");
-                    queryParameters.Add(new SQLiteParameter("@renewalInfoCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastRenewalInfoCheckMins)));
+                    queryParameters.Add(new SQLiteParameter("@renewalInfoCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
                 }
 
                 if (filter.ChallengeType != null)
