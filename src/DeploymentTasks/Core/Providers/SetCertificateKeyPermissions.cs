@@ -1,12 +1,10 @@
 ﻿using Certify.Management;
 using Certify.Models;
 using Certify.Models.Config;
-using Plugin.DeploymentTasks.Shared;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace Certify.Providers.DeploymentTasks
