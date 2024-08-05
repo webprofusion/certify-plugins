@@ -1,11 +1,11 @@
-﻿using Certify.Management;
-using Certify.Models;
-using Certify.Models.Config;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Certify.Management;
+using Certify.Models;
+using Certify.Models.Config;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -19,7 +19,7 @@ namespace Certify.Providers.DeploymentTasks
             Definition = new DeploymentProviderDefinition
             {
                 Id = "Certify.Providers.DeploymentTasks.SetCertificateKeyPermissions",
-                Title = "Set Certificate Key Permissions)",
+                Title = "Set Certificate Key Permissions",
                 DefaultTitle = "Set Certificate Key Permissions",
                 IsExperimental = true,
                 UsageType = DeploymentProviderUsage.PostRequest,
@@ -123,6 +123,5 @@ namespace Certify.Providers.DeploymentTasks
 
             return await Task.FromResult(results);
         }
-
     }
 }

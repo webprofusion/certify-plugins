@@ -1,11 +1,11 @@
-﻿using Certify.Models;
-using Certify.Models.Config;
-using Certify.Models.Providers;
-using Certify.Providers.CertificateManagers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Certify.Models;
+using Certify.Models.Config;
+using Certify.Models.Providers;
+using Certify.Providers.CertificateManagers;
 
 namespace Plugin.CertificateManagers
 {

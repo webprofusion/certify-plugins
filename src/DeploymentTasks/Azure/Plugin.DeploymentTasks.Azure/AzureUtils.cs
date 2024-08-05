@@ -1,6 +1,6 @@
-﻿using Azure.Identity;
+﻿using System;
+using Azure.Identity;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
-using System;
 
 namespace Plugin.DeploymentTasks.Azure
 {

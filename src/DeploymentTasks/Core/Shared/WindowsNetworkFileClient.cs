@@ -1,11 +1,11 @@
-using Certify.Models.Config;
-using Certify.Models.Providers;
-using Plugin.DeploymentTasks.Core.Shared.Model;
-using SimpleImpersonation;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Principal;
+using Certify.Models.Config;
+using Certify.Models.Providers;
+using Plugin.DeploymentTasks.Core.Shared.Model;
+using SimpleImpersonation;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {

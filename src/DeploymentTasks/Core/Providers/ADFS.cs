@@ -1,10 +1,10 @@
-﻿using Certify.Management;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Certify.Management;
 using Certify.Models;
 using Certify.Models.Config;
 using Plugin.DeploymentTasks.Shared;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Certify.Providers.DeploymentTasks
 {

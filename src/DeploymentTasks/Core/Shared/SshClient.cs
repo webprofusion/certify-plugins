@@ -1,9 +1,9 @@
-﻿using Certify.Config;
+﻿using System;
+using System.Collections.Generic;
+using Certify.Config;
 using Certify.Models.Providers;
 using Renci.SshNet;
 using Renci.SshNet.Common;
-using System;
-using System.Collections.Generic;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {

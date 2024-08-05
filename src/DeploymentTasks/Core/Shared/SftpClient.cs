@@ -1,10 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using Certify.Models.Providers;
 using Certify.Providers.DeploymentTasks;
 using Plugin.DeploymentTasks.Core.Shared.Model;
 using Renci.SshNet.Common;
-using System;
-using System.Collections.Generic;
-using System.IO;
 
 namespace Certify.Providers.Deployment.Core.Shared
 {

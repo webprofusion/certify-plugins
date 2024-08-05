@@ -1,8 +1,8 @@
-﻿using SimpleImpersonation;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using SimpleImpersonation;
 
 namespace Plugin.DeploymentTasks.Shared
 {

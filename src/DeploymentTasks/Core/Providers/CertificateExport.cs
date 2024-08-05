@@ -1,14 +1,14 @@
-﻿using Certify.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.Deployment.Core.Shared;
 using Certify.Shared.Core.Utils.PKI;
 using Plugin.DeploymentTasks.Shared;
 using SimpleImpersonation;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Certify.Providers.DeploymentTasks
 {

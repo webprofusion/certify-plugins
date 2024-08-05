@@ -1,11 +1,4 @@
-﻿using Certify.Config;
-using Certify.Models;
-using Certify.Models.Config;
-using Certify.Models.Providers;
-using Certify.Providers.Deployment.Core.Shared;
-using Plugin.DeploymentTasks.Shared;
-using SimpleImpersonation;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -13,6 +6,13 @@ using System.Security;
 using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
+using Certify.Config;
+using Certify.Models;
+using Certify.Models.Config;
+using Certify.Models.Providers;
+using Certify.Providers.Deployment.Core.Shared;
+using Plugin.DeploymentTasks.Shared;
+using SimpleImpersonation;
 
 namespace Certify.Providers.DeploymentTasks
 {
