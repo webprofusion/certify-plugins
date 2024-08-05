@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
-using Certify.Models.Reporting;
 using Certify.Providers;
 using Newtonsoft.Json;
 using Npgsql;
@@ -27,19 +25,15 @@ namespace Certify.Datastore.Postgres
 
         private const int _semaphoreMaxWaitMS = 10 * 1000;
 
-        public static ProviderDefinition Definition
-        {
-            get
+        public static ProviderDefinition Definition =>
+            new ProviderDefinition
             {
-                return new ProviderDefinition
-                {
-                    Id = "Plugin.DataStores.ManagedItem.Postgres",
-                    ProviderCategoryId = "postgres",
-                    Title = "Postgres",
-                    Description = "Postgres DataStore provider"
-                };
-            }
-        }
+                Id = "Plugin.DataStores.ManagedItem.Postgres",
+                ProviderCategoryId = "postgres",
+                Title = "Postgres",
+                Description = "Postgres DataStore provider"
+            };
+
         public PostgresManagedItemStore() { }
 
         public bool Init(string connectionString, ILog log)
@@ -79,9 +73,10 @@ namespace Certify.Datastore.Postgres
                             cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                             await cmd.ExecuteNonQueryAsync();
 
-                            tran.Commit();
+                            await tran.CommitAsync();
                         }
                     }
+
                     await conn.CloseAsync();
 
                 }
@@ -135,7 +130,7 @@ namespace Certify.Datastore.Postgres
                             await cmd.ExecuteNonQueryAsync();
                         }
 
-                        tran.Commit();
+                        await tran.CommitAsync();
                     }
                 }
             }
@@ -266,6 +261,7 @@ namespace Certify.Datastore.Postgres
                             }
                         }
                     }
+
                     await conn.CloseAsync();
                 }
             });
@@ -327,6 +323,7 @@ namespace Certify.Datastore.Postgres
                             _log.Error("Failed to init data store: " + ex.Message);
                         }
                     }
+
                     await conn.CloseAsync();
                 }
             });

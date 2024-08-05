@@ -1,15 +1,15 @@
-﻿using Certify.Models;
-using Certify.Models.Config;
-using Certify.Models.Providers;
-using Certify.Providers;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Certify.Models;
+using Certify.Models.Config;
+using Certify.Models.Providers;
+using Certify.Providers;
+using Newtonsoft.Json;
 
 namespace Certify.Management
 {

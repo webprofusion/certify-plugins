@@ -1,13 +1,13 @@
-﻿using Certify.Config;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Certify.Config;
 using Certify.Core.Management.DeploymentTasks;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace DeploymentTaskTests
 {

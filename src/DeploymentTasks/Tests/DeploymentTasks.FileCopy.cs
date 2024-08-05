@@ -1,11 +1,11 @@
-﻿using Certify.Management;
-using Certify.Providers.Deployment.Core.Shared;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Plugin.DeploymentTasks.Core.Shared.Model;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Certify.Management;
+using Certify.Providers.Deployment.Core.Shared;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Plugin.DeploymentTasks.Core.Shared.Model;
 
 namespace DeploymentTaskTests
 {

@@ -1,13 +1,13 @@
-﻿using Certify.Management;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using Certify.Management;
 using Certify.Models;
 using Certify.Models.Providers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
 
 namespace DeploymentTaskTests
 {

@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
@@ -6,11 +11,6 @@ using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Certify.Datastore.SQLServer
 {
@@ -24,19 +24,14 @@ namespace Certify.Datastore.SQLServer
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
         private const int _semaphoreMaxWaitMS = 10 * 1000;
 
-        public static ProviderDefinition Definition
-        {
-            get
+        public static ProviderDefinition Definition =>
+            new ProviderDefinition
             {
-                return new ProviderDefinition
-                {
-                    Id = "Plugin.DataStores.ManagedItem.SQLServer",
-                    ProviderCategoryId = "sqlserver",
-                    Title = "SQL Server",
-                    Description = "SQL Server DataStore provider"
-                };
-            }
-        }
+                Id = "Plugin.DataStores.ManagedItem.SQLServer",
+                ProviderCategoryId = "sqlserver",
+                Title = "SQL Server",
+                Description = "SQL Server DataStore provider"
+            };
 
         public bool Init(string connectionString, ILog log)
         {
@@ -141,6 +136,7 @@ namespace Certify.Datastore.SQLServer
 
                         tran.Commit();
                     }
+                    db.Close();
                 }
             }
             finally
