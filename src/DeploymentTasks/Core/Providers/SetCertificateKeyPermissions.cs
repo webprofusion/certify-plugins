@@ -86,9 +86,14 @@ namespace Certify.Providers.DeploymentTasks
                     }
                 }
 
-                // get cert from store first otherwise it will be recreated on load with a new key file
+                // get cert from store (try My, then Web Hosting) first otherwise it will be recreated on load with a new key file
 
-                var cert = CertificateManager.GetCertificateByThumbprint(managedCert.CertificateThumbprintHash);
+                var cert = CertificateManager.GetCertificateByThumbprint(managedCert.CertificateThumbprintHash, CertificateManager.DEFAULT_STORE_NAME);
+
+                if (cert == null)
+                {
+                    cert = CertificateManager.GetCertificateByThumbprint(managedCert.CertificateThumbprintHash, CertificateManager.WEBHOSTING_STORE_NAME);
+                }
 
                 if (cert == null)
                 {
