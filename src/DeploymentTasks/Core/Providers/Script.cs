@@ -27,7 +27,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 Id = "Certify.Providers.DeploymentTasks.ShellExecute",
                 Title = "Run...",
-                IsExperimental = true,
+                IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
                 SupportsRemoteTarget = true,

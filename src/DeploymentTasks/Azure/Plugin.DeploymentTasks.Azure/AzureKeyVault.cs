@@ -27,7 +27,7 @@ namespace Plugin.DeploymentTasks.Azure
             {
                 Id = "Certify.Providers.DeploymentTasks.AzureKeyVault",
                 Title = "Deploy to Azure Key Vault",
-                IsExperimental = true,
+                IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = "ExternalAuth.Azure.ClientSecret",
