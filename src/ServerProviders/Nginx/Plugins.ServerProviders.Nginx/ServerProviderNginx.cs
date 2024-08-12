@@ -1,13 +1,13 @@
-﻿using Certify.Models;
-using Certify.Models.Config;
-using Certify.Models.Providers;
-using Certify.Plugins.Server.Nginx;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Certify.Models;
+using Certify.Models.Config;
+using Certify.Models.Providers;
+using Certify.Plugins.Server.Nginx;
 
 namespace Certify.Management.Servers
 {
@@ -206,7 +206,7 @@ namespace Certify.Management.Servers
 
         public async Task<SiteInfo> CreateSite(List<string> hostnames, string phyPath, string protocol = "http", string ipAddress = "*", int? port = 80)
         {
-            return await Task.FromResult( _nginxManager.CreateSiteConfig(hostnames, phyPath, protocol, ipAddress, port));
+            return await Task.FromResult(_nginxManager.CreateSiteConfig(hostnames, phyPath, protocol, ipAddress, port));
         }
 
         public async Task<bool> DeleteSite(string primaryHostname)

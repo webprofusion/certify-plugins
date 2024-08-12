@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,12 +13,6 @@ using Newtonsoft.Json;
 using Npgsql;
 using Polly;
 using Polly.Retry;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Certify.Datastore.Postgres
 {
@@ -362,6 +357,7 @@ namespace Certify.Datastore.Postgres
                             await reader.CloseAsync();
                         }
                     }
+
                     await conn.CloseAsync();
 
                 }
@@ -530,7 +526,7 @@ namespace Certify.Datastore.Postgres
         }
 
         public async Task<StatusSummary> GetSummary(ManagedCertificateFilter filter)
-        { 
+        {
             var summary = new StatusSummary();
 
             summary.Total = (int)await CountAll(filter);

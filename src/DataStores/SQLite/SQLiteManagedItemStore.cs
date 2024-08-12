@@ -4,15 +4,13 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
+using Certify.Models.Reporting;
 using Certify.Providers;
 using Newtonsoft.Json;
-using Polly;
-using Polly.Retry;
 
 namespace Certify.Datastore.SQLite
 {
@@ -155,7 +153,7 @@ namespace Certify.Datastore.SQLite
 
             if (conditions.Any())
             {
-     
+
                 foreach (var c in conditions)
                 {
                     sql += $" AND {c} ";
