@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Certify.Core.Management.DeploymentTasks;
 using Certify.Datastore.SQLite;
-using Certify.Management;
 using Certify.Models.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;

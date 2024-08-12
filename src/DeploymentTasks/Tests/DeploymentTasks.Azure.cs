@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Certify.Config;
 using Certify.Core.Management.DeploymentTasks;
 using Certify.Datastore.SQLite;
-using Certify.Management;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
@@ -62,7 +61,7 @@ namespace DeploymentTaskTests
 
             foreach (var task in deploymentTasks)
             {
-                var results = await task.Execute(_log, null, managedCert,  new DeploymentContext { }, isPreviewOnly: false, cancellationToken: CancellationToken.None);
+                var results = await task.Execute(_log, null, managedCert, new DeploymentContext { }, isPreviewOnly: false, cancellationToken: CancellationToken.None);
 
                 // assert new valid pfx exists in destination
                 Assert.IsTrue(results.All(r => r.IsSuccess));

@@ -1,14 +1,13 @@
-﻿using Certify.Models;
-using Certify.Models.Providers;
-using Polly;
-using Polly.Retry;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Certify.Models;
+using Certify.Models.Providers;
+using Polly;
+using Polly.Retry;
 
 namespace Certify.Datastore.SQLite
 {
