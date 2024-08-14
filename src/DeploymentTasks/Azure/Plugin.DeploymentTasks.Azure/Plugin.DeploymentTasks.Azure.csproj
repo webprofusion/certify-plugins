@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="1.41.0" />
+    <PackageReference Include="Azure.Core" Version="1.42.0" />
     <PackageReference Include="Azure.Identity" Version="1.12.0" />
     <PackageReference Include="Azure.Security.KeyVault.Certificates" Version="4.6.0" />
     <PackageReference Include="Microsoft.Azure.Management.AppService.Fluent" Version="1.38.1" />
