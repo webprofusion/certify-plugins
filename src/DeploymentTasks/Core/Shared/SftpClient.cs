@@ -54,7 +54,14 @@ namespace Certify.Providers.Deployment.Core.Shared
                             {
                                 sftp.UploadFile(ms, dest.Key, uploaded =>
                                 {
-                                    log?.Verbose($"Uploaded {(double)uploaded / ms.Length * 100}% of {dest.Key}.");
+                                    try
+                                    {
+                                        log?.Verbose($"Uploaded {(double)uploaded / ms.Length * 100}% of {dest.Key}.");
+                                    }
+                                    catch (ObjectDisposedException)
+                                    {
+                                        // stream has closed, so can't check length anymore
+                                    }
                                 });
                             }
                         }
@@ -78,7 +85,14 @@ namespace Certify.Providers.Deployment.Core.Shared
                         }
                     }
 
-                    sftp.Disconnect();
+                    try
+                    {
+                        sftp.Disconnect();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // can't close connection, already closed
+                    }
                 }
                 catch (Exception exp)
                 {
