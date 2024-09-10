@@ -31,6 +31,11 @@ namespace Plugin.CertificateManagers
         {
 
         }
+        public ProviderDefinition GetProviderDefinition()
+        {
+            return Definition;
+        }
+
         public Task DeleteManagedCertificate(string id)
         {
             throw new NotImplementedException();
