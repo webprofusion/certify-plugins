@@ -33,6 +33,11 @@ namespace Plugin.CertificateManagers
         {
 
         }
+        public ProviderDefinition GetProviderDefinition()
+        {
+            return Definition;
+        }
+
         public Task DeleteManagedCertificate(string id)
         {
             throw new NotImplementedException();
@@ -93,7 +98,6 @@ namespace Plugin.CertificateManagers
                             {
                                 managedCert.DomainOptions.Add(new DomainOption { Domain = d, IsManualEntry = true, IsPrimaryDomain = false });
                             }
-
                         }
 
                         managedCert.IsChanged = false;
@@ -104,11 +108,10 @@ namespace Plugin.CertificateManagers
                         System.Diagnostics.Debug.WriteLine($"Failed to parse config: [{config}] " + exp);
                     }
                 }
-
             }
+
             return list;
         }
-
 
         public async Task<bool> IsPresent()
         {
