@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using Certify.Models.Providers;
@@ -52,17 +52,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                         {
                             using (var ms = new MemoryStream(dest.Value))
                             {
-                                sftp.UploadFile(ms, dest.Key, uploaded =>
-                                {
-                                    try
-                                    {
-                                        log?.Verbose($"Uploaded {(double)uploaded / ms.Length * 100}% of {dest.Key}.");
-                                    }
-                                    catch (ObjectDisposedException)
-                                    {
-                                        // stream has closed, so can't check length anymore
-                                    }
-                                });
+                                sftp.UploadFile(ms, dest.Key);
                             }
                         }
                         catch (SftpPathNotFoundException exp)

@@ -80,6 +80,7 @@ namespace Certify.Providers.Deployment.Core.Shared
             {
                 sshConfig.KeyPassphrase = passphrase;
             }
+
             return sshConfig;
         }
 
@@ -94,6 +95,7 @@ namespace Certify.Providers.Deployment.Core.Shared
             {
                 pk = new PrivateKeyFile(config.PrivateKeyPath);
             }
+
             return pk;
         }
 
@@ -119,7 +121,7 @@ namespace Certify.Providers.Deployment.Core.Shared
                     {
                         foreach (var prompt in e.Prompts)
                         {
-                            if (prompt.Request.IndexOf("Password:", StringComparison.InvariantCultureIgnoreCase) != -1)
+                            if (prompt.Request.IndexOf("password", StringComparison.InvariantCultureIgnoreCase) != -1)
                             {
                                 prompt.Response = config.Password;
                             }
@@ -175,6 +177,5 @@ namespace Certify.Providers.Deployment.Core.Shared
 
             return results;
         }
-
     }
 }
