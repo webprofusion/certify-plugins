@@ -108,9 +108,13 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     if (!execParams.IsPreviewOnly)
                     {
-                        windowsFileClient.CopyLocalToRemote(execParams.Log, fileList);
-                    }
+                        var results = windowsFileClient.CopyLocalToRemote(execParams.Log, fileList);
 
+                        if (!results.All(s => s.IsSuccess == true))
+                        {
+                            return results;
+                        }
+                    }
                 }
 
                 return new List<ActionResult>{
