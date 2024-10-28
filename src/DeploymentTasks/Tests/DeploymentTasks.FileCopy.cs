@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,7 +20,6 @@ namespace DeploymentTaskTests
 
             _pluginManager.LoadPlugins(new List<string> { "DeploymentTasks" }, false);
         }
-
 
         [TestMethod, TestCategory("NetworkFileCopy")]
         public async Task TestWindowsNetworkFileCopy()
@@ -98,6 +97,5 @@ namespace DeploymentTaskTests
             File.Delete(tmpPath);
 
         }
-
     }
 }
