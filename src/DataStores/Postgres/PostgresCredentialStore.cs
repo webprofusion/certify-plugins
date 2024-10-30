@@ -65,7 +65,7 @@ namespace Certify.Datastore.Postgres
         /// </summary>
         /// <param name="storageKey"></param>
         /// <returns></returns>
-        public async Task<bool> Delete(IManagedItemStore itemStore, string storageKey)
+        public async Task<ActionResult> Delete(IManagedItemStore itemStore, string storageKey)
         {
             var inUse = await CredentialsUtil.IsCredentialInUse(itemStore, storageKey);
 
@@ -88,16 +88,17 @@ namespace Certify.Datastore.Postgres
                             tran.Commit();
                         }
                     }
+
                     await conn.CloseAsync();
 
                 }
 
-                return true;
+                return new ActionResult("Credential Deleted", true);
             }
             else
             {
                 //could not delete
-                return false;
+                return new ActionResult("Credential in use, could not delete.", false);
             }
         }
 
