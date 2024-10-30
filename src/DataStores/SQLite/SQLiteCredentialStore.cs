@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
@@ -124,9 +124,7 @@ namespace Certify.Datastore.SQLite
                         File.Delete(dbPath);
                         _log?.Warning("Legacy credentials database backup created.");
                     }
-
                 }
-
             }
         }
 
@@ -135,7 +133,7 @@ namespace Certify.Datastore.SQLite
         /// </summary>
         /// <param name="storageKey"></param>
         /// <returns></returns>
-        public async Task<bool> Delete(IManagedItemStore itemStore, string storageKey)
+        public async Task<ActionResult> Delete(IManagedItemStore itemStore, string storageKey)
         {
             var inUse = await CredentialsUtil.IsCredentialInUse(itemStore, storageKey);
 
@@ -143,12 +141,12 @@ namespace Certify.Datastore.SQLite
             {
                 await Delete(storageKey, _itemType);
 
-                return true;
+                return new ActionResult("Credential Deleted", true);
             }
             else
             {
                 //could not delete
-                return false;
+                return new ActionResult("Credential in use, could not delete.", false);
             }
         }
 
@@ -325,7 +323,6 @@ namespace Certify.Datastore.SQLite
 
                     db.Close();
                 }
-
             }
             finally
             {
