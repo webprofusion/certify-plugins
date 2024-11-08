@@ -65,8 +65,8 @@ namespace Certify.Datastore.SQLite
 
         private async Task MigrateLegacyDB()
         {
-            // old dbs are stored as a seperate /credentials/cred.db and this becomes a configurationitem entry in the main manageditems.db
-            var appDataPath = EnvironmentUtil.CreateAppDataPath("credentials" ?? "");
+            // old dbs are stored as a separate /credentials/cred.db and this becomes a configurationitem entry in the main manageditems.db
+            var appDataPath = EnvironmentUtil.CreateAppDataPath("credentials", skipCreation: true);
             var dbPath = Path.Combine(appDataPath, $"cred.db");
 
             if (File.Exists(dbPath))
