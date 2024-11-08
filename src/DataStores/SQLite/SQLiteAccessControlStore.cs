@@ -51,7 +51,6 @@ namespace Certify.Datastore.SQLite
             }
         }
 
-
         /// <summary>
         /// Delete item by key
         /// </summary>
@@ -69,7 +68,6 @@ namespace Certify.Datastore.SQLite
                 return false;
             }
         }
-
 
         /// <summary>
         /// Return list of items for given type 
