@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
@@ -30,6 +30,12 @@ namespace Certify.Datastore.SQLite
                 Title = "SQLite",
                 Description = "SQLite DataStore provider"
             };
+
+        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
+        };
 
         public SQLiteManagedItemStore() { }
         public SQLiteManagedItemStore(string storageSubfolder = null, ILog log = null) : base(storageSubfolder, log) { }
@@ -68,6 +74,7 @@ namespace Certify.Datastore.SQLite
 
                     tran.Commit();
                 }
+
                 db.Close();
             }
 
@@ -267,6 +274,7 @@ namespace Certify.Datastore.SQLite
 
                                 reader.Close();
                             }
+
                             db.Close();
                         }
                     });
@@ -445,7 +453,7 @@ namespace Certify.Datastore.SQLite
                             {
                                 cmd.Parameters.Add(new SQLiteParameter("@id", managedCertificate.Id));
                                 cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
-                                cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+                                cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
 
                                 await cmd.ExecuteNonQueryAsync();
                             }
@@ -487,6 +495,7 @@ namespace Certify.Datastore.SQLite
 
                     tran.Commit();
                 }
+
                 db.Close();
             }
         }

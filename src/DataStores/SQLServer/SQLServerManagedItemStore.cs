@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -25,6 +25,12 @@ namespace Certify.Datastore.SQLServer
 
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
         private const int _semaphoreMaxWaitMS = 10 * 1000;
+
+        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
+        };
 
         public static ProviderDefinition Definition =>
             new ProviderDefinition
@@ -479,7 +485,7 @@ namespace Certify.Datastore.SQLServer
                                         cmd.Transaction = tran;
 
                                         cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
-                                        cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+                                        cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
 
                                         await cmd.ExecuteNonQueryAsync();
                                     }
@@ -502,7 +508,7 @@ namespace Certify.Datastore.SQLServer
                                     {
                                         cmd.Transaction = tran;
                                         cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
-                                        cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+                                        cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
 
                                         await cmd.ExecuteNonQueryAsync();
                                     }

@@ -19,6 +19,11 @@ namespace Certify.Datastore.SQLServer
 
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
+        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
+        };
         public static ProviderDefinition Definition
         {
             get
@@ -273,7 +278,7 @@ namespace Certify.Datastore.SQLServer
                             {
                                 cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
                                 cmd.Parameters.Add(new SqlParameter("@protectedvalue", protectedContent));
 
                                 await cmd.ExecuteNonQueryAsync();
@@ -296,7 +301,7 @@ namespace Certify.Datastore.SQLServer
                             {
                                 cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore })));
+                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
                                 cmd.Parameters.Add(new SqlParameter("@protectedvalue", protectedContent));
 
                                 await cmd.ExecuteNonQueryAsync();
