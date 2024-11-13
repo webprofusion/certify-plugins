@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -26,6 +26,12 @@ namespace Certify.Datastore.Postgres
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
 
         private const int _semaphoreMaxWaitMS = 10 * 1000;
+
+        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
+        };
 
         public static ProviderDefinition Definition =>
             new ProviderDefinition
@@ -475,7 +481,7 @@ namespace Certify.Datastore.Postgres
                                     using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id;", conn))
                                     {
                                         cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
-                                        cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
+                                        cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings) });
 
                                         await cmd.ExecuteNonQueryAsync();
                                     }
@@ -496,7 +502,7 @@ namespace Certify.Datastore.Postgres
                                     using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id,config) VALUES(@id,@config);", conn))
                                     {
                                         cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
-                                        cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
+                                        cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings) });
 
                                         await cmd.ExecuteNonQueryAsync();
                                     }

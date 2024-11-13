@@ -20,6 +20,12 @@ namespace Certify.Datastore.Postgres
 
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
+        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
+        };
+
         public static ProviderDefinition Definition
         {
             get
@@ -271,7 +277,7 @@ namespace Certify.Datastore.Postgres
                             using (var cmd = new NpgsqlCommand("UPDATE credential SET config = CAST(@config as jsonb), protectedvalue= @protectedvalue WHERE id=@id;", conn))
                             {
                                 cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
+                                cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
                                 cmd.Parameters.Add(new NpgsqlParameter("@protectedvalue", protectedContent));
 
                                 await cmd.ExecuteNonQueryAsync();
@@ -293,7 +299,7 @@ namespace Certify.Datastore.Postgres
                             using (var cmd = new NpgsqlCommand("INSERT INTO credential(id,config,protectedvalue) VALUES(@id,@config,@protectedvalue);", conn))
                             {
                                 cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, new JsonSerializerSettings { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore }) });
+                                cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
                                 cmd.Parameters.Add(new NpgsqlParameter("@protectedvalue", protectedContent));
 
                                 await cmd.ExecuteNonQueryAsync();
