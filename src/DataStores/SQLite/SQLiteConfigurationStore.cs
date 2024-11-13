@@ -19,10 +19,16 @@ namespace Certify.Datastore.SQLite
         public string Config { get; set; }
     }
 
-    public class SQLiteAccessControlStore : SQLiteStoreBase, IAccessControlStore
+    public class SQLiteConfigurationStore : SQLiteStoreBase, IConfigurationStore
     {
-        public SQLiteAccessControlStore() { }
-        public SQLiteAccessControlStore(string storageSubfolder = null, ILog log = null) : base(storageSubfolder, log) { }
+        public SQLiteConfigurationStore() { }
+        public SQLiteConfigurationStore(string storageSubfolder = null, ILog log = null) : base(storageSubfolder, log) { }
+
+        private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
+        };
 
         public static ProviderDefinition Definition
         {
@@ -30,10 +36,10 @@ namespace Certify.Datastore.SQLite
             {
                 return new ProviderDefinition
                 {
-                    Id = "Plugin.DataStores.AccessControlStore.SQLite",
+                    Id = "Plugin.DataStores.Configuration.SQLite",
                     ProviderCategoryId = "sqlite",
                     Title = "SQLite",
-                    Description = "SQLite DataStore provider"
+                    Description = "SQLite based Config Data Store provider"
                 };
             }
         }
@@ -194,14 +200,14 @@ namespace Certify.Datastore.SQLite
         public async Task Update<T>(string itemType, T item)
         {
 
-            if (item is AccessStoreItem)
+            if (item is ConfigurationStoreItem)
             {
 
                 var configItem = new ConfigurationItem
                 {
-                    Id = (item as AccessStoreItem).Id,
+                    Id = (item as ConfigurationStoreItem).Id,
                     ItemType = typeof(T).Name,
-                    Config = JsonConvert.SerializeObject(item)
+                    Config = JsonConvert.SerializeObject(item, _jsonSerializerSettings)
                 };
 
                 await Update(configItem);
