@@ -176,7 +176,6 @@ namespace Certify.Plugins.Server.Nginx
                             }
                         }
                     }
-
                 }
             }
 
@@ -184,7 +183,6 @@ namespace Certify.Plugins.Server.Nginx
 
             return block;
         }
-
 
         /// <summary>
         /// Perform non-validating parsing for a given nginx .conf file
@@ -214,12 +212,14 @@ namespace Certify.Plugins.Server.Nginx
                     serverBlocks.Add(block.Value);
 
                 }
+
                 var childServerBlocks = FindServerBlocks(block.Value);
                 if (childServerBlocks.Any())
                 {
                     serverBlocks.AddRange(childServerBlocks);
                 }
             }
+
             return serverBlocks;
         }
 
@@ -287,9 +287,9 @@ namespace Certify.Plugins.Server.Nginx
                             });
                         }
                     }
-
                 }
             }
+
             return bindings;
         }
 
@@ -363,6 +363,7 @@ namespace Certify.Plugins.Server.Nginx
                     siteInfoList.Add(siteInfo);
                 }
             }
+
             return siteInfoList;
         }
 
@@ -400,7 +401,6 @@ namespace Certify.Plugins.Server.Nginx
 
             return siteInfo;
         }
-
 
         internal bool DeleteSiteConfig(string primaryHostname)
         {
