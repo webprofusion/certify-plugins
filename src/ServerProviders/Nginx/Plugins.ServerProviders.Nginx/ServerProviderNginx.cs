@@ -54,6 +54,7 @@ namespace Certify.Management.Servers
             {
                 _bindingDeploymentTarget = new NginxBindingDeploymentTarget(this);
             }
+
             return _bindingDeploymentTarget;
         }
 
