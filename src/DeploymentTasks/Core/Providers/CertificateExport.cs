@@ -156,7 +156,6 @@ namespace Certify.Providers.DeploymentTasks
                     }
                 }
 
-
                 // TODO: custom pfx pwd for export
                 /*
                 if (execParams.Credentials != null && execParams.Credentials.Any(c => c.Key == "cert_pwd_key"))
@@ -196,6 +195,12 @@ namespace Certify.Providers.DeploymentTasks
                 else if (exportType == "pemfullnokey")
                 {
                     files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
+                }
+
+                if (!files.Any())
+                {
+                    results.Add(new ActionResult($"Export - no files where selected for export or export could not be applied for source certificate.", false));
+                    return results;
                 }
 
                 // copy to destination
