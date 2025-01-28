@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -97,22 +97,22 @@ namespace Certify.Providers.DeploymentTasks
             if (!string.IsNullOrEmpty(secretname_cert))
             {
                 secrets.Add(secretname_cert, secret.cert);
-            };
+            }
 
             if (!string.IsNullOrEmpty(secretname_key))
             {
                 secrets.Add(secretname_key, secret.key);
-            };
+            }
 
             if (!string.IsNullOrEmpty(secretname_fullchain))
             {
                 secrets.Add(secretname_fullchain, secret.fullchain);
-            };
+            }
 
             if (!string.IsNullOrEmpty(secretname_pfx))
             {
                 secrets.Add(secretname_pfx, secret.pfx);
-            };
+            }
 
             var payload = new
             {
