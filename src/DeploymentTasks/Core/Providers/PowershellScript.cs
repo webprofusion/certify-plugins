@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Certify.Management;
@@ -75,7 +75,7 @@ namespace Certify.Providers.DeploymentTasks
             if (inputResultAsArgument?.Trim().ToLower() == "true")
             {
                 parameters.Add("result", certRequest);
-            };
+            }
 
             if (!string.IsNullOrEmpty(args))
             {
