@@ -17,7 +17,6 @@ namespace Certify.Providers.DeploymentTasks
 
             // this provider has dynamic properties to list the available services
 
-
             // TODO: current user may not have access
             // TODO: remote services, which would need credentials up front before querying services
             try
@@ -28,14 +27,11 @@ namespace Certify.Providers.DeploymentTasks
                 var p = definition.ProviderParameters.First(k => k.Key == "servicename");
 
                 p.OptionsList = string.Join(";", services.Select(s => s.ServiceName + "=" + s.DisplayName));
-
-
             }
             catch { }
 
             return definition;
         }
-
 
         private static int MAX_DURATION = 10 * 60;
 
@@ -109,8 +105,8 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     results.Add(new ActionResult("[Preview] Service would restart.", true));
                 }
-
             }
+
             else if (action == "stop")
             {
                 if (service.Status != ServiceControllerStatus.Stopped)
@@ -168,7 +164,6 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     service.Stop();
                 }
-
             }
 
             service.WaitForStatus(ServiceControllerStatus.Stopped, ticks);
