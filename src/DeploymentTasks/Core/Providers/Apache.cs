@@ -53,47 +53,32 @@ namespace Certify.Providers.DeploymentTasks
 
             var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
-            settings.Parameters.Add(new ProviderParameterSetting("path", null));
-            settings.Parameters.Add(new ProviderParameterSetting("type", null));
-
             var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_cert");
             if (!string.IsNullOrWhiteSpace(certPath?.Value))
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemcrt";
-
                 execParams.Log.Information(definition.Title + ":: Exporting PEM format certificate file");
-                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition), certPath.Value, "pemcrt"));
             }
 
             var keyPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_key");
             if (!string.IsNullOrWhiteSpace(keyPath?.Value) && !results.Any(r => r.IsSuccess == false))
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
-
                 execParams.Log.Information(definition.Title + ":: Exporting PEM format key file");
-                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition), keyPath.Value, "pemkey"));
             }
 
             var chainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_chain");
             if (!string.IsNullOrWhiteSpace(chainPath?.Value) && !results.Any(r => r.IsSuccess == false))
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemintermediates";
-
                 execParams.Log.Information(definition.Title + ":: Exporting PEM format CA chain file (intermediates)");
-                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition), chainPath.Value, "pemintermediates"));
             }
 
             var fullchainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain");
             if (!string.IsNullOrWhiteSpace(fullchainPath?.Value) && !results.Any(r => r.IsSuccess == false))
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemcrtpartialchain";
-
                 execParams.Log.Information(definition.Title + ":: Exporting PEM format full chain file (excluding root)");
-                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition), fullchainPath.Value, "pemcrtpartialchain"));
             }
 
             return results;
@@ -107,9 +92,6 @@ namespace Certify.Providers.DeploymentTasks
             var settings = execParams.Settings;
 
             var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
-
-            settings.Parameters.Add(new ProviderParameterSetting("path", null));
-            settings.Parameters.Add(new ProviderParameterSetting("type", null));
 
             // validate that we have at least a cert or fullchain being exported
             if (string.IsNullOrWhiteSpace(settings.Parameters.FirstOrDefault(p => p.Key == "path_cert")?.Value)
@@ -126,9 +108,7 @@ namespace Certify.Providers.DeploymentTasks
             var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_cert");
             if (!string.IsNullOrWhiteSpace(certPath?.Value))
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemcrt";
-                results.AddRange(await base.Validate(execParams));
+                results.AddRange(await base.Validate(execParams, certPath.Value, "pemcrt"));
             }
 
             var keyPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_key");
@@ -146,9 +126,7 @@ namespace Certify.Providers.DeploymentTasks
             }
             else
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = keyPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pemkey";
-                results.AddRange(await base.Validate(execParams));
+                results.AddRange(await base.Validate(execParams, keyPath.Value, "pemkey"));
             }
 
             // if we have no validation errors so far, check for chain and fullchain exports
@@ -157,21 +135,17 @@ namespace Certify.Providers.DeploymentTasks
                 var chainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_chain");
                 if (!string.IsNullOrWhiteSpace(chainPath?.Value))
                 {
-                    settings.Parameters.Find(p => p.Key == "path").Value = chainPath.Value;
-                    settings.Parameters.Find(p => p.Key == "type").Value = "pemchain";
-                    results.AddRange(await base.Validate(execParams));
+                    results.AddRange(await base.Validate(execParams, chainPath.Value, "pemchain"));
                 }
 
                 var fullchainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain");
                 if (!string.IsNullOrWhiteSpace(fullchainPath?.Value))
                 {
-                    settings.Parameters.Find(p => p.Key == "path").Value = fullchainPath.Value;
-                    settings.Parameters.Find(p => p.Key == "type").Value = "pemfullnokey";
-                    results.AddRange(await base.Validate(execParams));
+                    results.AddRange(await base.Validate(execParams, fullchainPath.Value, "pemfullnokey"));
                 }
             }
+
             return results;
         }
-
     }
 }

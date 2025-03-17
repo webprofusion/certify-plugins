@@ -44,6 +44,5 @@ namespace Certify.Providers.DeploymentTasks
 
             return await base.Validate(execParams);
         }
-
     }
 }

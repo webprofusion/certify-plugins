@@ -18,7 +18,6 @@ namespace Certify.Providers.DeploymentTasks
         public static DeploymentProviderDefinition Definition { get; }
         public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
-
         static private Dictionary<string, string> ExportTypes = new Dictionary<string, string> {
             {"pemcrt", "PEM - Primary Certificate (e.g. .crt)" },
             {"pemchain", "PEM - Intermediate Certificate Chain + Root CA Cert (e.g. .chain)" },
@@ -54,6 +53,11 @@ namespace Certify.Providers.DeploymentTasks
 
         public Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
+            return Validate(execParams, specificPath: null, specificType: null);
+        }
+
+        public Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams, string specificPath = null, string specificType = null)
+        {
             var settings = execParams.Settings;
 
             var results = new List<ActionResult> { };
@@ -75,8 +79,15 @@ namespace Certify.Providers.DeploymentTasks
             return Task.FromResult(results);
         }
 
+        public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
+        {
+            return await Execute(execParams, specificPath: null, specificType: null);
+        }
+
         public async Task<List<ActionResult>> Execute(
-               DeploymentTaskExecutionParams execParams
+               DeploymentTaskExecutionParams execParams,
+               string specificPath = null,
+               string specificType = null
             )
         {
             var definition = execParams.Definition;
@@ -115,14 +126,15 @@ namespace Certify.Providers.DeploymentTasks
 
                 // prepare list of files to copy
 
-                var destPath = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
+                var destPath = specificPath?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
 
                 if (string.IsNullOrEmpty(destPath))
                 {
                     return new List<ActionResult> { new ActionResult("Empty path provided. Skipping export", false) };
                 }
 
-                var exportType = settings.Parameters.FirstOrDefault(c => c.Key == "type")?.Value.Trim();
+                var exportType = specificType?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "type")?.Value.Trim();
+
                 var files = new Dictionary<string, byte[]>();
 
                 var certPwd = "";

@@ -52,17 +52,12 @@ namespace Certify.Providers.DeploymentTasks
 
             var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
-            settings.Parameters.Add(new ProviderParameterSetting("path", null));
-            settings.Parameters.Add(new ProviderParameterSetting("type", null));
-
             var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_pfx");
+
             if (!string.IsNullOrWhiteSpace(certPath?.Value))
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pfxfull";
-
                 execParams.Log.Information(definition.Title + ":: exporting PFX format certificates and key");
-                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition)));
+                results.AddRange(await base.Execute(new DeploymentTaskExecutionParams(execParams, definition), certPath.Value, "pfxfull"));
             }
 
             return results;
@@ -77,10 +72,8 @@ namespace Certify.Providers.DeploymentTasks
 
             var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
-            settings.Parameters.Add(new ProviderParameterSetting("path", null));
-            settings.Parameters.Add(new ProviderParameterSetting("type", null));
-
             var certPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_pfx");
+
             if (string.IsNullOrEmpty(certPath.Value))
             {
                 results.Add(new ActionResult
@@ -91,13 +84,10 @@ namespace Certify.Providers.DeploymentTasks
             }
             else
             {
-                settings.Parameters.Find(p => p.Key == "path").Value = certPath.Value;
-                settings.Parameters.Find(p => p.Key == "type").Value = "pfxfull";
-                results.AddRange(await base.Validate(execParams));
+                results.AddRange(await base.Validate(execParams, certPath.Value, "pfxfull"));
             }
 
             return results;
         }
-
     }
 }
