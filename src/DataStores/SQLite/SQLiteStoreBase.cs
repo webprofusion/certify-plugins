@@ -63,7 +63,7 @@ namespace Certify.Datastore.SQLite
 
             _dbPath = GetDbPath();
 
-            _connectionString = $"Data Source={_dbPath};PRAGMA temp_store=MEMORY;Cache=Shared;PRAGMA journal_mode=WAL;";
+            _connectionString = $"Data Source={_dbPath};PRAGMA journal_mode=WAL;";
 
             try
             {
