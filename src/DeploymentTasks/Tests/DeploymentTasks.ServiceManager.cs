@@ -65,7 +65,6 @@ namespace DeploymentTaskTests
 
             Assert.IsFalse(validationResult.Any());
 
-
         }
 
         [TestMethod, TestCategory("ServiceManager")]
