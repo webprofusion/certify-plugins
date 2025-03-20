@@ -44,8 +44,6 @@ namespace Plugin.DeploymentTasks.Azure
                     return AzureAuthorityHosts.AzureGovernment;
                 case "china":
                     return AzureAuthorityHosts.AzureChina;
-                case "germany":
-                    return AzureAuthorityHosts.AzureGermany;
                 default:
                     return AzureAuthorityHosts.AzurePublicCloud;
             }
