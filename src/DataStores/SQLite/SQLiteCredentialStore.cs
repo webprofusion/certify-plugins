@@ -234,6 +234,7 @@ namespace Certify.Datastore.SQLite
             }
 
             string protectedString = null;
+            var itemExists = false;
 
             var path = GetDbPath();
 
@@ -251,6 +252,7 @@ namespace Certify.Datastore.SQLite
                     {
                         if (await reader.ReadAsync())
                         {
+                            itemExists = true;
                             var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["config"]);
                             protectedString = (string)reader["itemvalue"];
                         }
@@ -258,6 +260,11 @@ namespace Certify.Datastore.SQLite
 
                     db.Close();
                 }
+            }
+
+            if (!itemExists)
+            {
+                return null;
             }
 
             try

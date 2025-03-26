@@ -187,6 +187,7 @@ namespace Certify.Datastore.Postgres
             }
 
             string protectedString = null;
+            var itemExists = false;
 
             using (var db = new NpgsqlConnection(_connectionString))
             using (var cmd = new NpgsqlCommand("SELECT config, protectedvalue FROM credential WHERE id=@id", db))
@@ -198,12 +199,18 @@ namespace Certify.Datastore.Postgres
                 {
                     if (await reader.ReadAsync())
                     {
+                        itemExists = true;
                         var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["config"]);
                         protectedString = (string)reader["protectedvalue"];
                     }
                 }
 
                 db.Close();
+            }
+
+            if (!itemExists)
+            {
+                return null;
             }
 
             try
