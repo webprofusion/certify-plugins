@@ -153,6 +153,34 @@ namespace Certify.Datastore.SQLite
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
+#if DEBUG
+
+                        // check if anything exists with same id but different item type
+                        var query = "SELECT id, itemtype, config FROM manageditem WHERE id=@id AND itemtype!=@itemType";
+
+                        var exists = false;
+                        var dupe = "";
+                        using (var cmd = new SQLiteCommand(query, db))
+                        {
+                            cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
+                            cmd.Parameters.Add(new SQLiteParameter("@itemType", item.ItemType.ToLowerInvariant()));
+
+                            using (var reader = await cmd.ExecuteReaderAsync())
+                            {
+                                if (await reader.ReadAsync())
+                                {
+                                    exists = true;
+                                    dupe = $"{item.Id} :: {(string)reader["itemType"]}";
+                                }
+                            }
+                        }
+
+                        if (exists)
+                        {
+                            throw new Exception($"Config Store: Item {item.Id} already exists with different type {dupe}");
+                        }
+#endif
+
                         using (var cmd = new SQLiteCommand(
                                    "INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)",
                                    db))
