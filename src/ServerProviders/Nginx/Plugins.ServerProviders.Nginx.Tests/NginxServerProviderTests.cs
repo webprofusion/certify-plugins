@@ -64,7 +64,6 @@ namespace Certify.Plugins.Server.Nginx.Tests
             }
         }
 
-
         [TestMethod]
         public async Task TestGetBinding()
         {
@@ -78,8 +77,6 @@ namespace Certify.Plugins.Server.Nginx.Tests
             Assert.AreEqual(targetBinding.Host, primarySiteDomain, "Binding hostname should equal test");
 
         }
-
-
 
         [TestMethod]
         public async Task TestGetSiteInfos()
@@ -96,7 +93,7 @@ namespace Certify.Plugins.Server.Nginx.Tests
         }
 
         [TestMethod]
-        public async Task TestGetServerVersion()
+        public void TestGetServerVersion()
         {
 
             var versionResult = _nginxProvider.GetServerVersion("nginx version: nginx/1.18.0 (Ubuntu)");
@@ -127,7 +124,6 @@ namespace Certify.Plugins.Server.Nginx.Tests
 
             // get fresh instance of site since updates
             var bindingsBeforeApply = await _nginxProvider.GetSiteBindingList(false, testSiteDomain);
-
 
             var dummyCertPath = Environment.CurrentDirectory + "\\Assets\\dummycert.pem";
             var managedCertificate = new ManagedCertificate
@@ -187,7 +183,6 @@ namespace Certify.Plugins.Server.Nginx.Tests
                 // blank hostname binding
                 var testBinding = finalBindings.FirstOrDefault(b => b.Host == "" && b.Protocol == "https");
                 // Assert.IsTrue(IsCertHashEqual(testBinding.CertificateHash, certInfo.GetCertHash()), "Blank hostname binding should be added and have certificate set");
-
 
             }
             finally
