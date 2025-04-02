@@ -14,7 +14,7 @@ namespace DeploymentTaskTests
     {
 
         [TestInitialize]
-        public new void Setup()
+        public override void Setup()
         {
             base.Setup();
 

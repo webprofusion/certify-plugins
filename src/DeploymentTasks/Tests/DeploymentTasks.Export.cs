@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -17,7 +17,7 @@ namespace DeploymentTaskTests
     {
 
         [TestInitialize]
-        public new void Setup()
+        public override void Setup()
         {
             base.Setup();
 
