@@ -61,6 +61,9 @@ namespace Certify.Providers.DeploymentTasks
             var settings = execParams.Settings;
 
             var results = new List<ActionResult> { };
+
+            var destPath = specificPath?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
+
             if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER)
             {
                 //
@@ -68,9 +71,8 @@ namespace Certify.Providers.DeploymentTasks
             else if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
             {
                 //if windows network and paths are not UNC, fail validation
-                var path = settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
 
-                if (string.IsNullOrWhiteSpace(path) || !path.Trim().StartsWith("\\\\"))
+                if (string.IsNullOrWhiteSpace(destPath) || !destPath.StartsWith("\\\\"))
                 {
                     results.Add(new ActionResult { IsSuccess = false, Message = "UNC Path (e.g. \\\\SERVERNAME\\Share) is expected for Windows Network resource paths" });
                 }
@@ -97,7 +99,7 @@ namespace Certify.Providers.DeploymentTasks
                 definition = CertificateExport.Definition;
             }
 
-            var results = await Validate(execParams);
+            var results = await Validate(execParams, specificPath, specificType);
 
             var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
@@ -245,7 +247,7 @@ namespace Certify.Providers.DeploymentTasks
                         }
                         catch
                         {
-                            var err = "Task with Windows Credentials requires username and password.";
+                            var err = "Task using Windows Credentials require a valid username and password.";
                             log.Error(err);
 
                             return new List<ActionResult>{
