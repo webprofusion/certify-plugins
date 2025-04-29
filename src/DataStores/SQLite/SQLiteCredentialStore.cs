@@ -118,8 +118,8 @@ namespace Certify.Datastore.SQLite
                     _log?.Warning("Stored credentials database migrated to configuration items.");
 
                     // check we have the credentials we just tried to store, then remove the old db
-                    File.Copy(dbPath, $"{dbPath}.bak", true);
-                    if (File.Exists($"{dbPath}.bak"))
+                    File.Copy(dbPath, $"{dbPath}.old", true);
+                    if (File.Exists($"{dbPath}.old"))
                     {
                         File.Delete(dbPath);
                         _log?.Warning("Legacy credentials database backup created.");
