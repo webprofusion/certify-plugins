@@ -164,7 +164,7 @@ namespace Certify.Datastore.SQLite
 
         protected string GetDbPath()
         {
-            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder);
+            var appDataPath = EnvironmentUtil.EnsuredAppDataPath(_storageSubFolder);
             return Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.db");
         }
 
