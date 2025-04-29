@@ -296,7 +296,7 @@ namespace Certify.Datastore.SQLite
 
         protected override async Task<bool> UpgradeSettings()
         {
-            var appDataPath = EnvironmentUtil.CreateAppDataPath(_storageSubFolder);
+            var appDataPath = EnvironmentUtil.EnsuredAppDataPath(_storageSubFolder);
 
             var json = Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.json");
             var db = Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.db");
