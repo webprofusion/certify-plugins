@@ -93,7 +93,6 @@ namespace Plugin.DeploymentTasks.Azure
             var appServiceType = "webapp";
             string appServiceId = null;
 
-
             var webapps = await azure.WebApps.ListAsync();
 
             // target could be web app/web app slot, function app/ function app slot
