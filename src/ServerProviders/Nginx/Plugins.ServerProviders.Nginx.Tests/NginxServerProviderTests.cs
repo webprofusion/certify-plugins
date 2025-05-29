@@ -22,18 +22,18 @@ namespace Certify.Plugins.Server.Nginx.Tests
         private readonly List<List<string>> _testSiteDomains = new();
         private readonly int _testSiteHttpPort = 81;
 
-        private string _testSitePath = "c://nginx//sites";
+        private string _testSitePath = "D:\\Temp\\Support\\5957\\nginx";
         private string _serverConfigRoot;
 
         public NginxServerProviderTests()
         {
 
             // see integration test base for env variable
-            _testSiteDomains.Add(new List<string> { "integration1." + _testSiteDomain, "integration2." + _testSiteDomain, "integration3." + _testSiteDomain });
+         /*   _testSiteDomains.Add(new List<string> { "integration1." + _testSiteDomain, "integration2." + _testSiteDomain, "integration3." + _testSiteDomain });
             _testSiteDomains.Add(new List<string> { "www.example.com", "example.com" });
             _testSiteDomains.Add(new List<string> { "www.domain.com", "domain.com" });
-
-            _serverConfigRoot = Path.Combine(AppContext.BaseDirectory, "Assets", "test_config");
+         */
+            _serverConfigRoot = Path.Combine(_testSitePath);
 
             _nginxProvider = new ServerProviderNginx(_serverConfigRoot);
 
