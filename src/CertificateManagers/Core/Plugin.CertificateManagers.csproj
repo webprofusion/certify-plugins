@@ -1,18 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>Plugin.CertificateManagers.Core</AssemblyName>
-    <RootNamespace>Certify.Plugin.CertificateManagers</RootNamespace>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <AssemblyName>Plugin.CertificateManagers.Core</AssemblyName>
+        <RootNamespace>Certify.Plugin.CertificateManagers</RootNamespace>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Bcl.Cryptography" Version="9.0.6" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
-    <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\..\certify\src\Certify.Models\Certify.Models.csproj" />
+        <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
+    </ItemGroup>
 
 </Project>

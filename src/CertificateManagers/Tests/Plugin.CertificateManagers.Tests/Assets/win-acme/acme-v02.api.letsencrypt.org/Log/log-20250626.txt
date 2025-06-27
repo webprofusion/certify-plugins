@@ -1,0 +1,1003 @@
+2025-06-26 17:07:25.840 +08:00 [DBG] secrets.json not found
+2025-06-26 17:07:25.860 +08:00 [DBG] Renewal period: 55 days
+2025-06-26 17:07:25.861 +08:00 [VRB] Sending e-mails false
+2025-06-26 17:07:25.874 +08:00 [INF] No command line arguments provided
+2025-06-26 17:07:25.877 +08:00 [VRB] ExePath: d:\Tools\win-acme.v2.2.9.1701.x64.pluggable\wacs.exe
+2025-06-26 17:07:25.877 +08:00 [VRB] ResourcePath: d:\Tools\win-acme.v2.2.9.1701.x64.pluggable\
+2025-06-26 17:07:25.877 +08:00 [VRB] PluginPath: d:\Tools\win-acme.v2.2.9.1701.x64.pluggable\
+2025-06-26 17:07:25.887 +08:00 [INF] Software version 2.2.9.1701 (release, pluggable, standalone, 64-bit) started
+2025-06-26 17:07:25.888 +08:00 [INF] Connecting to "https://acme-v02.api.letsencrypt.org/"...
+2025-06-26 17:07:25.893 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/directory"
+2025-06-26 17:07:26.718 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:07:26.720 +08:00 [VRB] [HTTP] Response content: {
+  "RfWqYGmj8ek": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-06-26 17:07:26.726 +08:00 [INF] Connection OK!
+2025-06-26 17:07:26.727 +08:00 [DBG] Running with administrator credentials
+2025-06-26 17:07:26.727 +08:00 [DBG] IIS version 10.0
+2025-06-26 17:07:26.738 +08:00 [WRN] Scheduled task not configured yet
+2025-06-26 17:07:26.738 +08:00 [INF] Please report issues at https://github.com/win-acme/win-acme
+2025-06-26 17:07:26.738 +08:00 [VRB] Unicode display test: Chinese/語言 Russian/язык Arab/لغة
+2025-06-26 17:08:06.290 +08:00 [INF] Running in mode: "Interactive, Simple"
+2025-06-26 17:08:06.296 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:08:06.300 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:08:06.334 +08:00 [DBG] [HTTP] Send GET to "https://publicsuffix.org/list/public_suffix_list.dat"
+2025-06-26 17:08:06.504 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:06.504 +08:00 [VRB] [HTTP] Response of type text/plain (319683 bytes)
+2025-06-26 17:08:06.764 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:08:06.792 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:08:06.796 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:08:12.794 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:08:12.794 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:08:12.795 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:08:12.797 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:08:12.797 +08:00 [VRB] No host filter applied
+2025-06-26 17:08:12.797 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:08:17.477 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:08:17.477 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:08:17.477 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:08:17.477 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:08:17.477 +08:00 [VRB] No host filter applied
+2025-06-26 17:08:17.477 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:08:23.125 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:08:23.125 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:08:23.125 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:08:23.125 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:08:23.125 +08:00 [VRB] No host filter applied
+2025-06-26 17:08:23.125 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:08:27.141 +08:00 [VRB] Autofac: creating PluginBackend<ITargetPlugin> scope with parent wacs
+2025-06-26 17:08:27.145 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:08:27.146 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:08:27.146 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:08:27.146 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:08:27.146 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:08:27.146 +08:00 [VRB] No host filter applied
+2025-06-26 17:08:27.146 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:08:27.146 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:08:27.151 +08:00 [INF] Source generated using plugin IIS: test.projectbids.co.uk and 1 alternatives
+2025-06-26 17:08:27.152 +08:00 [VRB] Autofac: creating Target scope with parent PluginBackend<ITargetPlugin>
+2025-06-26 17:08:27.153 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:08:27.155 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:08:27.155 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:08:27.163 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:08:27.164 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:08:27.164 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:08:27.167 +08:00 [VRB] Global validation option not found for test.projectbids.co.uk
+2025-06-26 17:08:27.167 +08:00 [VRB] Global validation option not found for www.test.projectbids.co.uk
+2025-06-26 17:08:27.170 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.174 +08:00 [DBG] Adding local system default as DNS server
+2025-06-26 17:08:27.244 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.244 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.245 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.245 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.246 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.246 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.247 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.247 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:27.250 +08:00 [VRB] No value provided for --validationport
+2025-06-26 17:08:27.253 +08:00 [VRB] No value provided for --validationprotocol
+2025-06-26 17:08:27.256 +08:00 [VRB] Autofac: creating PluginFrontend<CsrPluginOptions> scope with parent target
+2025-06-26 17:08:27.257 +08:00 [VRB] Autofac: creating PluginFrontend<CsrPluginOptions> scope with parent target
+2025-06-26 17:08:27.259 +08:00 [VRB] Flag --ocsp-must-staple not present
+2025-06-26 17:08:27.261 +08:00 [VRB] Flag --reuse-privatekey not present
+2025-06-26 17:08:27.264 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.265 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.265 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.265 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.266 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.268 +08:00 [VRB] No value provided for --certificatestore
+2025-06-26 17:08:27.268 +08:00 [VRB] Flag --keepexisting not present
+2025-06-26 17:08:27.268 +08:00 [VRB] No value provided for --acl-fullcontrol
+2025-06-26 17:08:27.269 +08:00 [VRB] No value provided for --acl-read
+2025-06-26 17:08:27.269 +08:00 [VRB] No value provided for --certificatestore
+2025-06-26 17:08:27.269 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.269 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.269 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.269 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.269 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:08:27.271 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:08:27.272 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:08:27.272 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:08:27.281 +08:00 [VRB] No value provided for --sslport
+2025-06-26 17:08:27.282 +08:00 [VRB] No value provided for --sslipaddress
+2025-06-26 17:08:27.282 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:08:27.282 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:08:27.282 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:08:27.289 +08:00 [VRB] Constructing ACME protocol client...
+2025-06-26 17:08:27.295 +08:00 [VRB] Getting service directory...
+2025-06-26 17:08:27.302 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/directory"
+2025-06-26 17:08:28.060 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:28.061 +08:00 [VRB] [HTTP] Response content: {
+  "j2Pl_1eLwDU": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-06-26 17:08:28.066 +08:00 [DBG] Signer not found at C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Signer_v2
+2025-06-26 17:08:28.067 +08:00 [DBG] Details not found at C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Registration_v2
+2025-06-26 17:08:28.067 +08:00 [VRB] No account found, creating new one
+2025-06-26 17:08:28.070 +08:00 [DBG] [HTTP] Send GET to "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf"
+2025-06-26 17:08:29.179 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:29.179 +08:00 [VRB] [HTTP] Response of type application/pdf (175080 bytes)
+2025-06-26 17:08:29.608 +08:00 [VRB] Terms of service downloaded
+2025-06-26 17:08:29.608 +08:00 [VRB] Writing terms of service to C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\LE-SA-v1.5-February-24-2025.pdf
+2025-06-26 17:08:34.614 +08:00 [DBG] Creating new ES256 signer
+2025-06-26 17:08:34.628 +08:00 [DBG] [HTTP] Send HEAD to "https://acme-v02.api.letsencrypt.org/acme/new-nonce"
+2025-06-26 17:08:34.877 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:34.877 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:08:34.897 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/new-acct"
+2025-06-26 17:08:34.897 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJqd2siOnsiY3J2IjoiUC0yNTYiLCJrdHkiOiJFQyIsIngiOiJUdzR2aW9HRDFIZVVOdmFEeXMxYnJmci1TTVRsYk5wZk95V01aSmowX19JIiwieSI6Ik41Ymk2UFdtODNMSUNNVlBwSU5DWlBjbHhfZ1FBN2JyZmV0dDM2VkZUVDQifSwiYWxnIjoiRVMyNTYiLCJ1cmwiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9uZXctYWNjdCIsIm5vbmNlIjoidXJKUEpyTDlrOGthS1hXeGxHUGlhbHVnYjFFY2RIb3A3Ym5YdXYxNTVhdGd6QzhmZ0g4In0","payload":"eyJjb250YWN0IjpbXSwidGVybXNPZlNlcnZpY2VBZ3JlZWQiOnRydWV9","signature":"xFkR3nPvWD9_7c46ci3CpM_AwlWJ97s5sfZ6wLbJOsSEAgOe-RoNawmQHkbI3iiLYUlwzm2s1patuni1FolmKA"}
+2025-06-26 17:08:35.179 +08:00 [VRB] [HTTP] Request completed with status "Created"
+2025-06-26 17:08:35.179 +08:00 [VRB] [HTTP] Response content: {
+  "key": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "Tw4vioGD1HeUNvaDys1brfr-SMTlbNpfOyWMZJj0__I",
+    "y": "N5bi6PWm83LICMVPpINCZPclx_gQA7brfett36VFTT4"
+  },
+  "createdAt": "2025-06-26T09:08:33.628116323Z",
+  "status": "valid"
+}
+2025-06-26 17:08:35.183 +08:00 [DBG] Saving account to C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Registration_v2
+2025-06-26 17:08:35.188 +08:00 [DBG] Saving signer to C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Signer_v2
+2025-06-26 17:08:35.191 +08:00 [DBG] Using default account...
+2025-06-26 17:08:35.192 +08:00 [VRB] Autofac: creating Execution scope with parent wacs
+2025-06-26 17:08:35.195 +08:00 [VRB] Autofac: creating PluginBackend<ITargetPlugin> scope with parent Execution
+2025-06-26 17:08:35.197 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:08:35.197 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:08:35.209 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:08:35.209 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:08:35.209 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:08:35.209 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:08:35.209 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:08:35.209 +08:00 [VRB] No host filter applied
+2025-06-26 17:08:35.209 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:08:35.209 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:08:35.210 +08:00 [INF] Plugin IIS generated source test.projectbids.co.uk with 2 identifiers
+2025-06-26 17:08:35.210 +08:00 [VRB] Autofac: creating Split scope with parent PluginBackend<ITargetPlugin>
+2025-06-26 17:08:35.210 +08:00 [VRB] Autofac: creating PluginBackend<IOrderPlugin> scope with parent Split
+2025-06-26 17:08:35.212 +08:00 [INF] Plugin Single created 1 order
+2025-06-26 17:08:35.213 +08:00 [VRB] Checking [IIS] test.projectbids.co.uk, (any host)
+2025-06-26 17:08:35.216 +08:00 [VRB] Autofac: creating Order scope with parent PluginBackend<ITargetPlugin>
+2025-06-26 17:08:35.216 +08:00 [VRB] Autofac: creating PluginBackend<ICsrPlugin> scope with parent order-main
+2025-06-26 17:08:35.219 +08:00 [DBG] Reading certificate cache
+2025-06-26 17:08:35.219 +08:00 [DBG] No cache files found for renewal
+2025-06-26 17:08:35.219 +08:00 [VRB] Order Main should run (new/changed source)
+2025-06-26 17:08:35.221 +08:00 [VRB] Obtain order details for Main
+2025-06-26 17:08:35.225 +08:00 [VRB] No existing order found
+2025-06-26 17:08:35.227 +08:00 [VRB] Creating order for identifiers: ["test.projectbids.co.uk","www.test.projectbids.co.uk"] (notAfter: null, previous: [none])
+2025-06-26 17:08:35.229 +08:00 [DBG] [HTTP] Send HEAD to "https://acme-v02.api.letsencrypt.org/acme/new-nonce"
+2025-06-26 17:08:35.984 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:35.984 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:08:35.992 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/new-order"
+2025-06-26 17:08:35.992 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL25ldy1vcmRlciIsIm5vbmNlIjoiYi1CMlFJckVvdEYxZ2ItTlM3bXhSX3AzWUpjSm9WaEZjZ29hX1NVdVdEZXQ4ekFadWtrIiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"eyJpZGVudGlmaWVycyI6W3sidHlwZSI6ImRucyIsInZhbHVlIjoidGVzdC5wcm9qZWN0Ymlkcy5jby51ayJ9LHsidHlwZSI6ImRucyIsInZhbHVlIjoid3d3LnRlc3QucHJvamVjdGJpZHMuY28udWsifV19","signature":"WBcyRP7dGQfVU7JUwjfmnmHv9tIeKH86mX8cCR8IpFMnle10_unRa5Tfay2H-YLS5tHtpktkKHhcNyEj9RTYCA"}
+2025-06-26 17:08:36.306 +08:00 [VRB] [HTTP] Request completed with status "Created"
+2025-06-26 17:08:36.306 +08:00 [VRB] [HTTP] Response content: {
+  "status": "pending",
+  "expires": "2025-07-03T09:08:34Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "test.projectbids.co.uk"
+    },
+    {
+      "type": "dns",
+      "value": "www.test.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542631",
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542651"
+  ],
+  "finalize": "https://acme-v02.api.letsencrypt.org/acme/finalize/2489892481/399278415941"
+}
+2025-06-26 17:08:36.308 +08:00 [VRB] Order https://acme-v02.api.letsencrypt.org/acme/order/2489892481/399278415941 created
+2025-06-26 17:08:36.320 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542631"
+2025-06-26 17:08:36.320 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzI0ODk4OTI0ODEvNTQyNDgzNTQyNjMxIiwibm9uY2UiOiJiLUIyUUlyRWt3VW91QkQyUmgyS3ZJVWFOaE04NzUxOS1DanFCUi04UUdpblVKdTBuMDgiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"","signature":"w1IXBfz7tXBTEecDVVl8PGLT7P4ntksKduL1XvZFAMYNS3oU-UsD30_mNhxppwAwXdtu3PMom88DhTyN4qa92g"}
+2025-06-26 17:08:36.574 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:36.574 +08:00 [VRB] [HTTP] Response content: {
+  "identifier": {
+    "type": "dns",
+    "value": "test.projectbids.co.uk"
+  },
+  "status": "pending",
+  "expires": "2025-07-03T09:08:34Z",
+  "challenges": [
+    {
+      "type": "dns-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/faZQuA",
+      "status": "pending",
+      "token": "ZH7bMeOCAw5hJY5DWSA3rn1DP0lTEx720msethaISCE"
+    },
+    {
+      "type": "http-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/pkIi7A",
+      "status": "pending",
+      "token": "ZH7bMeOCAw5hJY5DWSA3rn1DP0lTEx720msethaISCE"
+    },
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/j4_wLw",
+      "status": "pending",
+      "token": "ZH7bMeOCAw5hJY5DWSA3rn1DP0lTEx720msethaISCE"
+    }
+  ]
+}
+2025-06-26 17:08:36.576 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542651"
+2025-06-26 17:08:36.576 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzI0ODk4OTI0ODEvNTQyNDgzNTQyNjUxIiwibm9uY2UiOiJiLUIyUUlyRWJMLUhzSHMtZDdBZ3dVaTBUNnk0R1p0VHVWUmRIcktuV1lqbFNTcUYxTTAiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"","signature":"lZX263EKF_tQSLC59RU_xl17WZXDRn1M2MB3jIUsKRWUlAfkaDLRp5DNwkyH2RD6s49UiIM0FToc10DXdyCcwg"}
+2025-06-26 17:08:36.841 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:36.841 +08:00 [VRB] [HTTP] Response content: {
+  "identifier": {
+    "type": "dns",
+    "value": "www.test.projectbids.co.uk"
+  },
+  "status": "pending",
+  "expires": "2025-07-03T09:08:34Z",
+  "challenges": [
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542651/zVhCvw",
+      "status": "pending",
+      "token": "w1GJG_uX2LLBUrm63HD8SEWS9dp6f9U87FF4xmuqNrI"
+    },
+    {
+      "type": "dns-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542651/DIwKlw",
+      "status": "pending",
+      "token": "w1GJG_uX2LLBUrm63HD8SEWS9dp6f9U87FF4xmuqNrI"
+    },
+    {
+      "type": "http-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542651/OiRKfQ",
+      "status": "pending",
+      "token": "w1GJG_uX2LLBUrm63HD8SEWS9dp6f9U87FF4xmuqNrI"
+    }
+  ]
+}
+2025-06-26 17:08:36.844 +08:00 [VRB] Autofac: creating Target scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:08:36.844 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:36.846 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:08:36.846 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:08:36.853 +08:00 [VRB] Autofac: creating Target scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:08:36.853 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:08:36.855 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:08:36.855 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:08:36.861 +08:00 [VRB] Autofac: creating PluginBackend<IValidationPlugin> scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:08:36.863 +08:00 [VRB] Handle authorization 1/2
+2025-06-26 17:08:36.863 +08:00 [VRB] Autofac: creating PluginBackend<IValidationPlugin> scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:08:36.866 +08:00 [INF] [test.projectbids.co.uk] Authorizing...
+2025-06-26 17:08:36.866 +08:00 [VRB] [test.projectbids.co.uk] Initial authorization status: pending
+2025-06-26 17:08:36.866 +08:00 [VRB] [test.projectbids.co.uk] Challenge types available: ["dns-01","http-01","tls-alpn-01"]
+2025-06-26 17:08:36.866 +08:00 [VRB] [test.projectbids.co.uk] Initial challenge status: pending
+2025-06-26 17:08:36.866 +08:00 [INF] [test.projectbids.co.uk] Authorizing using http-01 validation (SelfHosting)
+2025-06-26 17:08:36.871 +08:00 [VRB] Starting commit stage
+2025-06-26 17:08:36.882 +08:00 [VRB] Commit was succesful
+2025-06-26 17:08:36.883 +08:00 [DBG] [test.projectbids.co.uk] Submitting challenge answer
+2025-06-26 17:08:36.885 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/pkIi7A"
+2025-06-26 17:08:36.885 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2NoYWxsLzI0ODk4OTI0ODEvNTQyNDgzNTQyNjMxL3BrSWk3QSIsIm5vbmNlIjoidXJKUEpyTDlSYnZ0R2MtMVA3cWRhRXNNQWkzQ2ZEMjRqU3k5cFM3R3VZX2ktWmluekxJIiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"e30","signature":"L6NNHERT_7uqE2hqhEb9t4vXZ13WBJ-Ut5ZPFsH0YTeOsFCoR9M4THhH_e3wFjwyS9SOAoJET6e8aNR8sWQlVQ"}
+2025-06-26 17:08:37.146 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:37.146 +08:00 [VRB] [HTTP] Response content: {
+  "type": "http-01",
+  "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/pkIi7A",
+  "status": "pending",
+  "token": "ZH7bMeOCAw5hJY5DWSA3rn1DP0lTEx720msethaISCE"
+}
+2025-06-26 17:08:42.148 +08:00 [DBG] Refreshing authorization (1/15)
+2025-06-26 17:08:42.149 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/pkIi7A"
+2025-06-26 17:08:42.149 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2NoYWxsLzI0ODk4OTI0ODEvNTQyNDgzNTQyNjMxL3BrSWk3QSIsIm5vbmNlIjoiYi1CMlFJckVQTkNzbTdhbElmX0lmYS1fZk5VSjFaWkVyQ1NFUHV2Rm1ZQ3d6bmRYZm9ZIiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"","signature":"EwjljLL598rs4TdUFJRnvFZmunODW4DTzofwn_UxMuMMtd9EXQfGmSxBFwPdhfkXOMTUSZOL1d8VBjdVOQrz7g"}
+2025-06-26 17:08:42.398 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:42.399 +08:00 [VRB] [HTTP] Response content: {
+  "type": "http-01",
+  "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/pkIi7A",
+  "status": "invalid",
+  "validated": "2025-06-26T09:08:35Z",
+  "error": {
+    "type": "urn:ietf:params:acme:error:dns",
+    "detail": "no valid A records found for test.projectbids.co.uk; no valid AAAA records found for test.projectbids.co.uk",
+    "status": 400
+  },
+  "token": "ZH7bMeOCAw5hJY5DWSA3rn1DP0lTEx720msethaISCE"
+}
+2025-06-26 17:08:42.400 +08:00 [ERR] [test.projectbids.co.uk] Authorization result: invalid
+2025-06-26 17:08:42.403 +08:00 [ERR] [test.projectbids.co.uk] {"type":"urn:ietf:params:acme:error:dns","detail":"no valid A records found for test.projectbids.co.uk; no valid AAAA records found for test.projectbids.co.uk","status":400,"instance":null}
+2025-06-26 17:08:42.404 +08:00 [VRB] Starting post-validation cleanup
+2025-06-26 17:08:42.404 +08:00 [VRB] Post-validation cleanup was successful
+2025-06-26 17:08:42.405 +08:00 [INF] [test.projectbids.co.uk] Deactivating pending authorization
+2025-06-26 17:08:42.407 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542631"
+2025-06-26 17:08:42.407 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzI0ODk4OTI0ODEvNTQyNDgzNTQyNjMxIiwibm9uY2UiOiJ1ckpQSnJMOXVOcjJNblZnTjFRMnVMU1Z1UVpzYTZEV29KT1lsc3ZiejRFWTMxb242OTQiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"eyJzdGF0dXMiOiJkZWFjdGl2YXRlZCJ9","signature":"OyEhh2y0-aAOA-QujAfj0qJptGvCqx0elIrcBI5hlwCihCnWc2pTPDYYDc-TOOGW9GU89AtZDbcUf-A9Vr-X7w"}
+2025-06-26 17:08:42.408 +08:00 [INF] [www.test.projectbids.co.uk] Deactivating pending authorization
+2025-06-26 17:08:42.659 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:42.660 +08:00 [VRB] [HTTP] Response content: {
+  "identifier": {
+    "type": "dns",
+    "value": "test.projectbids.co.uk"
+  },
+  "status": "deactivated",
+  "expires": "2025-07-03T09:08:34Z",
+  "challenges": [
+    {
+      "type": "http-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542631/pkIi7A",
+      "status": "invalid",
+      "validated": "2025-06-26T09:08:35Z",
+      "error": {
+        "type": "urn:ietf:params:acme:error:dns",
+        "detail": "no valid A records found for test.projectbids.co.uk; no valid AAAA records found for test.projectbids.co.uk",
+        "status": 400
+      },
+      "token": "ZH7bMeOCAw5hJY5DWSA3rn1DP0lTEx720msethaISCE"
+    }
+  ]
+}
+2025-06-26 17:08:42.661 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542651"
+2025-06-26 17:08:42.661 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzI0ODk4OTI0ODEvNTQyNDgzNTQyNjUxIiwibm9uY2UiOiJiLUIyUUlyRUFmTVhmUU5PSmN5VFp1c1JsSm10VTc3ZzFWVm9OZGswLUc5VkNVWS10N0UiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"eyJzdGF0dXMiOiJkZWFjdGl2YXRlZCJ9","signature":"DCp6clEu22FSo0AOS98uZ2EkA0xEcGNfCjC-xSvN15I6N2_WVmLJ94dF6YkSZFEVj4AzZ3iN2a1TEWfr00oOTA"}
+2025-06-26 17:08:42.988 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:08:42.988 +08:00 [VRB] [HTTP] Response content: {
+  "identifier": {
+    "type": "dns",
+    "value": "www.test.projectbids.co.uk"
+  },
+  "status": "deactivated",
+  "expires": "2025-07-03T09:08:34Z",
+  "challenges": [
+    {
+      "type": "dns-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542651/DIwKlw",
+      "status": "pending",
+      "token": "w1GJG_uX2LLBUrm63HD8SEWS9dp6f9U87FF4xmuqNrI"
+    },
+    {
+      "type": "http-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542651/OiRKfQ",
+      "status": "pending",
+      "token": "w1GJG_uX2LLBUrm63HD8SEWS9dp6f9U87FF4xmuqNrI"
+    },
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542483542651/zVhCvw",
+      "status": "pending",
+      "token": "w1GJG_uX2LLBUrm63HD8SEWS9dp6f9U87FF4xmuqNrI"
+    }
+  ]
+}
+2025-06-26 17:08:42.990 +08:00 [VRB] Order 1/1 (Main): error Validation failed
+2025-06-26 17:08:42.991 +08:00 [VRB] Processing order 1/1: Main
+2025-06-26 17:10:08.303 +08:00 [ERR] Create certificate failed
+2025-06-26 17:10:08.535 +08:00 [INF] Running in mode: "Interactive, Simple"
+2025-06-26 17:10:08.536 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:10:08.536 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:10:08.536 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:10:08.544 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:10:08.544 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:10:12.998 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:10:12.998 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:10:12.998 +08:00 [VRB] No site filter applied
+2025-06-26 17:10:12.998 +08:00 [VRB] No host filter applied
+2025-06-26 17:10:12.998 +08:00 [VRB] 4 matching bindings found
+2025-06-26 17:10:19.309 +08:00 [DBG] Found 1 secrets in secrets.json
+2025-06-26 17:10:19.326 +08:00 [DBG] Renewal period: 55 days
+2025-06-26 17:10:19.328 +08:00 [VRB] Sending e-mails false
+2025-06-26 17:10:19.343 +08:00 [INF] No command line arguments provided
+2025-06-26 17:10:19.348 +08:00 [VRB] ExePath: d:\Tools\win-acme.v2.2.9.1701.x64.pluggable\wacs.exe
+2025-06-26 17:10:19.348 +08:00 [VRB] ResourcePath: d:\Tools\win-acme.v2.2.9.1701.x64.pluggable\
+2025-06-26 17:10:19.348 +08:00 [VRB] PluginPath: d:\Tools\win-acme.v2.2.9.1701.x64.pluggable\
+2025-06-26 17:10:19.356 +08:00 [INF] Software version 2.2.9.1701 (release, pluggable, standalone, 64-bit) started
+2025-06-26 17:10:19.357 +08:00 [INF] Connecting to "https://acme-v02.api.letsencrypt.org/"...
+2025-06-26 17:10:19.362 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/directory"
+2025-06-26 17:10:20.201 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:10:20.204 +08:00 [VRB] [HTTP] Response content: {
+  "MsZzNQKxBtg": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-06-26 17:10:20.211 +08:00 [INF] Connection OK!
+2025-06-26 17:10:20.211 +08:00 [DBG] Running with administrator credentials
+2025-06-26 17:10:20.211 +08:00 [DBG] IIS version 10.0
+2025-06-26 17:10:20.238 +08:00 [WRN] Scheduled task not configured yet
+2025-06-26 17:10:20.238 +08:00 [INF] Please report issues at https://github.com/win-acme/win-acme
+2025-06-26 17:10:20.238 +08:00 [VRB] Unicode display test: Chinese/語言 Russian/язык Arab/لغة
+2025-06-26 17:10:45.359 +08:00 [INF] Running in mode: "Interactive, Advanced"
+2025-06-26 17:10:45.366 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:10:45.369 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:10:45.428 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:10:48.199 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:10:48.203 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:10:49.948 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:10:49.949 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:10:49.949 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:10:49.952 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:10:49.952 +08:00 [VRB] No host filter applied
+2025-06-26 17:10:49.952 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:10:54.754 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:10:54.755 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:10:54.755 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:10:54.755 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:10:54.755 +08:00 [VRB] No host filter applied
+2025-06-26 17:10:54.755 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:10:56.226 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:10:56.227 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:10:56.227 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:10:56.227 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:10:56.227 +08:00 [VRB] No host filter applied
+2025-06-26 17:10:56.227 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:10:59.932 +08:00 [VRB] Autofac: creating PluginBackend<ITargetPlugin> scope with parent wacs
+2025-06-26 17:10:59.936 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:10:59.936 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:10:59.936 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:10:59.936 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:10:59.936 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:10:59.936 +08:00 [VRB] No host filter applied
+2025-06-26 17:10:59.936 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:10:59.936 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:10:59.941 +08:00 [INF] Source generated using plugin IIS: test.projectbids.co.uk and 1 alternatives
+2025-06-26 17:11:00.249 +08:00 [VRB] Autofac: creating Target scope with parent PluginBackend<ITargetPlugin>
+2025-06-26 17:11:00.251 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:11:00.254 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:11:00.254 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:11:00.262 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:11:00.262 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:11:00.262 +08:00 [VRB] Autofac: creating PluginFrontend<OrderPluginOptions> scope with parent target
+2025-06-26 17:11:10.900 +08:00 [VRB] Global validation option not found for test.projectbids.co.uk
+2025-06-26 17:11:10.900 +08:00 [VRB] Global validation option not found for www.test.projectbids.co.uk
+2025-06-26 17:11:10.903 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.907 +08:00 [DBG] Adding local system default as DNS server
+2025-06-26 17:11:10.994 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.994 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.995 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.995 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.996 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.996 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.996 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.997 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:10.997 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:11:14.821 +08:00 [VRB] No value provided for --cloudflareapitoken
+2025-06-26 17:11:44.392 +08:00 [VRB] Autofac: creating PluginFrontend<CsrPluginOptions> scope with parent target
+2025-06-26 17:11:44.393 +08:00 [VRB] Autofac: creating PluginFrontend<CsrPluginOptions> scope with parent target
+2025-06-26 17:11:54.211 +08:00 [VRB] Flag --ocsp-must-staple not present
+2025-06-26 17:11:54.214 +08:00 [VRB] Flag --reuse-privatekey not present
+2025-06-26 17:11:54.216 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:11:54.217 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:11:54.217 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:11:54.218 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:11:54.218 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:11:56.149 +08:00 [VRB] No value provided for --certificatestore
+2025-06-26 17:11:56.150 +08:00 [VRB] Flag --keepexisting not present
+2025-06-26 17:11:56.150 +08:00 [VRB] No value provided for --acl-fullcontrol
+2025-06-26 17:11:56.150 +08:00 [VRB] No value provided for --acl-read
+2025-06-26 17:11:56.151 +08:00 [VRB] No value provided for --certificatestore
+2025-06-26 17:12:01.802 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:12:01.802 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:12:01.802 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:12:01.802 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:12:01.802 +08:00 [VRB] Autofac: creating PluginFrontend<StorePluginOptions> scope with parent target
+2025-06-26 17:12:04.036 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:12:04.037 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:12:04.037 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:12:09.005 +08:00 [VRB] No value provided for --sslport
+2025-06-26 17:12:09.007 +08:00 [VRB] No value provided for --sslipaddress
+2025-06-26 17:12:17.439 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:12:17.439 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:12:17.439 +08:00 [VRB] Autofac: creating PluginFrontend<InstallationPluginOptions> scope with parent target
+2025-06-26 17:12:20.453 +08:00 [VRB] Constructing ACME protocol client...
+2025-06-26 17:12:20.475 +08:00 [VRB] Getting service directory...
+2025-06-26 17:12:20.482 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/directory"
+2025-06-26 17:12:21.361 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:21.361 +08:00 [VRB] [HTTP] Response content: {
+  "O0MQZhcPf1w": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-06-26 17:12:21.366 +08:00 [DBG] Loading signer from C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Signer_v2
+2025-06-26 17:12:21.368 +08:00 [DBG] Loading account from C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Registration_v2
+2025-06-26 17:12:21.373 +08:00 [VRB] Using existing ACME account
+2025-06-26 17:12:21.377 +08:00 [DBG] Using default account...
+2025-06-26 17:12:21.378 +08:00 [VRB] Autofac: creating Execution scope with parent wacs
+2025-06-26 17:12:21.382 +08:00 [VRB] Autofac: creating PluginBackend<ITargetPlugin> scope with parent Execution
+2025-06-26 17:12:21.385 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:12:21.385 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:12:21.395 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:12:21.395 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:12:21.395 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:12:21.395 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:12:21.395 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:12:21.395 +08:00 [VRB] No host filter applied
+2025-06-26 17:12:21.395 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:12:21.395 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:12:21.396 +08:00 [INF] Plugin IIS generated source test.projectbids.co.uk with 2 identifiers
+2025-06-26 17:12:21.396 +08:00 [VRB] Autofac: creating Split scope with parent PluginBackend<ITargetPlugin>
+2025-06-26 17:12:21.396 +08:00 [VRB] Autofac: creating PluginBackend<IOrderPlugin> scope with parent Split
+2025-06-26 17:12:21.399 +08:00 [INF] Plugin Single created 1 order
+2025-06-26 17:12:21.399 +08:00 [VRB] Checking [IIS] test.projectbids.co.uk, (any host)
+2025-06-26 17:12:21.402 +08:00 [VRB] Autofac: creating Order scope with parent PluginBackend<ITargetPlugin>
+2025-06-26 17:12:21.402 +08:00 [VRB] Autofac: creating PluginBackend<ICsrPlugin> scope with parent order-main
+2025-06-26 17:12:21.405 +08:00 [DBG] Reading certificate cache
+2025-06-26 17:12:21.405 +08:00 [DBG] No cache files found for renewal
+2025-06-26 17:12:21.405 +08:00 [VRB] Order Main should run (new/changed source)
+2025-06-26 17:12:21.407 +08:00 [VRB] Obtain order details for Main
+2025-06-26 17:12:21.423 +08:00 [DBG] Refreshing cached order
+2025-06-26 17:12:21.424 +08:00 [DBG] Refreshing order...
+2025-06-26 17:12:21.428 +08:00 [DBG] [HTTP] Send HEAD to "https://acme-v02.api.letsencrypt.org/acme/new-nonce"
+2025-06-26 17:12:22.177 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:22.178 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:12:22.194 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/order/2489892481/399278415941"
+2025-06-26 17:12:22.194 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL29yZGVyLzI0ODk4OTI0ODEvMzk5Mjc4NDE1OTQxIiwibm9uY2UiOiJ1ckpQSnJMOXQ0YmhiMjEweHo2VHRqRTl3dVJ5YXpONDNzTXU2elhSZEhUblhUX2E0Mm8iLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"","signature":"Ju38lTLLW2UWdukGkkesBU-NIxBU1Ng-x-cX5dUzwZ-u4NgX24QXOB2Bi06R5ICQVnh-Q281OkALGpHDXwmiXQ"}
+2025-06-26 17:12:22.450 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:22.450 +08:00 [VRB] [HTTP] Response content: {
+  "status": "invalid",
+  "expires": "2025-07-03T09:08:34Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "test.projectbids.co.uk"
+    },
+    {
+      "type": "dns",
+      "value": "www.test.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542631",
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542483542651"
+  ],
+  "finalize": "https://acme-v02.api.letsencrypt.org/acme/finalize/2489892481/399278415941"
+}
+2025-06-26 17:12:22.453 +08:00 [WRN] Cached order has status invalid, discarding
+2025-06-26 17:12:22.453 +08:00 [DBG] Deleted C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Orders\85c1864b0bca06d3505551ea5dfd66bf493fe509.order.json
+2025-06-26 17:12:22.455 +08:00 [VRB] Creating order for identifiers: ["test.projectbids.co.uk","www.test.projectbids.co.uk"] (notAfter: null, previous: [none])
+2025-06-26 17:12:22.460 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/new-order"
+2025-06-26 17:12:22.460 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL25ldy1vcmRlciIsIm5vbmNlIjoidXJKUEpyTDludFQwZUxmODZhaFQwRnRldTBLU0QxVHNmbkJlUjJwdXZ0RFl0TnozaXpjIiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"eyJpZGVudGlmaWVycyI6W3sidHlwZSI6ImRucyIsInZhbHVlIjoidGVzdC5wcm9qZWN0Ymlkcy5jby51ayJ9LHsidHlwZSI6ImRucyIsInZhbHVlIjoid3d3LnRlc3QucHJvamVjdGJpZHMuY28udWsifV19","signature":"Bi2iCdyYv41tZqctTzzMIhLyPKr33nPEJv0AN0k-56h-GHtf4VF6DOyR-3PXZpkYVPTeVFBYfqsPxRMAZNZzdg"}
+2025-06-26 17:12:22.854 +08:00 [VRB] [HTTP] Request completed with status "Created"
+2025-06-26 17:12:22.854 +08:00 [VRB] [HTTP] Response content: {
+  "status": "pending",
+  "expires": "2025-07-03T09:12:21Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "test.projectbids.co.uk"
+    },
+    {
+      "type": "dns",
+      "value": "www.test.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981541",
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981561"
+  ],
+  "finalize": "https://acme-v02.api.letsencrypt.org/acme/finalize/2489892481/399279371271"
+}
+2025-06-26 17:12:22.856 +08:00 [VRB] Order https://acme-v02.api.letsencrypt.org/acme/order/2489892481/399279371271 created
+2025-06-26 17:12:22.863 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981541"
+2025-06-26 17:12:22.863 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzI0ODk4OTI0ODEvNTQyNDg0OTgxNTQxIiwibm9uY2UiOiJ1ckpQSnJMOU5OZEJldkpJdmluSkJONXhlOFc1X2lsQUNZRzN6bExmMlE1WTIwV1pIeHMiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"","signature":"4XCKowZ4PLVwZ1M5LBCBmm__SJIz_eN2QcgFgyLihKHgXcpN-p5ThEePN5sSWUyzUmZOn4np549jn1K2CpMSZA"}
+2025-06-26 17:12:23.114 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:23.114 +08:00 [VRB] [HTTP] Response content: {
+  "identifier": {
+    "type": "dns",
+    "value": "test.projectbids.co.uk"
+  },
+  "status": "pending",
+  "expires": "2025-07-03T09:12:21Z",
+  "challenges": [
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981541/emi02A",
+      "status": "pending",
+      "token": "dbhGRz12ydMRDia5e9pjTIkgWx3GdVNnFOYDd7CiKck"
+    },
+    {
+      "type": "dns-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981541/WyfV1A",
+      "status": "pending",
+      "token": "dbhGRz12ydMRDia5e9pjTIkgWx3GdVNnFOYDd7CiKck"
+    },
+    {
+      "type": "http-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981541/etpBTg",
+      "status": "pending",
+      "token": "dbhGRz12ydMRDia5e9pjTIkgWx3GdVNnFOYDd7CiKck"
+    }
+  ]
+}
+2025-06-26 17:12:23.116 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981561"
+2025-06-26 17:12:23.117 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzI0ODk4OTI0ODEvNTQyNDg0OTgxNTYxIiwibm9uY2UiOiJ1ckpQSnJMOXRySjEzeFFMbGtpbnFla2FZNzByUC1PUE9YUjVDbk9vUjlPWU1OWVhXdnciLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"","signature":"9O_-pfxtFz8QoWXiXyqBsS5G05Sy18pPzhXRxCy9LuEfWgsENxCiSQ1zC4WzhmQupPd6YIyuZFCZhAc7R2fDIg"}
+2025-06-26 17:12:23.381 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:23.381 +08:00 [VRB] [HTTP] Response content: {
+  "identifier": {
+    "type": "dns",
+    "value": "www.test.projectbids.co.uk"
+  },
+  "status": "pending",
+  "expires": "2025-07-03T09:12:21Z",
+  "challenges": [
+    {
+      "type": "http-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981561/wp_gMg",
+      "status": "pending",
+      "token": "Ay5LYgrTPNppoV3VqtpTpXBJkFmGIZ8tar8eklAzOe4"
+    },
+    {
+      "type": "dns-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981561/uvSccw",
+      "status": "pending",
+      "token": "Ay5LYgrTPNppoV3VqtpTpXBJkFmGIZ8tar8eklAzOe4"
+    },
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981561/MertNg",
+      "status": "pending",
+      "token": "Ay5LYgrTPNppoV3VqtpTpXBJkFmGIZ8tar8eklAzOe4"
+    }
+  ]
+}
+2025-06-26 17:12:23.383 +08:00 [VRB] Autofac: creating Target scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:12:23.383 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:12:23.385 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:12:23.385 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:12:23.391 +08:00 [VRB] Autofac: creating Target scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:12:23.391 +08:00 [VRB] Autofac: creating PluginFrontend<ValidationPluginOptions> scope with parent target
+2025-06-26 17:12:23.393 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:12:23.393 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:12:23.399 +08:00 [VRB] Autofac: creating PluginBackend<IValidationPlugin> scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:12:23.402 +08:00 [VRB] Handle authorization 1/2
+2025-06-26 17:12:23.402 +08:00 [VRB] Autofac: creating PluginBackend<IValidationPlugin> scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:12:23.405 +08:00 [INF] [test.projectbids.co.uk] Authorizing...
+2025-06-26 17:12:23.405 +08:00 [VRB] [test.projectbids.co.uk] Initial authorization status: pending
+2025-06-26 17:12:23.405 +08:00 [VRB] [test.projectbids.co.uk] Challenge types available: ["tls-alpn-01","dns-01","http-01"]
+2025-06-26 17:12:23.406 +08:00 [VRB] [test.projectbids.co.uk] Initial challenge status: pending
+2025-06-26 17:12:23.406 +08:00 [INF] [test.projectbids.co.uk] Authorizing using dns-01 validation (Cloudflare)
+2025-06-26 17:12:23.414 +08:00 [DBG] Querying name servers for projectbids.co.uk
+2025-06-26 17:12:23.555 +08:00 [VRB] Found nsRecords: ["ken.ns.cloudflare.com.","mia.ns.cloudflare.com."]
+2025-06-26 17:12:23.555 +08:00 [VRB] Querying IP for name server ken.ns.cloudflare.com.
+2025-06-26 17:12:23.623 +08:00 [VRB] Name server IP 108.162.193.127 identified
+2025-06-26 17:12:23.623 +08:00 [VRB] Querying IP for name server mia.ns.cloudflare.com.
+2025-06-26 17:12:23.701 +08:00 [VRB] Name server IP 173.245.58.200 identified
+2025-06-26 17:12:23.719 +08:00 [VRB] Error from 108.162.193.127: Query Refused
+2025-06-26 17:12:23.731 +08:00 [VRB] Error from 173.245.58.200: Query Refused
+2025-06-26 17:12:23.732 +08:00 [DBG] Querying name servers for test.projectbids.co.uk
+2025-06-26 17:12:23.749 +08:00 [VRB] No specific name servers identified for test.projectbids.co.uk
+2025-06-26 17:12:23.749 +08:00 [DBG] Querying name servers for _acme-challenge.test.projectbids.co.uk
+2025-06-26 17:12:23.762 +08:00 [VRB] No specific name servers identified for _acme-challenge.test.projectbids.co.uk
+2025-06-26 17:12:23.763 +08:00 [VRB] Query CNAME for _acme-challenge.test.projectbids.co.uk at 108.162.193.127
+2025-06-26 17:12:23.779 +08:00 [DBG] [test.projectbids.co.uk] Attempting to create DNS record under _acme-challenge.test.projectbids.co.uk...
+2025-06-26 17:12:23.855 +08:00 [DBG] [HTTP] Send GET to "https://api.cloudflare.com/client/v4/zones/?per_page=50&page=1"
+2025-06-26 17:12:24.395 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:24.395 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:12:24.433 +08:00 [VRB] Zone projectbids.co.uk scored 3 points
+2025-06-26 17:12:24.433 +08:00 [DBG] Picked projectbids.co.uk as best match
+2025-06-26 17:12:24.440 +08:00 [DBG] [HTTP] Send POST to "https://api.cloudflare.com/client/v4/zones/96f2e4e19f83a2beb394d3cfe17969a5/dns_records"
+2025-06-26 17:12:24.441 +08:00 [VRB] [HTTP] Request content: {"type":"TXT","name":"_acme-challenge.test.projectbids.co.uk","content":"HudWB5n2c8KmEgSTU8WwKtw-Ys8gpZxMnzF2pC6tKoY","ttl":60}
+2025-06-26 17:12:24.769 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:24.769 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:12:24.776 +08:00 [INF] [test.projectbids.co.uk] Record HudWB5n2c8KmEgSTU8WwKtw-Ys8gpZxMnzF2pC6tKoY successfully created
+2025-06-26 17:12:24.777 +08:00 [VRB] Starting commit stage
+2025-06-26 17:12:24.781 +08:00 [DBG] [test.projectbids.co.uk] Looking for TXT value HudWB5n2c8KmEgSTU8WwKtw-Ys8gpZxMnzF2pC6tKoY...
+2025-06-26 17:12:24.781 +08:00 [DBG] [test.projectbids.co.uk] [108.162.193.127] Getting TXT records...
+2025-06-26 17:12:24.797 +08:00 [DBG] [test.projectbids.co.uk] [108.162.193.127] Found ["fP_Y5nt7Lvc3-_i86o6cL3gwNmTNFQfvHBbAddGksSA"]
+2025-06-26 17:12:24.797 +08:00 [WRN] [test.projectbids.co.uk] [108.162.193.127] Incorrect TXT record(s) found
+2025-06-26 17:12:24.797 +08:00 [DBG] [test.projectbids.co.uk] [173.245.58.200] Getting TXT records...
+2025-06-26 17:12:24.809 +08:00 [DBG] [test.projectbids.co.uk] [173.245.58.200] Found ["fP_Y5nt7Lvc3-_i86o6cL3gwNmTNFQfvHBbAddGksSA"]
+2025-06-26 17:12:24.810 +08:00 [WRN] [test.projectbids.co.uk] [173.245.58.200] Incorrect TXT record(s) found
+2025-06-26 17:12:24.810 +08:00 [INF] [test.projectbids.co.uk] Preliminary validation failed on all nameservers
+2025-06-26 17:12:24.811 +08:00 [INF] [test.projectbids.co.uk] Will retry in 30 seconds (retry 1/10)...
+2025-06-26 17:12:54.812 +08:00 [DBG] [test.projectbids.co.uk] Looking for TXT value HudWB5n2c8KmEgSTU8WwKtw-Ys8gpZxMnzF2pC6tKoY...
+2025-06-26 17:12:54.812 +08:00 [DBG] [test.projectbids.co.uk] [108.162.193.127] Getting TXT records...
+2025-06-26 17:12:54.829 +08:00 [DBG] [test.projectbids.co.uk] [108.162.193.127] looks good
+2025-06-26 17:12:54.829 +08:00 [DBG] [test.projectbids.co.uk] [173.245.58.200] Getting TXT records...
+2025-06-26 17:12:54.845 +08:00 [DBG] [test.projectbids.co.uk] [173.245.58.200] looks good
+2025-06-26 17:12:54.845 +08:00 [INF] [test.projectbids.co.uk] Preliminary validation succeeded
+2025-06-26 17:12:54.846 +08:00 [VRB] Commit was succesful
+2025-06-26 17:12:54.847 +08:00 [DBG] [test.projectbids.co.uk] Submitting challenge answer
+2025-06-26 17:12:54.850 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981541/WyfV1A"
+2025-06-26 17:12:54.850 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2NoYWxsLzI0ODk4OTI0ODEvNTQyNDg0OTgxNTQxL1d5ZlYxQSIsIm5vbmNlIjoidXJKUEpyTDlVRG4wck51aTJjbDd3S1lxV0pKMWtFSlZGdzNqUEI1ejBHYVFYUHRYUTJJIiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"e30","signature":"AU0DGoB8Dp991M_2FSRg1SDu3i-VlihUgShtNLuAUmTEqNJ76ksE1NqC_CYwkTHfrbKM4jiKOLVfwntQkAnWtA"}
+2025-06-26 17:12:55.114 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:12:55.114 +08:00 [VRB] [HTTP] Response content: {
+  "type": "dns-01",
+  "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981541/WyfV1A",
+  "status": "pending",
+  "token": "dbhGRz12ydMRDia5e9pjTIkgWx3GdVNnFOYDd7CiKck"
+}
+2025-06-26 17:13:00.116 +08:00 [DBG] Refreshing authorization (1/15)
+2025-06-26 17:13:00.117 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981541/WyfV1A"
+2025-06-26 17:13:00.117 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2NoYWxsLzI0ODk4OTI0ODEvNTQyNDg0OTgxNTQxL1d5ZlYxQSIsIm5vbmNlIjoidXJKUEpyTDkyVGxwZ2hrTGs2QlVVTmZCVURjUV9oUWpHQi1KejdqQW5YcURtYTZlZW5FIiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"","signature":"a95lfWLk_sxAfKbNYVx75X8VuYZexWFbIogeTm6VsG_rh-yREOnctd-C1qiOCah-G9-HHYxlamaEf8VeWkfG2w"}
+2025-06-26 17:13:00.370 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:00.370 +08:00 [VRB] [HTTP] Response content: {
+  "type": "dns-01",
+  "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981541/WyfV1A",
+  "status": "valid",
+  "validated": "2025-06-26T09:12:53Z",
+  "token": "dbhGRz12ydMRDia5e9pjTIkgWx3GdVNnFOYDd7CiKck",
+  "validationRecord": [
+    {
+      "hostname": "test.projectbids.co.uk",
+      "addressUsed": ""
+    }
+  ]
+}
+2025-06-26 17:13:00.371 +08:00 [INF] [test.projectbids.co.uk] Authorization result: valid
+2025-06-26 17:13:00.372 +08:00 [VRB] Starting post-validation cleanup
+2025-06-26 17:13:00.375 +08:00 [DBG] [HTTP] Send GET to "https://api.cloudflare.com/client/v4/zones/?per_page=50&page=1"
+2025-06-26 17:13:00.809 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:00.809 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:00.816 +08:00 [VRB] Zone projectbids.co.uk scored 3 points
+2025-06-26 17:13:00.816 +08:00 [DBG] Picked projectbids.co.uk as best match
+2025-06-26 17:13:00.821 +08:00 [DBG] [HTTP] Send GET to "https://api.cloudflare.com/client/v4/zones/96f2e4e19f83a2beb394d3cfe17969a5/dns_records/?type=TXT&name=_acme-challenge.test.projectbids.co.uk&content=HudWB5n2c8KmEgSTU8WwKtw-Ys8gpZxMnzF2pC6tKoY&match=all"
+2025-06-26 17:13:01.128 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:01.128 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:01.134 +08:00 [DBG] [HTTP] Send DELETE to "https://api.cloudflare.com/client/v4/zones/96f2e4e19f83a2beb394d3cfe17969a5/dns_records/095b430b9ac38e22feb8f2550fbdbd1c"
+2025-06-26 17:13:01.461 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:01.461 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:01.464 +08:00 [INF] [test.projectbids.co.uk] Record HudWB5n2c8KmEgSTU8WwKtw-Ys8gpZxMnzF2pC6tKoY deleted
+2025-06-26 17:13:01.464 +08:00 [DBG] DNS record cleanup finalized
+2025-06-26 17:13:01.464 +08:00 [VRB] Post-validation cleanup was successful
+2025-06-26 17:13:01.465 +08:00 [VRB] Handle authorization 2/2
+2025-06-26 17:13:01.465 +08:00 [VRB] Autofac: creating PluginBackend<IValidationPlugin> scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:13:01.465 +08:00 [INF] [www.test.projectbids.co.uk] Authorizing...
+2025-06-26 17:13:01.465 +08:00 [VRB] [www.test.projectbids.co.uk] Initial authorization status: pending
+2025-06-26 17:13:01.465 +08:00 [VRB] [www.test.projectbids.co.uk] Challenge types available: ["http-01","dns-01","tls-alpn-01"]
+2025-06-26 17:13:01.465 +08:00 [VRB] [www.test.projectbids.co.uk] Initial challenge status: pending
+2025-06-26 17:13:01.466 +08:00 [INF] [www.test.projectbids.co.uk] Authorizing using dns-01 validation (Cloudflare)
+2025-06-26 17:13:01.466 +08:00 [DBG] Querying name servers for www.test.projectbids.co.uk
+2025-06-26 17:13:01.484 +08:00 [VRB] No specific name servers identified for www.test.projectbids.co.uk
+2025-06-26 17:13:01.485 +08:00 [DBG] Querying name servers for _acme-challenge.www.test.projectbids.co.uk
+2025-06-26 17:13:01.503 +08:00 [VRB] No specific name servers identified for _acme-challenge.www.test.projectbids.co.uk
+2025-06-26 17:13:01.503 +08:00 [VRB] Query CNAME for _acme-challenge.www.test.projectbids.co.uk at 108.162.193.127
+2025-06-26 17:13:01.517 +08:00 [DBG] [www.test.projectbids.co.uk] Attempting to create DNS record under _acme-challenge.www.test.projectbids.co.uk...
+2025-06-26 17:13:01.518 +08:00 [DBG] [HTTP] Send GET to "https://api.cloudflare.com/client/v4/zones/?per_page=50&page=1"
+2025-06-26 17:13:01.869 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:01.869 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:01.875 +08:00 [VRB] Zone projectbids.co.uk scored 3 points
+2025-06-26 17:13:01.875 +08:00 [DBG] Picked projectbids.co.uk as best match
+2025-06-26 17:13:01.875 +08:00 [DBG] [HTTP] Send POST to "https://api.cloudflare.com/client/v4/zones/96f2e4e19f83a2beb394d3cfe17969a5/dns_records"
+2025-06-26 17:13:01.875 +08:00 [VRB] [HTTP] Request content: {"type":"TXT","name":"_acme-challenge.www.test.projectbids.co.uk","content":"ejZhCgLMpsOZz_EenV580aH7Y-MSusjRnAVQcoP6KsM","ttl":60}
+2025-06-26 17:13:02.185 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:02.185 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:02.188 +08:00 [INF] [www.test.projectbids.co.uk] Record ejZhCgLMpsOZz_EenV580aH7Y-MSusjRnAVQcoP6KsM successfully created
+2025-06-26 17:13:02.189 +08:00 [VRB] Starting commit stage
+2025-06-26 17:13:02.189 +08:00 [DBG] [www.test.projectbids.co.uk] Looking for TXT value ejZhCgLMpsOZz_EenV580aH7Y-MSusjRnAVQcoP6KsM...
+2025-06-26 17:13:02.189 +08:00 [DBG] [www.test.projectbids.co.uk] [108.162.193.127] Getting TXT records...
+2025-06-26 17:13:02.201 +08:00 [DBG] [www.test.projectbids.co.uk] [108.162.193.127] Found ["6wYUmkUDjBht20N6RkD25HKsaO2bK245yJtTxG-DKkg"]
+2025-06-26 17:13:02.201 +08:00 [WRN] [www.test.projectbids.co.uk] [108.162.193.127] Incorrect TXT record(s) found
+2025-06-26 17:13:02.201 +08:00 [DBG] [www.test.projectbids.co.uk] [173.245.58.200] Getting TXT records...
+2025-06-26 17:13:02.215 +08:00 [DBG] [www.test.projectbids.co.uk] [173.245.58.200] Found ["6wYUmkUDjBht20N6RkD25HKsaO2bK245yJtTxG-DKkg"]
+2025-06-26 17:13:02.215 +08:00 [WRN] [www.test.projectbids.co.uk] [173.245.58.200] Incorrect TXT record(s) found
+2025-06-26 17:13:02.215 +08:00 [INF] [www.test.projectbids.co.uk] Preliminary validation failed on all nameservers
+2025-06-26 17:13:02.215 +08:00 [INF] [www.test.projectbids.co.uk] Will retry in 30 seconds (retry 1/10)...
+2025-06-26 17:13:32.216 +08:00 [DBG] [www.test.projectbids.co.uk] Looking for TXT value ejZhCgLMpsOZz_EenV580aH7Y-MSusjRnAVQcoP6KsM...
+2025-06-26 17:13:32.216 +08:00 [DBG] [www.test.projectbids.co.uk] [108.162.193.127] Getting TXT records...
+2025-06-26 17:13:32.230 +08:00 [DBG] [www.test.projectbids.co.uk] [108.162.193.127] looks good
+2025-06-26 17:13:32.230 +08:00 [DBG] [www.test.projectbids.co.uk] [173.245.58.200] Getting TXT records...
+2025-06-26 17:13:32.245 +08:00 [DBG] [www.test.projectbids.co.uk] [173.245.58.200] looks good
+2025-06-26 17:13:32.245 +08:00 [INF] [www.test.projectbids.co.uk] Preliminary validation succeeded
+2025-06-26 17:13:32.245 +08:00 [VRB] Commit was succesful
+2025-06-26 17:13:32.245 +08:00 [DBG] [www.test.projectbids.co.uk] Submitting challenge answer
+2025-06-26 17:13:32.245 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981561/uvSccw"
+2025-06-26 17:13:32.245 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2NoYWxsLzI0ODk4OTI0ODEvNTQyNDg0OTgxNTYxL3V2U2NjdyIsIm5vbmNlIjoiYi1CMlFJckVrTnBUUkI2QWlNQy14SGktNHJvblpPNC1LM3JJTXBUVUNaemV4bGNiU3c0Iiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"e30","signature":"tXAbFOFdtpbEg8YKnvVJMs_8S8Wf0-sPzpSznE2eaQDuWnXP4-p_BBlLtUB-4PNMckS_VLHdhXTxWEhAcBHaGw"}
+2025-06-26 17:13:32.497 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:32.497 +08:00 [VRB] [HTTP] Response content: {
+  "type": "dns-01",
+  "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981561/uvSccw",
+  "status": "pending",
+  "token": "Ay5LYgrTPNppoV3VqtpTpXBJkFmGIZ8tar8eklAzOe4"
+}
+2025-06-26 17:13:37.498 +08:00 [DBG] Refreshing authorization (1/15)
+2025-06-26 17:13:37.499 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981561/uvSccw"
+2025-06-26 17:13:37.499 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2NoYWxsLzI0ODk4OTI0ODEvNTQyNDg0OTgxNTYxL3V2U2NjdyIsIm5vbmNlIjoidXJKUEpyTDk3REZod1V5a0I1eXFQdU1OM0MxYzRTQlY5NmozdS00TlFoaEFEeVRRNEFVIiwia2lkIjoiaHR0cHM6Ly9hY21lLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8yNDg5ODkyNDgxIn0","payload":"","signature":"O1f-z5b5W4mO1tssr6s37JyHwHm5XK5P5NdA2r72B40dZkP7-JGv5YoRrdDWUCWBYrWCKEBLqDxOSh6XHKqWTA"}
+2025-06-26 17:13:37.751 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:37.751 +08:00 [VRB] [HTTP] Response content: {
+  "type": "dns-01",
+  "url": "https://acme-v02.api.letsencrypt.org/acme/chall/2489892481/542484981561/uvSccw",
+  "status": "valid",
+  "validated": "2025-06-26T09:13:30Z",
+  "token": "Ay5LYgrTPNppoV3VqtpTpXBJkFmGIZ8tar8eklAzOe4",
+  "validationRecord": [
+    {
+      "hostname": "www.test.projectbids.co.uk",
+      "addressUsed": ""
+    }
+  ]
+}
+2025-06-26 17:13:37.751 +08:00 [INF] [www.test.projectbids.co.uk] Authorization result: valid
+2025-06-26 17:13:37.751 +08:00 [VRB] Starting post-validation cleanup
+2025-06-26 17:13:37.752 +08:00 [DBG] [HTTP] Send GET to "https://api.cloudflare.com/client/v4/zones/?per_page=50&page=1"
+2025-06-26 17:13:38.129 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:38.129 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:38.135 +08:00 [VRB] Zone projectbids.co.uk scored 3 points
+2025-06-26 17:13:38.136 +08:00 [DBG] Picked projectbids.co.uk as best match
+2025-06-26 17:13:38.136 +08:00 [DBG] [HTTP] Send GET to "https://api.cloudflare.com/client/v4/zones/96f2e4e19f83a2beb394d3cfe17969a5/dns_records/?type=TXT&name=_acme-challenge.www.test.projectbids.co.uk&content=ejZhCgLMpsOZz_EenV580aH7Y-MSusjRnAVQcoP6KsM&match=all"
+2025-06-26 17:13:38.438 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:38.438 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:38.445 +08:00 [DBG] [HTTP] Send DELETE to "https://api.cloudflare.com/client/v4/zones/96f2e4e19f83a2beb394d3cfe17969a5/dns_records/b111de1bca4b5f765daa9b0ea90da61f"
+2025-06-26 17:13:38.761 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:38.761 +08:00 [VRB] [HTTP] Empty response
+2025-06-26 17:13:38.763 +08:00 [INF] [www.test.projectbids.co.uk] Record ejZhCgLMpsOZz_EenV580aH7Y-MSusjRnAVQcoP6KsM deleted
+2025-06-26 17:13:38.763 +08:00 [DBG] DNS record cleanup finalized
+2025-06-26 17:13:38.763 +08:00 [VRB] Post-validation cleanup was successful
+2025-06-26 17:13:38.767 +08:00 [VRB] Order 1/1 (Main): processing...
+2025-06-26 17:13:38.773 +08:00 [DBG] Creating new private key at C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Orders\85c1864b0bca06d3505551ea5dfd66bf493fe509.order.keys...
+2025-06-26 17:13:38.780 +08:00 [VRB] Generating private key using 3072 key bits
+2025-06-26 17:13:41.256 +08:00 [DBG] CSR stored at ryaYpYnybEqLtmhGawIRMQ-main-4eee3544e258b6690d38eddb23d5fff1f55955a0-csr.pem in certificate cache folder C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Certificates
+2025-06-26 17:13:41.257 +08:00 [VRB] Submitting CSR
+2025-06-26 17:13:41.258 +08:00 [DBG] Waiting for order to get ready (1/15)
+2025-06-26 17:13:46.259 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/order/2489892481/399279371271"
+2025-06-26 17:13:46.259 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL29yZGVyLzI0ODk4OTI0ODEvMzk5Mjc5MzcxMjcxIiwibm9uY2UiOiJ1ckpQSnJMOTdNWnlUMXNiNDdvZUxJQkFoQ1o0ZzdJRWQwOTJQaHI1UURzdkFPNDk3M3MiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"","signature":"l1XWo5eJ6DQKOl7cnTG5RHC6RfaVgw_RtIYrH-f51-lotzIKc97wZAmpedDNcrZypS2v-epKMkb-SkQet-1raw"}
+2025-06-26 17:13:46.511 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:46.511 +08:00 [VRB] [HTTP] Response content: {
+  "status": "ready",
+  "expires": "2025-07-03T09:12:21Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "test.projectbids.co.uk"
+    },
+    {
+      "type": "dns",
+      "value": "www.test.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981541",
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981561"
+  ],
+  "finalize": "https://acme-v02.api.letsencrypt.org/acme/finalize/2489892481/399279371271"
+}
+2025-06-26 17:13:46.514 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/finalize/2489892481/399279371271"
+2025-06-26 17:13:46.514 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2ZpbmFsaXplLzI0ODk4OTI0ODEvMzk5Mjc5MzcxMjcxIiwibm9uY2UiOiJiLUIyUUlyRVp2ellMZ1gycXNTS1JLRWF6dlUxUkRDalRyNlVTbkJHZ09hemVPelFrcTQiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"eyJjc3IiOiJNSUlEdGpDQ0FoNENBUUF3SVRFZk1CMEdBMVVFQXd3V2RHVnpkQzV3Y205cVpXTjBZbWxrY3k1amJ5NTFhekNDQWFJd0RRWUpLb1pJaHZjTkFRRUJCUUFEZ2dHUEFEQ0NBWW9DZ2dHQkFPb0lyU3p4UzZqMVhLWXl6bFY4NXE0QWxYRUkxTU45eTYwVWVwVDZ6ZEQ0YWlPbnlwLUdHSVBNWExhdGVkemphWW5JX29RSDlrR1d2SWZGX3BxYnhjZDVDcGh0ZzF1cVRINXVwaS02NTVaVmdkcWFMNHBOazZ2eVBhemlMLUNIRGJXTFhtYXNyZEE5X0NrY2NaeEtGenRvUko3N1Fxa2hMbXdSMkIyekdfNkRaT2hGRk1yWjJYU2FFQTdsNlQ3WXBJeU5ibXdEMnJ6bk9vTW50N3BIaTNreTJqWDViUmp5QWpYZHk5dkV1akFDZGpWUy1vX0ZUcE5hNDUyNnVXc0RpXzRkMFZrd1JLQnBKOEpxUENqSWxua3ViY3B5SHVicVlqN0QyMjRGOTZVSS1qaFhYODE4bUsyRGY4OG55ZEhCM29Sb1ZLYURUSV9abU5kdzV6WXp5UnlHMXd2dlhXLWhxT05YeFVIZmZsWnZjQzlvNXZMbDNTSGMxeFFkdmp3OVVlUUVVS0pFUGd3c0MtVUZJWXAzZHYzUGZtWk9YcVdYU1Nka1R1QTNQbjdDNFdIeXBBR1ZRX0xYeHVOY2xDdmc1T201X21PZVR0UThGRnZhek5yTVN6S1NiSUw5LVU2Vjh0ZjhrREFVelhRVjlfTW54MktEOWFXVVl0ZExCU2pXSVFJREFRQUJvRkF3VGdZSktvWklodmNOQVFrT01VRXdQekE5QmdOVkhSRUVOakEwZ2haMFpYTjBMbkJ5YjJwbFkzUmlhV1J6TG1OdkxuVnJnaHAzZDNjdWRHVnpkQzV3Y205cVpXTjBZbWxrY3k1amJ5NTFhekFOQmdrcWhraUc5dzBCQVEwRkFBT0NBWUVBanB4ZE4yWS1Ld0V2a1lnNEdmS3ZtQTlPa2pIeGk1MzJCa1A5U19FS0xqX3FEWWlkRVdpZk90ZFRQaW5BZTNIbklnLXNBM3RrcEd0RzhyWmM1bUlpMGZVR1hDY3hXYlJWTWpYNko1dGhoS3h3QkQyNkZWbVNtZW1HSi1iUDgtVkxfd1RjVGlJaDN5WUhiZUNxMEVOOHlqTE96WnFEOHZSV28ydVhob05zMDdaTkpsNVFpb2ZuS3IxQTZxdTdEcUItcU5KS0N1RF9nUjVzTVAzSXh1YmZla2FUNEFQX2MxMmV3R1V1cHhFYUNCdEFkWkhJekhlbzZ4N29Fc1V3aFVzSWZTamxOeTUwcUZ5VXdaVE5ULVg1V1pFRm42b3NYUDVJZTFEQ2k2UFlIYng3aUZSWGhGS3Jvcm16NjFXX2xFQnl6RTFkWlZJY2c3Rm04WENjZlhWS0gxdF9UQnBXQVdEWGQxUXJYa2tfZjdscHJrWHpDbnA0eG1FZEJTSUxPa1Nnek1UcmFhOE0wSHN0ejNnUUg3Y2tUcTRxRU45TDJ6NU1obUR2MkI2Q1RwMk81bjAzcHVzUWRVdTc0QVJqRGxyTVlmdE50TUtfZUFBZE41aTMzeEc1aEtrSUVtQkMxSDFiS2N3d0I1dFpCNWRMN1RKV0x1SUdfRnY0bFF2V3UtdHkifQ","signature":"Q8djqbWeETabODqhHkSVt_SbhxdyQjgOLVHEkgdwKQ1PGnVfjQjv8F08HAjFbOUcAqG5fKnCcYeAH2DCULsTjA"}
+2025-06-26 17:13:47.630 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:47.630 +08:00 [VRB] [HTTP] Response content: {
+  "status": "valid",
+  "expires": "2025-07-03T09:12:21Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "test.projectbids.co.uk"
+    },
+    {
+      "type": "dns",
+      "value": "www.test.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981541",
+    "https://acme-v02.api.letsencrypt.org/acme/authz/2489892481/542484981561"
+  ],
+  "finalize": "https://acme-v02.api.letsencrypt.org/acme/finalize/2489892481/399279371271",
+  "certificate": "https://acme-v02.api.letsencrypt.org/acme/cert/067184431ec735464a641eb5b1022f383991"
+}
+2025-06-26 17:13:47.631 +08:00 [INF] Downloading certificate [IIS] test.projectbids.co.uk, (any host)
+2025-06-26 17:13:47.635 +08:00 [DBG] [HTTP] Send POST to "https://acme-v02.api.letsencrypt.org/acme/cert/067184431ec735464a641eb5b1022f383991"
+2025-06-26 17:13:47.635 +08:00 [VRB] [HTTP] Request content: {"protected":"eyJhbGciOiJFUzI1NiIsInVybCI6Imh0dHBzOi8vYWNtZS12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2NlcnQvMDY3MTg0NDMxZWM3MzU0NjRhNjQxZWI1YjEwMjJmMzgzOTkxIiwibm9uY2UiOiJiLUIyUUlyRTBkbm04UEs4dmtJWmRGY2M5MlAxbEVXQV9sTzhDUTkwVy1tVzdWbmZjZFkiLCJraWQiOiJodHRwczovL2FjbWUtdjAyLmFwaS5sZXRzZW5jcnlwdC5vcmcvYWNtZS9hY2N0LzI0ODk4OTI0ODEifQ","payload":"","signature":"mAI4jOvvflOYsb2GU5LAeKPaE7JoV5Xp6zJAu7344YFI-uvvFs1YdkD5rBiFbvCDJDSEsboi27fCbPk4pWxOQw"}
+2025-06-26 17:13:47.916 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:47.916 +08:00 [VRB] [HTTP] Response of type application/pem-certificate-chain (3819 bytes)
+2025-06-26 17:13:47.921 +08:00 [VRB] Parsing PEM data at range 0..2016
+2025-06-26 17:13:47.927 +08:00 [VRB] Certificate test.projectbids.co.uk parsed
+2025-06-26 17:13:47.931 +08:00 [VRB] Parsing PEM data at range 2018..3818
+2025-06-26 17:13:47.931 +08:00 [VRB] Certificate R10 parsed
+2025-06-26 17:13:47.935 +08:00 [VRB] Parsing PEM data at range 0..2016
+2025-06-26 17:13:47.935 +08:00 [VRB] Certificate test.projectbids.co.uk parsed
+2025-06-26 17:13:47.935 +08:00 [VRB] Associating private key
+2025-06-26 17:13:47.936 +08:00 [VRB] Parsing PEM data at range 2018..3818
+2025-06-26 17:13:47.936 +08:00 [VRB] Certificate R10 parsed
+2025-06-26 17:13:47.970 +08:00 [DBG] Certificate written to cache file ryaYpYnybEqLtmhGawIRMQ-main-4eee3544e258b6690d38eddb23d5fff1f55955a0-temp.pfx in certificate cache folder C:\ProgramData\win-acme\acme-v02.api.letsencrypt.org\Certificates. It will be reused when renewing within 1 day(s) as long as the --source and --csr parameters remain the same and the --force switch is not used.
+2025-06-26 17:13:48.004 +08:00 [VRB] Processing order 1/1: Main
+2025-06-26 17:13:48.006 +08:00 [VRB] Autofac: creating PluginBackend<IStorePlugin> scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:13:48.010 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:13:48.010 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:13:48.016 +08:00 [INF] Store with CertificateStore...
+2025-06-26 17:13:48.016 +08:00 [INF] Installing certificate in the certificate store
+2025-06-26 17:13:48.047 +08:00 [DBG] Converting private key...
+2025-06-26 17:13:48.084 +08:00 [DBG] Open store WebHosting
+2025-06-26 17:13:48.087 +08:00 [INF] Adding certificate [IIS] test.projectbids.co.uk, (any host) @ 2025/6/26 in store WebHosting
+2025-06-26 17:13:48.087 +08:00 [VRB] CN=test.projectbids.co.uk/CN=R10, O=Let's Encrypt, C=US (528C4FD13AFFBF6471D5CD8E6B9FAC641A18DE84)
+2025-06-26 17:13:48.087 +08:00 [DBG] Close store WebHosting
+2025-06-26 17:13:48.090 +08:00 [INF] Adding certificate CN=R10, O=Let's Encrypt, C=US in store CA
+2025-06-26 17:13:48.090 +08:00 [VRB] CN=R10, O=Let's Encrypt, C=US/CN=ISRG Root X1, O=Internet Security Research Group, C=US (00ABEFD055F9A9C784FFDEABD1DCDD8FED741436)
+2025-06-26 17:13:48.093 +08:00 [VRB] Autofac: creating PluginBackend<IInstallationPlugin> scope with parent PluginBackend<ICsrPlugin>
+2025-06-26 17:13:48.097 +08:00 [VRB] W3SVC detected and running
+2025-06-26 17:13:48.097 +08:00 [VRB] No FTPSVC detected
+2025-06-26 17:13:48.102 +08:00 [INF] Installing with IIS...
+2025-06-26 17:13:48.125 +08:00 [INF] Updating existing https binding test.projectbids.co.uk:443 (flags: 1)
+2025-06-26 17:13:48.130 +08:00 [INF] Updating existing https binding www.test.projectbids.co.uk:443 (flags: 1)
+2025-06-26 17:13:48.131 +08:00 [INF] Committing 2 https binding changes to IIS while updating site 2
+2025-06-26 17:13:48.203 +08:00 [DBG] No update needed for default ftp site settings
+2025-06-26 17:13:48.209 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo/u7zDR6XkvKnGw6RyDBCNojXhyOg.BnGEQx7HNUZKZB61sQIvODmR"
+2025-06-26 17:13:48.487 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2025-06-26 17:13:48.488 +08:00 [VRB] [HTTP] Response content: {
+  "suggestedWindow": {
+    "start": "2025-08-24T10:59:19Z",
+    "end": "2025-08-26T06:10:09Z"
+  }
+}
+2025-06-26 17:13:48.496 +08:00 [INF] Adding Task Scheduler entry with the following settings
+2025-06-26 17:13:48.496 +08:00 [INF] - Name win-acme renew (acme-v02.api.letsencrypt.org)
+2025-06-26 17:13:48.496 +08:00 [INF] - Path d:\Tools\win-acme.v2.2.9.1701.x64.pluggable
+2025-06-26 17:13:48.496 +08:00 [INF] - Command wacs.exe --renew --baseuri "https://acme-v02.api.letsencrypt.org/"
+2025-06-26 17:13:48.497 +08:00 [INF] - Start at "09:00:00"
+2025-06-26 17:13:48.497 +08:00 [INF] - Random delay "04:00:00"
+2025-06-26 17:13:48.497 +08:00 [INF] - Time limit "02:00:00"
+2025-06-26 17:14:15.926 +08:00 [DBG] Creating task to run as system user
+2025-06-26 17:14:15.968 +08:00 [INF] Adding renewal for [IIS] test.projectbids.co.uk, (any host)
+2025-06-26 17:14:15.972 +08:00 [INF] Next renewal due after 2025/8/20
+2025-06-26 17:14:15.998 +08:00 [INF] Certificate [IIS] test.projectbids.co.uk, (any host) created
+2025-06-26 17:14:26.510 +08:00 [INF] Running in mode: "Interactive, Simple"
+2025-06-26 17:14:26.511 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:14:26.511 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:14:26.511 +08:00 [VRB] Autofac: creating PluginFrontend<TargetPluginOptions> scope with parent wacs
+2025-06-26 17:14:26.519 +08:00 [DBG] Scanning IIS sites
+2025-06-26 17:14:26.520 +08:00 [DBG] Scanning IIS bindings for host names
+2025-06-26 17:14:29.125 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:14:29.125 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:14:29.125 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:14:29.125 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:14:29.125 +08:00 [VRB] No host filter applied
+2025-06-26 17:14:29.125 +08:00 [VRB] 2 matching bindings found
+2025-06-26 17:14:32.013 +08:00 [VRB] 4 named bindings found in IIS
+2025-06-26 17:14:32.013 +08:00 [DBG] Filtering based on binding type
+2025-06-26 17:14:32.013 +08:00 [DBG] Filtering by site(s) [2]
+2025-06-26 17:14:32.013 +08:00 [VRB] 2 bindings remaining after site filter
+2025-06-26 17:14:32.013 +08:00 [VRB] No host filter applied
+2025-06-26 17:14:32.013 +08:00 [VRB] 2 matching bindings found

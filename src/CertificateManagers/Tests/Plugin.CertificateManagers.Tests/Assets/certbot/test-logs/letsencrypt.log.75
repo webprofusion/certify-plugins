@@ -1,0 +1,820 @@
+2025-05-18 12:23:57,543:DEBUG:urllib3.connectionpool:http://localhost:None "GET /v2/connections?snap=certbot&interface=content HTTP/1.1" 200 1517
+2025-05-18 12:23:57,661:DEBUG:certbot._internal.main:certbot version: 4.0.0
+2025-05-18 12:23:57,661:DEBUG:certbot._internal.main:Location of certbot entry point: /snap/certbot/4557/bin/certbot
+2025-05-18 12:23:57,661:DEBUG:certbot._internal.main:Arguments: ['-q', '--preconfigured-renewal']
+2025-05-18 12:23:57,661:DEBUG:certbot._internal.main:Discovered plugins: PluginsRegistry(PluginEntryPoint#apache,PluginEntryPoint#dns-cloudflare,PluginEntryPoint#manual,PluginEntryPoint#nginx,PluginEntryPoint#null,PluginEntryPoint#standalone,PluginEntryPoint#webroot)
+2025-05-18 12:23:57,681:DEBUG:certbot._internal.log:Root logging level set at 40
+2025-05-18 12:23:57,682:DEBUG:certbot._internal.display.obj:Notifying user: Processing /etc/letsencrypt/renewal/wsl.projectbids.co.uk.conf
+2025-05-18 12:23:57,683:DEBUG:certbot._internal.plugins.selection:Requested authenticator None and installer None
+2025-05-18 12:23:57,695:DEBUG:certbot._internal.storage:Should renew, less than 30 days before certificate expiry 2025-04-11 21:32:26 UTC.
+2025-05-18 12:23:57,695:INFO:certbot._internal.renewal:Certificate is due for renewal, auto-renewing...
+2025-05-18 12:23:57,695:INFO:certbot._internal.renewal:Non-interactive renewal: random delay of 181.5374292319102 seconds
+2025-05-18 12:26:48,076:DEBUG:certbot._internal.plugins.selection:Requested authenticator dns-cloudflare and installer None
+2025-05-18 12:26:48,076:DEBUG:certbot._internal.plugins.selection:Single candidate plugin: * dns-cloudflare
+Description: Obtain certificates using a DNS TXT record (if you are using Cloudflare for DNS).
+Interfaces: Authenticator, Plugin
+Entry point: EntryPoint(name='dns-cloudflare', value='certbot_dns_cloudflare._internal.dns_cloudflare:Authenticator', group='certbot.plugins')
+Initialized: <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f153f2c5a30>
+Prep: True
+2025-05-18 12:26:48,077:DEBUG:certbot._internal.plugins.selection:Selected authenticator <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f153f2c5a30> and installer None
+2025-05-18 12:26:48,077:INFO:certbot._internal.plugins.selection:Plugins selected: Authenticator dns-cloudflare, Installer None
+2025-05-18 12:26:48,123:DEBUG:certbot._internal.main:Picked account: <Account(RegistrationResource(body=Registration(key=None, contact=(), agreement=None, status=None, terms_of_service_agreed=None, only_return_existing=None, external_account_binding=None), uri='https://acme-staging-v02.api.letsencrypt.org/acme/acct/162523533', new_authzr_uri=None, terms_of_service=None), 41336ddaf125c88c58b79873e6ac1f36, Meta(creation_dt=datetime.datetime(2024, 9, 9, 6, 6, 31, tzinfo=datetime.timezone.utc), creation_host='WBP-DESKTOP08.', register_to_eff=None))>
+2025-05-18 12:26:48,124:DEBUG:acme.client:Sending GET request to https://acme-staging-v02.api.letsencrypt.org/directory.
+2025-05-18 12:26:48,125:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): acme-staging-v02.api.letsencrypt.org:443
+2025-05-18 12:26:49,230:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "GET /directory HTTP/1.1" 200 1086
+2025-05-18 12:26:49,231:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:48 GMT
+Content-Type: application/json
+Content-Length: 1086
+Connection: keep-alive
+Cache-Control: public, max-age=0, no-cache
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "JbeMzNrO8sQ": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "keyChange": "https://acme-staging-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org/docs/staging-environment/"
+  },
+  "newAccount": "https://acme-staging-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-staging-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-staging-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-staging-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-staging-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-05-18 12:26:49,231:DEBUG:certbot._internal.display.obj:Notifying user: Renewing an existing certificate for wsl.projectbids.co.uk
+2025-05-18 12:26:49,232:DEBUG:acme.client:Requesting fresh nonce
+2025-05-18 12:26:49,232:DEBUG:acme.client:Sending HEAD request to https://acme-staging-v02.api.letsencrypt.org/acme/new-nonce.
+2025-05-18 12:26:49,513:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "HEAD /acme/new-nonce HTTP/1.1" 200 0
+2025-05-18 12:26:49,514:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:49 GMT
+Connection: keep-alive
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Replay-Nonce: eLNO5LzXKgbFFqriJV90MpQDempRwhh5bOPzWEvqgAEJrV1-W40
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+
+2025-05-18 12:26:49,514:DEBUG:acme.client:Storing nonce: eLNO5LzXKgbFFqriJV90MpQDempRwhh5bOPzWEvqgAEJrV1-W40
+2025-05-18 12:26:49,514:DEBUG:acme.client:JWS payload:
+b'{\n  "identifiers": [\n    {\n      "type": "dns",\n      "value": "wsl.projectbids.co.uk"\n    }\n  ]\n}'
+2025-05-18 12:26:49,515:DEBUG:acme.client:Sending POST request to https://acme-staging-v02.api.letsencrypt.org/acme/new-order:
+{
+  "protected": "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImh0dHBzOi8vYWNtZS1zdGFnaW5nLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8xNjI1MjM1MzMiLCAibm9uY2UiOiAiZUxOTzVMelhLZ2JGRnFyaUpWOTBNcFFEZW1wUndoaDViT1B6V0V2cWdBRUpyVjEtVzQwIiwgInVybCI6ICJodHRwczovL2FjbWUtc3RhZ2luZy12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL25ldy1vcmRlciJ9",
+  "signature": "eaLm8q_x-eJnkTDKr_G4ZiBOIClYeCEFGy4mQx7HmOPkKwiKiLFW1jG_GcKvKj6oLr1-rMto6NZVtY6pJ8ve55sfGlXPFI0gkAIWZt8370Nirz1ua98vchZ0X3rlWwVh7y0XdrFJf13TYFwIAX38x2okGYSGEnJ3dX4e9vhhsnebwRfHvzKLH29vmjceknNV5ZORrj_pnMomtttDM2NZOk0HR1CCeE3ZPE8FWlBHm3RvK2J-1OxuMTaxGpMwH-MwU89WQPb_kM2rbkMUaSr3doyp_6hzwVPN_l2lneRDeWbPCjKAuMwg27Wx2HKS94EBsgwYOZRX37fmsYyiR5llIA",
+  "payload": "ewogICJpZGVudGlmaWVycyI6IFsKICAgIHsKICAgICAgInR5cGUiOiAiZG5zIiwKICAgICAgInZhbHVlIjogIndzbC5wcm9qZWN0Ymlkcy5jby51ayIKICAgIH0KICBdCn0"
+}
+2025-05-18 12:26:49,822:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "POST /acme/new-order HTTP/1.1" 201 367
+2025-05-18 12:26:49,822:DEBUG:acme.client:Received response:
+HTTP 201
+Server: nginx
+Date: Sun, 18 May 2025 04:26:49 GMT
+Content-Type: application/json
+Content-Length: 367
+Connection: keep-alive
+Boulder-Requester: 162523533
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Location: https://acme-staging-v02.api.letsencrypt.org/acme/order/162523533/24710787234
+Replay-Nonce: eLNO5LzXI-amNcFaqQVX3gi2ervg2Vf0w3_aLMP4q-UrPUKdsuQ
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "status": "pending",
+  "expires": "2025-05-25T03:54:02Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "wsl.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-staging-v02.api.letsencrypt.org/acme/authz/162523533/17436384694"
+  ],
+  "finalize": "https://acme-staging-v02.api.letsencrypt.org/acme/finalize/162523533/24710787234"
+}
+2025-05-18 12:26:49,822:DEBUG:acme.client:Storing nonce: eLNO5LzXI-amNcFaqQVX3gi2ervg2Vf0w3_aLMP4q-UrPUKdsuQ
+2025-05-18 12:26:49,822:DEBUG:acme.client:JWS payload:
+b''
+2025-05-18 12:26:49,823:DEBUG:acme.client:Sending POST request to https://acme-staging-v02.api.letsencrypt.org/acme/authz/162523533/17436384694:
+{
+  "protected": "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImh0dHBzOi8vYWNtZS1zdGFnaW5nLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8xNjI1MjM1MzMiLCAibm9uY2UiOiAiZUxOTzVMelhJLWFtTmNGYXFRVlgzZ2kyZXJ2ZzJWZjB3M19hTE1QNHEtVXJQVUtkc3VRIiwgInVybCI6ICJodHRwczovL2FjbWUtc3RhZ2luZy12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzE2MjUyMzUzMy8xNzQzNjM4NDY5NCJ9",
+  "signature": "yMBG3f_F9Iz7Y0YUKr_2KRa1jrnEYDWQIMZAQwxtd31gkl7Z1Aa5U_ikkDxBRu4dapUZiLMG0SVyjyFcZSoQARLzNPToNx4vnyKKtMyAnmdl5qo2AWh_VlVrgn1fRX1qJZ7eMZdRGbmIzjMw6hh5QfcmWT9liMmchu0eCQIqbj-XtK__qTxDazsvQzrU1mXjBRMffMyQ7kt0ROtVN6SeXC-qw2jhlFqgviR01ah7jaW5VLA9WXw56Y33XSpISPhSc5GiQLZ9kW8-Xt-eyQB7M8RtrDfvavmFMT5tQOh_q8byog7qh7g1HnbVfXikp8laUuecx45eG66Zts5PRqYYFg",
+  "payload": ""
+}
+2025-05-18 12:26:50,113:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "POST /acme/authz/162523533/17436384694 HTTP/1.1" 200 847
+2025-05-18 12:26:50,114:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:49 GMT
+Content-Type: application/json
+Content-Length: 847
+Connection: keep-alive
+Boulder-Requester: 162523533
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Replay-Nonce: eLNO5LzXJTdGX75PBRb8fgabxNrjSsZIIE-rmv6hbe75OoUaIZM
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "identifier": {
+    "type": "dns",
+    "value": "wsl.projectbids.co.uk"
+  },
+  "status": "pending",
+  "expires": "2025-05-25T03:54:02Z",
+  "challenges": [
+    {
+      "type": "dns-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17436384694/tNXl4A",
+      "status": "pending",
+      "token": "QBrCnbSyfvE2BztP3kMckD6FP1cEz8_DbyOW8CrbGvY"
+    },
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17436384694/RRsbYA",
+      "status": "pending",
+      "token": "QBrCnbSyfvE2BztP3kMckD6FP1cEz8_DbyOW8CrbGvY"
+    },
+    {
+      "type": "http-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17436384694/SbtwxQ",
+      "status": "pending",
+      "token": "QBrCnbSyfvE2BztP3kMckD6FP1cEz8_DbyOW8CrbGvY"
+    }
+  ]
+}
+2025-05-18 12:26:50,114:DEBUG:acme.client:Storing nonce: eLNO5LzXJTdGX75PBRb8fgabxNrjSsZIIE-rmv6hbe75OoUaIZM
+2025-05-18 12:26:50,114:INFO:certbot._internal.auth_handler:Performing the following challenges:
+2025-05-18 12:26:50,114:INFO:certbot._internal.auth_handler:dns-01 challenge for wsl.projectbids.co.uk
+2025-05-18 12:26:50,114:WARNING:certbot.plugins.dns_common:Unsafe permissions on credentials configuration file: /home/chris/.secrets/cloudflare.ini
+2025-05-18 12:26:50,121:DEBUG:urllib3.util.retry:Converted retries value: 5 -> Retry(total=5, connect=None, read=None, redirect=None, status=None)
+2025-05-18 12:26:50,121:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): api.cloudflare.com:443
+2025-05-18 12:26:50,489:DEBUG:urllib3.connectionpool:https://api.cloudflare.com:443 "GET /client/v4/zones?name=wsl.projectbids.co.uk&per_page=1 HTTP/1.1" 403 None
+2025-05-18 12:26:50,491:DEBUG:certbot._internal.error_handler:Encountered exception:
+Traceback (most recent call last):
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 199, in _find_zone_id
+    zones = self.cf.zones.get(params=params)  # zones | pylint: disable=no-member
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/CloudFlare/cloudflare.py", line 747, in get
+    raise CloudFlareAPIError(e=e) from None
+CloudFlare.exceptions.CloudFlareAPIError: Invalid access token
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/auth_handler.py", line 88, in handle_authorizations
+    resps = self.auth.perform(achalls)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/plugins/dns_common.py", line 80, in perform
+    self._perform(domain, validation_domain_name, validation)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 77, in _perform
+    self._get_cloudflare_client().add_txt_record(domain, validation_name, validation, self.ttl)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 122, in add_txt_record
+    zone_id = self._find_zone_id(domain)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 216, in _find_zone_id
+    raise errors.PluginError('Error determining zone_id: {0} {1}. Please confirm '
+certbot.errors.PluginError: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+
+2025-05-18 12:26:50,491:DEBUG:certbot._internal.error_handler:Calling registered functions
+2025-05-18 12:26:50,491:INFO:certbot._internal.auth_handler:Cleaning up challenges
+2025-05-18 12:26:50,509:DEBUG:urllib3.util.retry:Converted retries value: 5 -> Retry(total=5, connect=None, read=None, redirect=None, status=None)
+2025-05-18 12:26:50,509:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): api.cloudflare.com:443
+2025-05-18 12:26:50,920:DEBUG:urllib3.connectionpool:https://api.cloudflare.com:443 "GET /client/v4/zones?name=wsl.projectbids.co.uk&per_page=1 HTTP/1.1" 403 None
+2025-05-18 12:26:50,921:DEBUG:certbot_dns_cloudflare._internal.dns_cloudflare:Encountered error finding zone_id during deletion: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+2025-05-18 12:26:50,921:ERROR:certbot._internal.renewal:Failed to renew certificate wsl.projectbids.co.uk with error: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+2025-05-18 12:26:50,923:DEBUG:certbot._internal.renewal:Traceback was:
+Traceback (most recent call last):
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 199, in _find_zone_id
+    zones = self.cf.zones.get(params=params)  # zones | pylint: disable=no-member
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/CloudFlare/cloudflare.py", line 747, in get
+    raise CloudFlareAPIError(e=e) from None
+CloudFlare.exceptions.CloudFlareAPIError: Invalid access token
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 540, in handle_renewal_request
+    main.renew_cert(lineage_config, plugins, renewal_candidate)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 1528, in renew_cert
+    renewed_lineage = _get_and_save_cert(le_client, config, lineage=lineage)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 131, in _get_and_save_cert
+    renewal.renew_cert(config, domains, le_client, lineage)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 399, in renew_cert
+    new_cert, new_chain, new_key, _ = le_client.obtain_certificate(domains, new_key)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/client.py", line 424, in obtain_certificate
+    orderr = self._get_order_and_authorizations(csr.data, self.config.allow_subset_of_names)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/client.py", line 502, in _get_order_and_authorizations
+    authzr = self.auth_handler.handle_authorizations(orderr, self.config, best_effort)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/auth_handler.py", line 88, in handle_authorizations
+    resps = self.auth.perform(achalls)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/plugins/dns_common.py", line 80, in perform
+    self._perform(domain, validation_domain_name, validation)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 77, in _perform
+    self._get_cloudflare_client().add_txt_record(domain, validation_name, validation, self.ttl)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 122, in add_txt_record
+    zone_id = self._find_zone_id(domain)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 216, in _find_zone_id
+    raise errors.PluginError('Error determining zone_id: {0} {1}. Please confirm '
+certbot.errors.PluginError: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+
+2025-05-18 12:26:50,924:DEBUG:certbot._internal.display.obj:Notifying user: Processing /etc/letsencrypt/renewal/wsl2.projectbids.co.uk.conf
+2025-05-18 12:26:50,925:DEBUG:certbot._internal.plugins.selection:Requested authenticator None and installer None
+2025-05-18 12:26:50,938:DEBUG:certbot._internal.storage:Should renew, less than 30 days before certificate expiry 2024-12-09 04:43:36 UTC.
+2025-05-18 12:26:50,938:INFO:certbot._internal.renewal:Certificate is due for renewal, auto-renewing...
+2025-05-18 12:26:50,938:DEBUG:certbot._internal.plugins.selection:Requested authenticator dns-cloudflare and installer None
+2025-05-18 12:26:50,938:DEBUG:certbot._internal.plugins.selection:Single candidate plugin: * dns-cloudflare
+Description: Obtain certificates using a DNS TXT record (if you are using Cloudflare for DNS).
+Interfaces: Authenticator, Plugin
+Entry point: EntryPoint(name='dns-cloudflare', value='certbot_dns_cloudflare._internal.dns_cloudflare:Authenticator', group='certbot.plugins')
+Initialized: <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f153f286e10>
+Prep: True
+2025-05-18 12:26:50,938:DEBUG:certbot._internal.plugins.selection:Selected authenticator <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f153f286e10> and installer None
+2025-05-18 12:26:50,938:INFO:certbot._internal.plugins.selection:Plugins selected: Authenticator dns-cloudflare, Installer None
+2025-05-18 12:26:50,974:DEBUG:certbot._internal.main:Picked account: <Account(RegistrationResource(body=Registration(key=None, contact=(), agreement=None, status=None, terms_of_service_agreed=None, only_return_existing=None, external_account_binding=None), uri='https://acme-staging-v02.api.letsencrypt.org/acme/acct/162523533', new_authzr_uri=None, terms_of_service=None), 41336ddaf125c88c58b79873e6ac1f36, Meta(creation_dt=datetime.datetime(2024, 9, 9, 6, 6, 31, tzinfo=datetime.timezone.utc), creation_host='WBP-DESKTOP08.', register_to_eff=None))>
+2025-05-18 12:26:50,974:DEBUG:acme.client:Sending GET request to https://acme-staging-v02.api.letsencrypt.org/directory.
+2025-05-18 12:26:50,975:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): acme-staging-v02.api.letsencrypt.org:443
+2025-05-18 12:26:51,984:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "GET /directory HTTP/1.1" 200 1086
+2025-05-18 12:26:51,984:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:51 GMT
+Content-Type: application/json
+Content-Length: 1086
+Connection: keep-alive
+Cache-Control: public, max-age=0, no-cache
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "keyChange": "https://acme-staging-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org/docs/staging-environment/"
+  },
+  "newAccount": "https://acme-staging-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-staging-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-staging-v02.api.letsencrypt.org/acme/new-order",
+  "qP0dKAvcAiQ": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "renewalInfo": "https://acme-staging-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-staging-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-05-18 12:26:51,985:DEBUG:certbot._internal.display.obj:Notifying user: Renewing an existing certificate for wsl2.projectbids.co.uk
+2025-05-18 12:26:51,985:ERROR:certbot._internal.renewal:Failed to renew certificate wsl2.projectbids.co.uk with error: Invalid key_type specified: ecdsaz.  Use [rsa|ecdsa]
+2025-05-18 12:26:51,986:DEBUG:certbot._internal.renewal:Traceback was:
+Traceback (most recent call last):
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 540, in handle_renewal_request
+    main.renew_cert(lineage_config, plugins, renewal_candidate)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 1528, in renew_cert
+    renewed_lineage = _get_and_save_cert(le_client, config, lineage=lineage)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 131, in _get_and_save_cert
+    renewal.renew_cert(config, domains, le_client, lineage)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 399, in renew_cert
+    new_cert, new_chain, new_key, _ = le_client.obtain_certificate(domains, new_key)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/client.py", line 413, in obtain_certificate
+    key = key or crypto_util.generate_key(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/crypto_util.py", line 79, in generate_key
+    key_pem = make_key(
+              ^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/crypto_util.py", line 246, in make_key
+    raise errors.Error("Invalid key_type specified: {}.  Use [rsa|ecdsa]".format(key_type))
+certbot.errors.Error: Invalid key_type specified: ecdsaz.  Use [rsa|ecdsa]
+
+2025-05-18 12:26:51,986:DEBUG:certbot._internal.display.obj:Notifying user: Processing /etc/letsencrypt/renewal/wsl3.projectbids.co.uk.conf
+2025-05-18 12:26:51,987:DEBUG:certbot._internal.plugins.selection:Requested authenticator None and installer None
+2025-05-18 12:26:51,998:DEBUG:certbot._internal.storage:Should renew, less than 30 days before certificate expiry 2025-04-14 12:40:44 UTC.
+2025-05-18 12:26:51,998:INFO:certbot._internal.renewal:Certificate is due for renewal, auto-renewing...
+2025-05-18 12:26:51,998:DEBUG:certbot._internal.plugins.selection:Requested authenticator dns-cloudflare and installer None
+2025-05-18 12:26:51,999:DEBUG:certbot._internal.plugins.selection:Single candidate plugin: * dns-cloudflare
+Description: Obtain certificates using a DNS TXT record (if you are using Cloudflare for DNS).
+Interfaces: Authenticator, Plugin
+Entry point: EntryPoint(name='dns-cloudflare', value='certbot_dns_cloudflare._internal.dns_cloudflare:Authenticator', group='certbot.plugins')
+Initialized: <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f1541adcbc0>
+Prep: True
+2025-05-18 12:26:51,999:DEBUG:certbot._internal.plugins.selection:Selected authenticator <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f1541adcbc0> and installer None
+2025-05-18 12:26:51,999:INFO:certbot._internal.plugins.selection:Plugins selected: Authenticator dns-cloudflare, Installer None
+2025-05-18 12:26:52,042:DEBUG:certbot._internal.main:Picked account: <Account(RegistrationResource(body=Registration(key=None, contact=(), agreement=None, status=None, terms_of_service_agreed=None, only_return_existing=None, external_account_binding=None), uri='https://acme-staging-v02.api.letsencrypt.org/acme/acct/162523533', new_authzr_uri=None, terms_of_service=None), 41336ddaf125c88c58b79873e6ac1f36, Meta(creation_dt=datetime.datetime(2024, 9, 9, 6, 6, 31, tzinfo=datetime.timezone.utc), creation_host='WBP-DESKTOP08.', register_to_eff=None))>
+2025-05-18 12:26:52,042:DEBUG:acme.client:Sending GET request to https://acme-staging-v02.api.letsencrypt.org/directory.
+2025-05-18 12:26:52,043:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): acme-staging-v02.api.letsencrypt.org:443
+2025-05-18 12:26:52,614:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "GET /directory HTTP/1.1" 200 1086
+2025-05-18 12:26:52,615:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:52 GMT
+Content-Type: application/json
+Content-Length: 1086
+Connection: keep-alive
+Cache-Control: public, max-age=0, no-cache
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "keyChange": "https://acme-staging-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org/docs/staging-environment/"
+  },
+  "msacxoBIdMc": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "newAccount": "https://acme-staging-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-staging-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-staging-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-staging-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-staging-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-05-18 12:26:52,615:DEBUG:certbot._internal.display.obj:Notifying user: Renewing an existing certificate for wsl3.projectbids.co.uk
+2025-05-18 12:26:52,616:DEBUG:acme.client:Requesting fresh nonce
+2025-05-18 12:26:52,616:DEBUG:acme.client:Sending HEAD request to https://acme-staging-v02.api.letsencrypt.org/acme/new-nonce.
+2025-05-18 12:26:52,895:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "HEAD /acme/new-nonce HTTP/1.1" 200 0
+2025-05-18 12:26:52,895:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:52 GMT
+Connection: keep-alive
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Replay-Nonce: eLNO5LzX8WPcVeMSqbK-hnHkv9cdC9M7Qc7iuCjY-2IwKgVQHvg
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+
+2025-05-18 12:26:52,895:DEBUG:acme.client:Storing nonce: eLNO5LzX8WPcVeMSqbK-hnHkv9cdC9M7Qc7iuCjY-2IwKgVQHvg
+2025-05-18 12:26:52,895:DEBUG:acme.client:JWS payload:
+b'{\n  "identifiers": [\n    {\n      "type": "dns",\n      "value": "wsl3.projectbids.co.uk"\n    }\n  ]\n}'
+2025-05-18 12:26:52,896:DEBUG:acme.client:Sending POST request to https://acme-staging-v02.api.letsencrypt.org/acme/new-order:
+{
+  "protected": "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImh0dHBzOi8vYWNtZS1zdGFnaW5nLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8xNjI1MjM1MzMiLCAibm9uY2UiOiAiZUxOTzVMelg4V1BjVmVNU3FiSy1obkhrdjljZEM5TTdRYzdpdUNqWS0ySXdLZ1ZRSHZnIiwgInVybCI6ICJodHRwczovL2FjbWUtc3RhZ2luZy12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL25ldy1vcmRlciJ9",
+  "signature": "AqzmKqIWe6r83MfkAZFFNMZ6Y2kyx8m7f6Jecq8kMw6LEagYPxvUrW-fPkg1OoQ8UhmXcgYaxTQgRksjNr3pED-lGGq0iS2xRkCU2w5OWrc0dJVZg2SdU8a2aXTdz2Sfo80c49GBW6Uyf1Z1hMuhlqzIdtrS7IUz-GjRijC-oyZyMAvQZPvLl7ir4IMjNoLrxz5rLOYBQfHtGh1AMV4bastjWHw_foZsVgiaQQv37wO7FwuBFkguIb3gHCOLga3GwUYbxJWDRgsL6lFkycLDoJYJ5lJa4MbDuNRBEXejBjlIdixpKaAkMGpglpknIQQ-9VDLJjcfcX7xDsA--Fhokg",
+  "payload": "ewogICJpZGVudGlmaWVycyI6IFsKICAgIHsKICAgICAgInR5cGUiOiAiZG5zIiwKICAgICAgInZhbHVlIjogIndzbDMucHJvamVjdGJpZHMuY28udWsiCiAgICB9CiAgXQp9"
+}
+2025-05-18 12:26:53,198:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "POST /acme/new-order HTTP/1.1" 201 368
+2025-05-18 12:26:53,199:DEBUG:acme.client:Received response:
+HTTP 201
+Server: nginx
+Date: Sun, 18 May 2025 04:26:52 GMT
+Content-Type: application/json
+Content-Length: 368
+Connection: keep-alive
+Boulder-Requester: 162523533
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Location: https://acme-staging-v02.api.letsencrypt.org/acme/order/162523533/24613013714
+Replay-Nonce: eLNO5LzXC2AHeatmrHZcJc6JoCFcbgAoF1Op5Wpubp6cCEcbeOk
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "status": "pending",
+  "expires": "2025-05-21T02:56:15Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "wsl3.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-staging-v02.api.letsencrypt.org/acme/authz/162523533/17358214994"
+  ],
+  "finalize": "https://acme-staging-v02.api.letsencrypt.org/acme/finalize/162523533/24613013714"
+}
+2025-05-18 12:26:53,199:DEBUG:acme.client:Storing nonce: eLNO5LzXC2AHeatmrHZcJc6JoCFcbgAoF1Op5Wpubp6cCEcbeOk
+2025-05-18 12:26:53,199:DEBUG:acme.client:JWS payload:
+b''
+2025-05-18 12:26:53,199:DEBUG:acme.client:Sending POST request to https://acme-staging-v02.api.letsencrypt.org/acme/authz/162523533/17358214994:
+{
+  "protected": "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImh0dHBzOi8vYWNtZS1zdGFnaW5nLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8xNjI1MjM1MzMiLCAibm9uY2UiOiAiZUxOTzVMelhDMkFIZWF0bXJIWmNKYzZKb0NGY2JnQW9GMU9wNVdwdWJwNmNDRWNiZU9rIiwgInVybCI6ICJodHRwczovL2FjbWUtc3RhZ2luZy12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzE2MjUyMzUzMy8xNzM1ODIxNDk5NCJ9",
+  "signature": "XZw9Qa1Y43a6Bgnr5M5DsLEDsPTSXcdmUCqgJX7J6CsZXqj05yGRy7byZ6eimB5-tmpIkCBYEGrVDpy-Ydl0uDs4kQPxhJ-ZyzoKAVuVXWlxFElN-3TaoZRfuU8uaCJtPEjdN9UjQfEFJcIm0Wg7EjQlttotYB2Z8CTcnk1Z2z9h1ROpG_bLKB8hQA7EsMz90THMDu-v2RZ0YQyR1vGs7DDQKo-61DoE2OkeAdFdhA4Qw4dQo8arpbjoJASkrpjNLGs1I2_HGNQLWXScn-kberIojCaPTFnsrmZjnBhSugc6A1DziokbT55wNR2Ne21AUqq3SkOy-QAqqLAG5-HWhg",
+  "payload": ""
+}
+2025-05-18 12:26:53,486:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "POST /acme/authz/162523533/17358214994 HTTP/1.1" 200 848
+2025-05-18 12:26:53,487:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:53 GMT
+Content-Type: application/json
+Content-Length: 848
+Connection: keep-alive
+Boulder-Requester: 162523533
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Replay-Nonce: wQsUmzDh9ff-2LGNs6y5wnWmlt-Dwqt_zKDriU0ZyXVAQ0ZzbdM
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "identifier": {
+    "type": "dns",
+    "value": "wsl3.projectbids.co.uk"
+  },
+  "status": "pending",
+  "expires": "2025-05-21T02:56:15Z",
+  "challenges": [
+    {
+      "type": "http-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17358214994/ldihBw",
+      "status": "pending",
+      "token": "bhTPQ40topUx127e8jf0ntl6rdubIHC_UjlvPEOOtHQ"
+    },
+    {
+      "type": "dns-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17358214994/5dG88g",
+      "status": "pending",
+      "token": "bhTPQ40topUx127e8jf0ntl6rdubIHC_UjlvPEOOtHQ"
+    },
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17358214994/eYZw9g",
+      "status": "pending",
+      "token": "bhTPQ40topUx127e8jf0ntl6rdubIHC_UjlvPEOOtHQ"
+    }
+  ]
+}
+2025-05-18 12:26:53,487:DEBUG:acme.client:Storing nonce: wQsUmzDh9ff-2LGNs6y5wnWmlt-Dwqt_zKDriU0ZyXVAQ0ZzbdM
+2025-05-18 12:26:53,487:INFO:certbot._internal.auth_handler:Performing the following challenges:
+2025-05-18 12:26:53,487:INFO:certbot._internal.auth_handler:dns-01 challenge for wsl3.projectbids.co.uk
+2025-05-18 12:26:53,487:WARNING:certbot.plugins.dns_common:Unsafe permissions on credentials configuration file: /home/chris/.secrets/cloudflare.ini
+2025-05-18 12:26:53,493:DEBUG:urllib3.util.retry:Converted retries value: 5 -> Retry(total=5, connect=None, read=None, redirect=None, status=None)
+2025-05-18 12:26:53,494:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): api.cloudflare.com:443
+2025-05-18 12:26:53,871:DEBUG:urllib3.connectionpool:https://api.cloudflare.com:443 "GET /client/v4/zones?name=wsl3.projectbids.co.uk&per_page=1 HTTP/1.1" 403 None
+2025-05-18 12:26:53,872:DEBUG:certbot._internal.error_handler:Encountered exception:
+Traceback (most recent call last):
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 199, in _find_zone_id
+    zones = self.cf.zones.get(params=params)  # zones | pylint: disable=no-member
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/CloudFlare/cloudflare.py", line 747, in get
+    raise CloudFlareAPIError(e=e) from None
+CloudFlare.exceptions.CloudFlareAPIError: Invalid access token
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/auth_handler.py", line 88, in handle_authorizations
+    resps = self.auth.perform(achalls)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/plugins/dns_common.py", line 80, in perform
+    self._perform(domain, validation_domain_name, validation)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 77, in _perform
+    self._get_cloudflare_client().add_txt_record(domain, validation_name, validation, self.ttl)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 122, in add_txt_record
+    zone_id = self._find_zone_id(domain)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 216, in _find_zone_id
+    raise errors.PluginError('Error determining zone_id: {0} {1}. Please confirm '
+certbot.errors.PluginError: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+
+2025-05-18 12:26:53,872:DEBUG:certbot._internal.error_handler:Calling registered functions
+2025-05-18 12:26:53,872:INFO:certbot._internal.auth_handler:Cleaning up challenges
+2025-05-18 12:26:53,878:DEBUG:urllib3.util.retry:Converted retries value: 5 -> Retry(total=5, connect=None, read=None, redirect=None, status=None)
+2025-05-18 12:26:53,878:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): api.cloudflare.com:443
+2025-05-18 12:26:54,249:DEBUG:urllib3.connectionpool:https://api.cloudflare.com:443 "GET /client/v4/zones?name=wsl3.projectbids.co.uk&per_page=1 HTTP/1.1" 403 None
+2025-05-18 12:26:54,250:DEBUG:certbot_dns_cloudflare._internal.dns_cloudflare:Encountered error finding zone_id during deletion: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+2025-05-18 12:26:54,250:ERROR:certbot._internal.renewal:Failed to renew certificate wsl3.projectbids.co.uk with error: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+2025-05-18 12:26:54,251:DEBUG:certbot._internal.renewal:Traceback was:
+Traceback (most recent call last):
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 199, in _find_zone_id
+    zones = self.cf.zones.get(params=params)  # zones | pylint: disable=no-member
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/CloudFlare/cloudflare.py", line 747, in get
+    raise CloudFlareAPIError(e=e) from None
+CloudFlare.exceptions.CloudFlareAPIError: Invalid access token
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 540, in handle_renewal_request
+    main.renew_cert(lineage_config, plugins, renewal_candidate)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 1528, in renew_cert
+    renewed_lineage = _get_and_save_cert(le_client, config, lineage=lineage)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 131, in _get_and_save_cert
+    renewal.renew_cert(config, domains, le_client, lineage)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 399, in renew_cert
+    new_cert, new_chain, new_key, _ = le_client.obtain_certificate(domains, new_key)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/client.py", line 424, in obtain_certificate
+    orderr = self._get_order_and_authorizations(csr.data, self.config.allow_subset_of_names)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/client.py", line 502, in _get_order_and_authorizations
+    authzr = self.auth_handler.handle_authorizations(orderr, self.config, best_effort)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/auth_handler.py", line 88, in handle_authorizations
+    resps = self.auth.perform(achalls)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/plugins/dns_common.py", line 80, in perform
+    self._perform(domain, validation_domain_name, validation)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 77, in _perform
+    self._get_cloudflare_client().add_txt_record(domain, validation_name, validation, self.ttl)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 122, in add_txt_record
+    zone_id = self._find_zone_id(domain)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 216, in _find_zone_id
+    raise errors.PluginError('Error determining zone_id: {0} {1}. Please confirm '
+certbot.errors.PluginError: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+
+2025-05-18 12:26:54,252:DEBUG:certbot._internal.display.obj:Notifying user: Processing /etc/letsencrypt/renewal/wsl4.projectbids.co.uk.conf
+2025-05-18 12:26:54,252:DEBUG:certbot._internal.plugins.selection:Requested authenticator None and installer None
+2025-05-18 12:26:54,263:DEBUG:certbot._internal.storage:Should renew, less than 30 days before certificate expiry 2025-04-21 23:17:19 UTC.
+2025-05-18 12:26:54,264:INFO:certbot._internal.renewal:Certificate is due for renewal, auto-renewing...
+2025-05-18 12:26:54,264:DEBUG:certbot._internal.plugins.selection:Requested authenticator dns-cloudflare and installer None
+2025-05-18 12:26:54,264:DEBUG:certbot._internal.plugins.selection:Single candidate plugin: * dns-cloudflare
+Description: Obtain certificates using a DNS TXT record (if you are using Cloudflare for DNS).
+Interfaces: Authenticator, Plugin
+Entry point: EntryPoint(name='dns-cloudflare', value='certbot_dns_cloudflare._internal.dns_cloudflare:Authenticator', group='certbot.plugins')
+Initialized: <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f153f2874a0>
+Prep: True
+2025-05-18 12:26:54,264:DEBUG:certbot._internal.plugins.selection:Selected authenticator <certbot_dns_cloudflare._internal.dns_cloudflare.Authenticator object at 0x7f153f2874a0> and installer None
+2025-05-18 12:26:54,264:INFO:certbot._internal.plugins.selection:Plugins selected: Authenticator dns-cloudflare, Installer None
+2025-05-18 12:26:54,301:DEBUG:certbot._internal.main:Picked account: <Account(RegistrationResource(body=Registration(key=None, contact=(), agreement=None, status=None, terms_of_service_agreed=None, only_return_existing=None, external_account_binding=None), uri='https://acme-staging-v02.api.letsencrypt.org/acme/acct/162523533', new_authzr_uri=None, terms_of_service=None), 41336ddaf125c88c58b79873e6ac1f36, Meta(creation_dt=datetime.datetime(2024, 9, 9, 6, 6, 31, tzinfo=datetime.timezone.utc), creation_host='WBP-DESKTOP08.', register_to_eff=None))>
+2025-05-18 12:26:54,301:DEBUG:acme.client:Sending GET request to https://acme-staging-v02.api.letsencrypt.org/directory.
+2025-05-18 12:26:54,302:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): acme-staging-v02.api.letsencrypt.org:443
+2025-05-18 12:26:55,399:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "GET /directory HTTP/1.1" 200 1086
+2025-05-18 12:26:55,400:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:55 GMT
+Content-Type: application/json
+Content-Length: 1086
+Connection: keep-alive
+Cache-Control: public, max-age=0, no-cache
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "FUX4Uql6YRA": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "keyChange": "https://acme-staging-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org/docs/staging-environment/"
+  },
+  "newAccount": "https://acme-staging-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-staging-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-staging-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-staging-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-staging-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2025-05-18 12:26:55,400:DEBUG:certbot._internal.display.obj:Notifying user: Renewing an existing certificate for wsl4.projectbids.co.uk
+2025-05-18 12:26:55,401:DEBUG:acme.client:Requesting fresh nonce
+2025-05-18 12:26:55,401:DEBUG:acme.client:Sending HEAD request to https://acme-staging-v02.api.letsencrypt.org/acme/new-nonce.
+2025-05-18 12:26:55,680:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "HEAD /acme/new-nonce HTTP/1.1" 200 0
+2025-05-18 12:26:55,680:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:55 GMT
+Connection: keep-alive
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Replay-Nonce: eLNO5LzXF8jlHDkuDFbDvtNmlnpzK2LlRBWNyIqyACzwzPdOtpg
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+
+2025-05-18 12:26:55,680:DEBUG:acme.client:Storing nonce: eLNO5LzXF8jlHDkuDFbDvtNmlnpzK2LlRBWNyIqyACzwzPdOtpg
+2025-05-18 12:26:55,680:DEBUG:acme.client:JWS payload:
+b'{\n  "identifiers": [\n    {\n      "type": "dns",\n      "value": "wsl4.projectbids.co.uk"\n    }\n  ]\n}'
+2025-05-18 12:26:55,681:DEBUG:acme.client:Sending POST request to https://acme-staging-v02.api.letsencrypt.org/acme/new-order:
+{
+  "protected": "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImh0dHBzOi8vYWNtZS1zdGFnaW5nLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8xNjI1MjM1MzMiLCAibm9uY2UiOiAiZUxOTzVMelhGOGpsSERrdURGYkR2dE5tbG5weksyTGxSQldOeUlxeUFDend6UGRPdHBnIiwgInVybCI6ICJodHRwczovL2FjbWUtc3RhZ2luZy12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL25ldy1vcmRlciJ9",
+  "signature": "d05qw7CSxE_H5kkhqDekyIIfgQWPLBHh1u0LIiex2uhtFfEHcbDPRbDCF3LGhWaMlsQCAIIAWLvlW-D1VHY_EyDBuVgNb9eug7XfAsNLenKQJaTERsY3Jv8e7L_u5Asds7kWhrDbsSgVz5PnD2EtwmFUhRuKCV21QF8G_I6Ec5AUZ1x_fgwNALufUD0zjKNDtt4cXbswsm8ILwD-Tka4Yh6GCOPTYgUFXDORbCg9W2Zif4sWR5tgYgcqehedt7tVhpe_cu504dUoOxL-IcxA4AfvgYh4YwYKlKgROZhYnPTiZ8NsDHmC790RPb_bUkS0TetUIlSGIyOkcJ-YVPLSdQ",
+  "payload": "ewogICJpZGVudGlmaWVycyI6IFsKICAgIHsKICAgICAgInR5cGUiOiAiZG5zIiwKICAgICAgInZhbHVlIjogIndzbDQucHJvamVjdGJpZHMuY28udWsiCiAgICB9CiAgXQp9"
+}
+2025-05-18 12:26:55,986:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "POST /acme/new-order HTTP/1.1" 201 368
+2025-05-18 12:26:55,986:DEBUG:acme.client:Received response:
+HTTP 201
+Server: nginx
+Date: Sun, 18 May 2025 04:26:55 GMT
+Content-Type: application/json
+Content-Length: 368
+Connection: keep-alive
+Boulder-Requester: 162523533
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Location: https://acme-staging-v02.api.letsencrypt.org/acme/order/162523533/24613014074
+Replay-Nonce: wQsUmzDhfCxZ4_20H9GWTbzxde95pu0lXb0HvcIBAdYAr7weuEM
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "status": "pending",
+  "expires": "2025-05-21T02:56:17Z",
+  "identifiers": [
+    {
+      "type": "dns",
+      "value": "wsl4.projectbids.co.uk"
+    }
+  ],
+  "authorizations": [
+    "https://acme-staging-v02.api.letsencrypt.org/acme/authz/162523533/17358215244"
+  ],
+  "finalize": "https://acme-staging-v02.api.letsencrypt.org/acme/finalize/162523533/24613014074"
+}
+2025-05-18 12:26:55,986:DEBUG:acme.client:Storing nonce: wQsUmzDhfCxZ4_20H9GWTbzxde95pu0lXb0HvcIBAdYAr7weuEM
+2025-05-18 12:26:55,986:DEBUG:acme.client:JWS payload:
+b''
+2025-05-18 12:26:55,987:DEBUG:acme.client:Sending POST request to https://acme-staging-v02.api.letsencrypt.org/acme/authz/162523533/17358215244:
+{
+  "protected": "eyJhbGciOiAiUlMyNTYiLCAia2lkIjogImh0dHBzOi8vYWNtZS1zdGFnaW5nLXYwMi5hcGkubGV0c2VuY3J5cHQub3JnL2FjbWUvYWNjdC8xNjI1MjM1MzMiLCAibm9uY2UiOiAid1FzVW16RGhmQ3haNF8yMEg5R1dUYnp4ZGU5NXB1MGxYYjBIdmNJQkFkWUFyN3dldUVNIiwgInVybCI6ICJodHRwczovL2FjbWUtc3RhZ2luZy12MDIuYXBpLmxldHNlbmNyeXB0Lm9yZy9hY21lL2F1dGh6LzE2MjUyMzUzMy8xNzM1ODIxNTI0NCJ9",
+  "signature": "UDLPHPtX1L3Kzy4xAo4Wwz0LVTfYmXIr1I5iYCMsdH7tu7oHQUyHoXVehF0dE7Us9V1DC3HXZD8h9SFiH7MGkZtukjLCZS18O8sNKexnhcph0UZAcdVW2-kE2OJVv_K0JSowsXp_rPLws9wuUoR54pUw8ZE2qSW2v-s-kE_Ov-FJP0ZKwZI9q-Ln_95d9_z6JlWTud8qAD1sVA2UnMjtmkZQ6dhJGvwMwua-_cjyP9SHoJebLJo7z6QqzsBy4OI9J3E657r-hUyt8SWQspv2kYfP5a2c-Dst9li5nZmuYI-DwIYW5XLP8WcWB_GeHsHdIBwkgIsgPNTJQyiqGUV9DA",
+  "payload": ""
+}
+2025-05-18 12:26:56,278:DEBUG:urllib3.connectionpool:https://acme-staging-v02.api.letsencrypt.org:443 "POST /acme/authz/162523533/17358215244 HTTP/1.1" 200 848
+2025-05-18 12:26:56,278:DEBUG:acme.client:Received response:
+HTTP 200
+Server: nginx
+Date: Sun, 18 May 2025 04:26:55 GMT
+Content-Type: application/json
+Content-Length: 848
+Connection: keep-alive
+Boulder-Requester: 162523533
+Cache-Control: public, max-age=0, no-cache
+Link: <https://acme-staging-v02.api.letsencrypt.org/directory>;rel="index"
+Replay-Nonce: wQsUmzDh9WLeWLo0FRcoHC95sm13nL6cIs85ghqveTH9EetObPc
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=604800
+
+{
+  "identifier": {
+    "type": "dns",
+    "value": "wsl4.projectbids.co.uk"
+  },
+  "status": "pending",
+  "expires": "2025-05-21T02:56:17Z",
+  "challenges": [
+    {
+      "type": "http-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17358215244/j96N9w",
+      "status": "pending",
+      "token": "0qupDIpISP6yRPx9kveC4TwEZzbaNvVorMIPzn568S4"
+    },
+    {
+      "type": "tls-alpn-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17358215244/E6oM_A",
+      "status": "pending",
+      "token": "0qupDIpISP6yRPx9kveC4TwEZzbaNvVorMIPzn568S4"
+    },
+    {
+      "type": "dns-01",
+      "url": "https://acme-staging-v02.api.letsencrypt.org/acme/chall/162523533/17358215244/zbcBVQ",
+      "status": "pending",
+      "token": "0qupDIpISP6yRPx9kveC4TwEZzbaNvVorMIPzn568S4"
+    }
+  ]
+}
+2025-05-18 12:26:56,278:DEBUG:acme.client:Storing nonce: wQsUmzDh9WLeWLo0FRcoHC95sm13nL6cIs85ghqveTH9EetObPc
+2025-05-18 12:26:56,279:INFO:certbot._internal.auth_handler:Performing the following challenges:
+2025-05-18 12:26:56,279:INFO:certbot._internal.auth_handler:dns-01 challenge for wsl4.projectbids.co.uk
+2025-05-18 12:26:56,279:WARNING:certbot.plugins.dns_common:Unsafe permissions on credentials configuration file: /home/chris/.secrets/cloudflare.ini
+2025-05-18 12:26:56,283:DEBUG:urllib3.util.retry:Converted retries value: 5 -> Retry(total=5, connect=None, read=None, redirect=None, status=None)
+2025-05-18 12:26:56,284:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): api.cloudflare.com:443
+2025-05-18 12:26:56,645:DEBUG:urllib3.connectionpool:https://api.cloudflare.com:443 "GET /client/v4/zones?name=wsl4.projectbids.co.uk&per_page=1 HTTP/1.1" 403 None
+2025-05-18 12:26:56,647:DEBUG:certbot._internal.error_handler:Encountered exception:
+Traceback (most recent call last):
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 199, in _find_zone_id
+    zones = self.cf.zones.get(params=params)  # zones | pylint: disable=no-member
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/CloudFlare/cloudflare.py", line 747, in get
+    raise CloudFlareAPIError(e=e) from None
+CloudFlare.exceptions.CloudFlareAPIError: Invalid access token
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/auth_handler.py", line 88, in handle_authorizations
+    resps = self.auth.perform(achalls)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/plugins/dns_common.py", line 80, in perform
+    self._perform(domain, validation_domain_name, validation)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 77, in _perform
+    self._get_cloudflare_client().add_txt_record(domain, validation_name, validation, self.ttl)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 122, in add_txt_record
+    zone_id = self._find_zone_id(domain)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 216, in _find_zone_id
+    raise errors.PluginError('Error determining zone_id: {0} {1}. Please confirm '
+certbot.errors.PluginError: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+
+2025-05-18 12:26:56,647:DEBUG:certbot._internal.error_handler:Calling registered functions
+2025-05-18 12:26:56,647:INFO:certbot._internal.auth_handler:Cleaning up challenges
+2025-05-18 12:26:56,653:DEBUG:urllib3.util.retry:Converted retries value: 5 -> Retry(total=5, connect=None, read=None, redirect=None, status=None)
+2025-05-18 12:26:56,653:DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): api.cloudflare.com:443
+2025-05-18 12:26:57,036:DEBUG:urllib3.connectionpool:https://api.cloudflare.com:443 "GET /client/v4/zones?name=wsl4.projectbids.co.uk&per_page=1 HTTP/1.1" 403 None
+2025-05-18 12:26:57,036:DEBUG:certbot_dns_cloudflare._internal.dns_cloudflare:Encountered error finding zone_id during deletion: Error determining zone_id: 9109 Max auth failures reached, please check your Authorization header.. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+2025-05-18 12:26:57,037:ERROR:certbot._internal.renewal:Failed to renew certificate wsl4.projectbids.co.uk with error: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+2025-05-18 12:26:57,038:DEBUG:certbot._internal.renewal:Traceback was:
+Traceback (most recent call last):
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 199, in _find_zone_id
+    zones = self.cf.zones.get(params=params)  # zones | pylint: disable=no-member
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/CloudFlare/cloudflare.py", line 747, in get
+    raise CloudFlareAPIError(e=e) from None
+CloudFlare.exceptions.CloudFlareAPIError: Invalid access token
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 540, in handle_renewal_request
+    main.renew_cert(lineage_config, plugins, renewal_candidate)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 1528, in renew_cert
+    renewed_lineage = _get_and_save_cert(le_client, config, lineage=lineage)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 131, in _get_and_save_cert
+    renewal.renew_cert(config, domains, le_client, lineage)
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 399, in renew_cert
+    new_cert, new_chain, new_key, _ = le_client.obtain_certificate(domains, new_key)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/client.py", line 424, in obtain_certificate
+    orderr = self._get_order_and_authorizations(csr.data, self.config.allow_subset_of_names)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/client.py", line 502, in _get_order_and_authorizations
+    authzr = self.auth_handler.handle_authorizations(orderr, self.config, best_effort)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/auth_handler.py", line 88, in handle_authorizations
+    resps = self.auth.perform(achalls)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/plugins/dns_common.py", line 80, in perform
+    self._perform(domain, validation_domain_name, validation)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 77, in _perform
+    self._get_cloudflare_client().add_txt_record(domain, validation_name, validation, self.ttl)
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 122, in add_txt_record
+    zone_id = self._find_zone_id(domain)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot-dns-cloudflare/current/lib/python3.12/site-packages/certbot_dns_cloudflare/_internal/dns_cloudflare.py", line 216, in _find_zone_id
+    raise errors.PluginError('Error determining zone_id: {0} {1}. Please confirm '
+certbot.errors.PluginError: Error determining zone_id: 9109 Invalid access token. Please confirm that you have supplied valid Cloudflare API credentials. (Did you enter a valid Cloudflare Token?)
+
+2025-05-18 12:26:57,039:DEBUG:certbot._internal.display.obj:Notifying user: 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+2025-05-18 12:26:57,039:ERROR:certbot._internal.renewal:All renewals failed. The following certificates could not be renewed:
+2025-05-18 12:26:57,039:ERROR:certbot._internal.renewal:  /etc/letsencrypt/live/wsl.projectbids.co.uk/fullchain.pem (failure)
+  /etc/letsencrypt/live/wsl2.projectbids.co.uk/fullchain.pem (failure)
+  /etc/letsencrypt/live/wsl3.projectbids.co.uk/fullchain.pem (failure)
+  /etc/letsencrypt/live/wsl4.projectbids.co.uk/fullchain.pem (failure)
+2025-05-18 12:26:57,039:DEBUG:certbot._internal.display.obj:Notifying user: - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+2025-05-18 12:26:57,039:DEBUG:certbot._internal.log:Exiting abnormally:
+Traceback (most recent call last):
+  File "/snap/certbot/4557/bin/certbot", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/main.py", line 19, in main
+    return internal_main.main(cli_args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 1872, in main
+    return config.func(config, plugins)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/main.py", line 1620, in renew
+    renewed_domains, failed_domains = renewal.handle_renewal_request(config)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/snap/certbot/4557/lib/python3.12/site-packages/certbot/_internal/renewal.py", line 568, in handle_renewal_request
+    raise errors.Error(
+certbot.errors.Error: 4 renew failure(s), 0 parse failure(s)
+2025-05-18 12:26:57,040:ERROR:certbot._internal.log:4 renew failure(s), 0 parse failure(s)

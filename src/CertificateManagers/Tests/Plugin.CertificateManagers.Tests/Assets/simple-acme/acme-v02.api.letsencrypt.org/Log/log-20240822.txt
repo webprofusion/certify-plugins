@@ -1,0 +1,129 @@
+2024-08-22 13:09:52.680 +08:00 [WRN] Error creating event logger: The source was not found, but some or all event logs could not be searched.  Inaccessible logs: Security, State.
+2024-08-22 13:09:52.698 +08:00 [DBG] secrets.json not found
+2024-08-22 13:09:52.699 +08:00 [DBG] Renewal period: 55 days
+2024-08-22 13:09:52.701 +08:00 [VRB] Sending e-mails false
+2024-08-22 13:09:52.720 +08:00 [VRB] ExePath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\wacs.exe
+2024-08-22 13:09:52.720 +08:00 [VRB] ResourcePath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\
+2024-08-22 13:09:52.721 +08:00 [VRB] PluginPath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\
+2024-08-22 13:09:52.725 +08:00 [INF] Software version 2.3.0.33 (release, pluggable, standalone, 64-bit) started
+2024-08-22 13:09:52.725 +08:00 [DBG] Running on "Win32NT" 10.0.22631.0
+2024-08-22 13:09:52.726 +08:00 [INF] No command line arguments provided
+2024-08-22 13:09:52.727 +08:00 [INF] Connecting to "https://acme-v02.api.letsencrypt.org/"...
+2024-08-22 13:09:52.731 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/directory"
+2024-08-22 13:09:53.805 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2024-08-22 13:09:53.808 +08:00 [VRB] [HTTP] Response content: {
+  "20fdrSsr6-0": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.4-April-3-2024.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2024-08-22 13:09:53.813 +08:00 [VRB] Connection OK!
+2024-08-22 13:09:53.814 +08:00 [WRN] Running as limited user, some options disabled
+2024-08-22 13:09:53.827 +08:00 [WRN] Scheduled task not configured yet
+2024-08-22 13:09:53.827 +08:00 [VRB] Unicode test: Mandarin/語言 Cyrillic/язык Arabic/لغة
+2024-08-22 13:09:55.971 +08:00 [INF] Running in mode: "Interactive, Simple"
+2024-08-22 13:09:56.052 +08:00 [DBG] [HTTP] Send GET to "https://publicsuffix.org/list/public_suffix_list.dat"
+2024-08-22 13:09:56.328 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2024-08-22 13:09:56.328 +08:00 [VRB] [HTTP] Response of type text/plain (315020 bytes)
+2024-08-22 13:09:56.640 +08:00 [WRN] Source plugin IIS not available: Run as administrator to allow access to IIS.
+2024-08-22 13:10:00.219 +08:00 [VRB] No value provided for --host
+2024-08-22 13:10:05.777 +08:00 [ERR] missing --host
+2024-08-22 13:10:13.912 +08:00 [INF] Source generated using plugin Manual: test.projectbids.co.uk
+2024-08-22 13:10:13.916 +08:00 [VRB] W3SVC detected and running
+2024-08-22 13:10:13.916 +08:00 [VRB] No FTPSVC detected
+2024-08-22 13:10:13.921 +08:00 [VRB] Global validation option not found for test.projectbids.co.uk
+2024-08-22 13:10:13.932 +08:00 [DBG] Adding local system default as DNS server
+2024-08-22 13:10:14.010 +08:00 [WRN] Validation plugin SelfHosting not available: Run as administrator to allow opening a HTTP listener.
+2024-08-22 13:10:19.127 +08:00 [VRB] No value provided for --webroot
+2024-08-22 13:10:20.261 +08:00 [ERR] this is a required value
+2024-08-22 13:10:25.178 +08:00 [WRN] Error creating event logger: The source was not found, but some or all event logs could not be searched.  Inaccessible logs: Security, State.
+2024-08-22 13:10:25.199 +08:00 [DBG] secrets.json not found
+2024-08-22 13:10:25.199 +08:00 [DBG] Renewal period: 55 days
+2024-08-22 13:10:25.201 +08:00 [VRB] Sending e-mails false
+2024-08-22 13:10:25.216 +08:00 [VRB] ExePath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\wacs.exe
+2024-08-22 13:10:25.216 +08:00 [VRB] ResourcePath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\
+2024-08-22 13:10:25.216 +08:00 [VRB] PluginPath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\
+2024-08-22 13:10:25.221 +08:00 [INF] Software version 2.3.0.33 (release, pluggable, standalone, 64-bit) started
+2024-08-22 13:10:25.221 +08:00 [DBG] Running on "Win32NT" 10.0.22631.0
+2024-08-22 13:10:25.222 +08:00 [INF] No command line arguments provided
+2024-08-22 13:10:25.222 +08:00 [INF] Connecting to "https://acme-v02.api.letsencrypt.org/"...
+2024-08-22 13:10:25.226 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/directory"
+2024-08-22 13:10:26.125 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2024-08-22 13:10:26.128 +08:00 [VRB] [HTTP] Response content: {
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.4-April-3-2024.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "nvALANJLafk": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2024-08-22 13:10:26.132 +08:00 [VRB] Connection OK!
+2024-08-22 13:10:26.132 +08:00 [WRN] Running as limited user, some options disabled
+2024-08-22 13:10:26.147 +08:00 [WRN] Scheduled task not configured yet
+2024-08-22 13:10:26.147 +08:00 [VRB] Unicode test: Mandarin/語言 Cyrillic/язык Arabic/لغة
+2024-08-22 13:10:33.080 +08:00 [INF] Running in mode: "Interactive, Simple"
+2024-08-22 13:10:33.172 +08:00 [WRN] Source plugin IIS not available: Run as administrator to allow access to IIS.
+2024-08-22 13:10:36.300 +08:00 [WRN] The option you have chosen is currently disabled. Run as administrator to allow access to IIS.
+2024-08-22 13:10:45.581 +08:00 [WRN] Error creating event logger: The source was not found, but some or all event logs could not be searched.  Inaccessible logs: Security, State.
+2024-08-22 13:10:45.600 +08:00 [DBG] secrets.json not found
+2024-08-22 13:10:45.601 +08:00 [DBG] Renewal period: 55 days
+2024-08-22 13:10:45.603 +08:00 [VRB] Sending e-mails false
+2024-08-22 13:10:45.619 +08:00 [VRB] ExePath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\wacs.exe
+2024-08-22 13:10:45.619 +08:00 [VRB] ResourcePath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\
+2024-08-22 13:10:45.619 +08:00 [VRB] PluginPath: D:\tools\simple-acme\simple-acme.v2.3.0.33.win-x64.pluggable\
+2024-08-22 13:10:45.624 +08:00 [INF] Software version 2.3.0.33 (release, pluggable, standalone, 64-bit) started
+2024-08-22 13:10:45.624 +08:00 [DBG] Running on "Win32NT" 10.0.22631.0
+2024-08-22 13:10:45.625 +08:00 [INF] No command line arguments provided
+2024-08-22 13:10:45.625 +08:00 [INF] Connecting to "https://acme-v02.api.letsencrypt.org/"...
+2024-08-22 13:10:45.629 +08:00 [DBG] [HTTP] Send GET to "https://acme-v02.api.letsencrypt.org/directory"
+2024-08-22 13:10:46.490 +08:00 [VRB] [HTTP] Request completed with status "OK"
+2024-08-22 13:10:46.492 +08:00 [VRB] [HTTP] Response content: {
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.4-April-3-2024.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "qek23HwRsB0": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert"
+}
+2024-08-22 13:10:46.497 +08:00 [VRB] Connection OK!
+2024-08-22 13:10:46.497 +08:00 [WRN] Running as limited user, some options disabled
+2024-08-22 13:10:46.510 +08:00 [WRN] Scheduled task not configured yet
+2024-08-22 13:10:46.510 +08:00 [VRB] Unicode test: Mandarin/語言 Cyrillic/язык Arabic/لغة
+2024-08-22 13:10:47.725 +08:00 [INF] Running in mode: "Interactive, Simple"
+2024-08-22 13:10:47.811 +08:00 [WRN] Source plugin IIS not available: Run as administrator to allow access to IIS.
+2024-08-22 13:10:49.405 +08:00 [VRB] No value provided for --host
+2024-08-22 13:10:54.709 +08:00 [INF] Source generated using plugin Manual: test.projectbids.co.uk
+2024-08-22 13:10:54.713 +08:00 [VRB] W3SVC detected and running
+2024-08-22 13:10:54.713 +08:00 [VRB] No FTPSVC detected
+2024-08-22 13:10:54.719 +08:00 [VRB] Global validation option not found for test.projectbids.co.uk
+2024-08-22 13:10:54.729 +08:00 [DBG] Adding local system default as DNS server
+2024-08-22 13:10:54.804 +08:00 [WRN] Validation plugin SelfHosting not available: Run as administrator to allow opening a HTTP listener.
+2024-08-22 13:11:05.373 +08:00 [VRB] No value provided for --acmednsserver
+2024-08-22 13:11:11.701 +08:00 [ERR] missing --acmednsserver
+2024-08-22 13:11:12.348 +08:00 [ERR] missing --acmednsserver

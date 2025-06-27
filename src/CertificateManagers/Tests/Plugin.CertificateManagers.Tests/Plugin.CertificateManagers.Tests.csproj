@@ -1,19 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
 
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="MSTest.TestAdapter" Version="3.9.3" />
-    <PackageReference Include="MSTest.TestFramework" Version="3.9.3" />
-  </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\Core\Plugin.CertificateManagers.csproj" />
-  </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+        <PackageReference Include="MSTest.TestAdapter" Version="3.9.3" />
+        <PackageReference Include="MSTest.TestFramework" Version="3.9.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Core\Plugin.CertificateManagers.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+
+        <Content Include="Assets\**\*.*" CopyToOutputDirectory="Always" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <None Update="Assets\win-acme\acme-v02.api.letsencrypt.org\Certificates\ryaYpYnybEqLtmhGawIRMQ-main-4eee3544e258b6690d38eddb23d5fff1f55955a0-csr.pem">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
 </Project>

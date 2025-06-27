@@ -1,0 +1,77 @@
+ 2025-06-26 17:06:05.871 [WARN] Error creating event logger
+ System.Security.SecurityException: The source was not found, but some or all event logs could not be searched.  Inaccessible logs: Security.
+   at System.Diagnostics.EventLog.FindSourceRegistration(String source, String machineName, Boolean readOnly, Boolean wantToCreate)
+   at System.Diagnostics.EventLog.SourceExists(String source, String machineName, Boolean wantToCreate)
+   at System.Diagnostics.EventLog.SourceExists(String source, String machineName)
+   at Serilog.Sinks.EventLog.EventLogSink.ConfigureSource(EventLog log, String source)
+   at Serilog.Sinks.EventLog.EventLogSink..ctor(String source, String logName, ITextFormatter textFormatter, String machineName, Boolean manageEventSource, IEventIdProvider eventIdProvider)
+   at Serilog.Sinks.EventLog.EventLogSink..ctor(String source, String logName, ITextFormatter textFormatter, String machineName, Boolean manageEventSource)
+   at Serilog.LoggerConfigurationEventLogExtensions.EventLog(LoggerSinkConfiguration loggerConfiguration, String source, String logName, String machineName, Boolean manageEventSource, String outputTemplate, IFormatProvider formatProvider, LogEventLevel restrictedToMinimumLevel, IEventIdProvider eventIdProvider)
+   at PKISharp.WACS.Services.LogService.CreateEventLogger(String source)
+ 2025-06-26 17:06:05.903 [INFO] ---------------------------------------------
+  2025-06-26 17:06:05.903 [INFO] ---- LOG STARTS -----------------------------
+  2025-06-26 17:06:05.903 [INFO] ---------------------------------------------
+  2025-06-26 17:06:05.903 [DBUG] Logging at level Information
+  2025-06-26 17:06:05.904 [VERB] Loaded validation plugin Ftp
+  2025-06-26 17:06:05.904 [VERB] Loaded validation plugin Sftp
+  2025-06-26 17:06:05.904 [VERB] Loaded validation plugin WebDav
+  2025-06-26 17:06:05.904 [VERB] Loaded validation plugin Acme
+  2025-06-26 17:06:05.904 [VERB] W3SVC detected and running
+  2025-06-26 17:06:05.904 [VERB] No FTPSVC detected
+  2025-06-26 17:06:05.904 [VERB] Looking for settings.json in D:\Tools\simple-acme.v2.3.2.1981.win-x64.pluggable\
+  2025-06-26 17:06:05.904 [VERB] Copying settings_default.json to settings.json
+  2025-06-26 17:06:05.904 [DBUG] Use existing configuration folder C:\ProgramData\simple-acme
+  2025-06-26 17:06:05.904 [DBUG] Use existing configuration folder C:\ProgramData\simple-acme\acme-v02.api.letsencrypt.org
+  2025-06-26 17:06:05.904 [DBUG] Use existing log folder C:\ProgramData\simple-acme\acme-v02.api.letsencrypt.org\Log
+  2025-06-26 17:06:05.904 [DBUG] Use existing cache folder C:\ProgramData\simple-acme\acme-v02.api.letsencrypt.org\Certificates
+  2025-06-26 17:06:05.904 [WARN] Error creating event logger
+ System.Security.SecurityException: The source was not found, but some or all event logs could not be searched.  Inaccessible logs: Security.
+   at System.Diagnostics.EventLog.FindSourceRegistration(String source, String machineName, Boolean readOnly, Boolean wantToCreate)
+   at System.Diagnostics.EventLog.SourceExists(String source, String machineName, Boolean wantToCreate)
+   at System.Diagnostics.EventLog.SourceExists(String source, String machineName)
+   at Serilog.Sinks.EventLog.EventLogSink.ConfigureSource(EventLog log, String source)
+   at Serilog.Sinks.EventLog.EventLogSink..ctor(String source, String logName, ITextFormatter textFormatter, String machineName, Boolean manageEventSource, IEventIdProvider eventIdProvider)
+   at Serilog.Sinks.EventLog.EventLogSink..ctor(String source, String logName, ITextFormatter textFormatter, String machineName, Boolean manageEventSource)
+   at Serilog.LoggerConfigurationEventLogExtensions.EventLog(LoggerSinkConfiguration loggerConfiguration, String source, String logName, String machineName, Boolean manageEventSource, String outputTemplate, IFormatProvider formatProvider, LogEventLevel restrictedToMinimumLevel, IEventIdProvider eventIdProvider)
+   at PKISharp.WACS.Services.LogService.CreateEventLogger(String source)
+ 2025-06-26 17:06:05.908 [DBUG] secrets.json not found
+  2025-06-26 17:06:05.908 [DBUG] secrets.json not found
+  2025-06-26 17:06:05.909 [DBUG] Renewal period: 55 days
+  2025-06-26 17:06:05.910 [VERB] Sending e-mails False
+  2025-06-26 17:06:05.916 [VERB] ExePath: D:\Tools\simple-acme.v2.3.2.1981.win-x64.pluggable\wacs.exe
+  2025-06-26 17:06:05.916 [VERB] ResourcePath: D:\Tools\simple-acme.v2.3.2.1981.win-x64.pluggable\
+  2025-06-26 17:06:05.916 [VERB] PluginPath: D:\Tools\simple-acme.v2.3.2.1981.win-x64.pluggable\
+  2025-06-26 17:06:05.920 [INFO] Software version 2.3.2.1981 (release, pluggable, standalone, 64-bit) started
+  2025-06-26 17:06:05.920 [DBUG] Running on Win32NT 10.0.26100.0
+  2025-06-26 17:06:05.920 [VERB] No command line arguments provided
+  2025-06-26 17:06:05.921 [INFO] Connecting to https://acme-v02.api.letsencrypt.org/...
+  2025-06-26 17:06:05.939 [DBUG] [HTTP] Send GET to https://acme-v02.api.letsencrypt.org/directory
+  2025-06-26 17:06:06.886 [VERB] [HTTP] Request completed with status OK
+  2025-06-26 17:06:06.888 [VERB] [HTTP] Response content: {
+  "keyChange": "https://acme-v02.api.letsencrypt.org/acme/key-change",
+  "meta": {
+    "caaIdentities": [
+      "letsencrypt.org"
+    ],
+    "profiles": {
+      "classic": "https://letsencrypt.org/docs/profiles#classic",
+      "shortlived": "https://letsencrypt.org/docs/profiles#shortlived (not yet generally available)",
+      "tlsserver": "https://letsencrypt.org/docs/profiles#tlsserver"
+    },
+    "termsOfService": "https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf",
+    "website": "https://letsencrypt.org"
+  },
+  "newAccount": "https://acme-v02.api.letsencrypt.org/acme/new-acct",
+  "newNonce": "https://acme-v02.api.letsencrypt.org/acme/new-nonce",
+  "newOrder": "https://acme-v02.api.letsencrypt.org/acme/new-order",
+  "renewalInfo": "https://acme-v02.api.letsencrypt.org/draft-ietf-acme-ari-03/renewalInfo",
+  "revokeCert": "https://acme-v02.api.letsencrypt.org/acme/revoke-cert",
+  "v2TxiIxSdv8": "https://community.letsencrypt.org/t/adding-random-entries-to-the-directory/33417"
+}
+  2025-06-26 17:06:06.896 [VERB] Connection OK!
+  2025-06-26 17:06:06.897 [WARN] Running as limited user, some options disabled
+  2025-06-26 17:06:06.911 [WARN] Scheduled task not configured yet
+  2025-06-26 17:06:06.911 [VERB] Unicode test: Mandarin/語言 Cyrillic/язык Arabic/لغة
+  2025-06-26 17:06:06.961 [DBUG] [HTTP] Send GET to https://publicsuffix.org/list/public_suffix_list.dat
+  2025-06-26 17:06:07.200 [VERB] [HTTP] Request completed with status OK
+  2025-06-26 17:06:07.201 [VERB] [HTTP] Response of type text/plain (319683 bytes)

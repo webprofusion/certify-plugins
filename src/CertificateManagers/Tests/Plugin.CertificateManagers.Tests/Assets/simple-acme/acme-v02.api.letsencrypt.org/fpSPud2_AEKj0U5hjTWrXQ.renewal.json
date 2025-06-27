@@ -1,0 +1,47 @@
+{
+  "$schema": "https://simple-acme.com/schema/renewal.json",
+  "Id": "fpSPud2_AEKj0U5hjTWrXQ",
+  "LastFriendlyName": "[Manual] simple-01.projectbids.co.uk",
+  "PfxPasswordProtected": "",
+  "TargetPluginOptions": {
+    "CommonName": "simple-01.projectbids.co.uk",
+    "AlternativeNames": [
+      "simple-01.projectbids.co.uk"
+    ],
+    "Plugin": "e239db3b-b42f-48aa-b64f-46d4f3e9941b"
+  },
+  "ValidationPluginOptions": {
+    "ApiToken": "vault://json/cf",
+    "Plugin": "73af2c2e-4cf1-4198-a4c8-1129003cfb75"
+  },
+  "CsrPluginOptions": {
+    "Plugin": "b9060d4b-c2d3-49ac-b37f-962e7c3cbe9d"
+  },
+  "OrderPluginOptions": {
+    "Plugin": "b705fa7c-1152-4436-8913-e433d7f84c82"
+  },
+  "StorePluginOptions": [
+    {
+      "Plugin": "e30adc8e-d756-4e16-a6f2-450f784b1a97"
+    }
+  ],
+  "InstallationPluginOptions": [
+    {
+      "Plugin": "aecc502c-5f75-43d2-b578-f95d50c79ea1"
+    }
+  ],
+  "History": [
+    {
+      "Date": "2025-06-27T03:06:29.2135999Z",
+      "Success": true,
+      "OrderResults": [
+        {
+          "ExpireDate": "2025-09-25T02:09:12Z",
+          "Name": "main",
+          "Success": true,
+          "Thumbprint": "41104C12C0F5761CC66FEC8928ADB5EB99CBF58F"
+        }
+      ]
+    }
+  ]
+}
