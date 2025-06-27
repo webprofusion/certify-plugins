@@ -1,0 +1,49 @@
+{
+  "Id": "ryaYpYnybEqLtmhGawIRMQ",
+  "LastFriendlyName": "[IIS] test.projectbids.co.uk, (any host)",
+  "PfxPasswordProtected": "",
+  "TargetPluginOptions": {
+    "CommonName": "test.projectbids.co.uk",
+    "IncludeTypes": [
+      "http"
+    ],
+    "IncludeSiteIds": [
+      2
+    ],
+    "Plugin": "54deb3ee-b5df-4381-8485-fe386054055b"
+  },
+  "ValidationPluginOptions": {
+    "ApiToken": "vault://json/cf",
+    "Plugin": "73af2c2e-4cf1-4198-a4c8-1129003cfb75"
+  },
+  "CsrPluginOptions": {
+    "Plugin": "b9060d4b-c2d3-49ac-b37f-962e7c3cbe9d"
+  },
+  "OrderPluginOptions": {
+    "Plugin": "b705fa7c-1152-4436-8913-e433d7f84c82"
+  },
+  "StorePluginOptions": [
+    {
+      "Plugin": "e30adc8e-d756-4e16-a6f2-450f784b1a97"
+    }
+  ],
+  "InstallationPluginOptions": [
+    {
+      "Plugin": "ea6a5be3-f8de-4d27-a6bd-750b619b2ee2"
+    }
+  ],
+  "History": [
+    {
+      "Date": "2025-06-26T09:12:21.4007127Z",
+      "Success": true,
+      "OrderResults": [
+        {
+          "ExpireDate": "2025-09-24T08:15:14Z",
+          "Name": "main",
+          "Success": true,
+          "Thumbprint": "528C4FD13AFFBF6471D5CD8E6B9FAC641A18DE84"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+2025-06-09 09:07:41,790:DEBUG:urllib3.connectionpool:http://localhost:None "GET /v2/connections?snap=certbot&interface=content HTTP/1.1" 200 1517
+2025-06-09 09:07:41,880:DEBUG:certbot._internal.main:certbot version: 4.0.0
+2025-06-09 09:07:41,880:DEBUG:certbot._internal.main:Location of certbot entry point: /snap/certbot/4557/bin/certbot
+2025-06-09 09:07:41,880:DEBUG:certbot._internal.main:Arguments: ['--preconfigured-renewal']
+2025-06-09 09:07:41,880:DEBUG:certbot._internal.main:Discovered plugins: PluginsRegistry(PluginEntryPoint#apache,PluginEntryPoint#dns-cloudflare,PluginEntryPoint#manual,PluginEntryPoint#nginx,PluginEntryPoint#null,PluginEntryPoint#standalone,PluginEntryPoint#webroot)
+2025-06-09 09:07:41,926:DEBUG:certbot._internal.log:Root logging level set at 30
+2025-06-09 09:07:41,968:DEBUG:certbot._internal.display.obj:Notifying user: Found the following certs:
+  Certificate Name: wsl.projectbids.co.uk
+    Serial Number: 2b8a8da0968bfa78f5ebb6d1f76a215260d8
+    Key Type: ECDSA
+    Domains: wsl.projectbids.co.uk
+    Expiry Date: 2025-04-11 21:32:26+00:00 (INVALID: TEST_CERT, EXPIRED)
+    Certificate Path: /etc/letsencrypt/live/wsl.projectbids.co.uk/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/wsl.projectbids.co.uk/privkey.pem
+  Certificate Name: wsl2.projectbids.co.uk
+    Serial Number: 2b77c138a2009d2c32c2b838156b1d6f0a8d
+    Key Type: ECDSA
+    Domains: wsl2.projectbids.co.uk
+    Expiry Date: 2024-12-09 04:43:36+00:00 (INVALID: TEST_CERT, EXPIRED)
+    Certificate Path: /etc/letsencrypt/live/wsl2.projectbids.co.uk/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/wsl2.projectbids.co.uk/privkey.pem
+  Certificate Name: wsl3.projectbids.co.uk
+    Serial Number: 2b50092bf5ea13b732b5012c899e2bd28d8a
+    Key Type: ECDSA
+    Domains: wsl3.projectbids.co.uk
+    Expiry Date: 2025-04-14 12:40:44+00:00 (INVALID: TEST_CERT, EXPIRED)
+    Certificate Path: /etc/letsencrypt/live/wsl3.projectbids.co.uk/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/wsl3.projectbids.co.uk/privkey.pem
+  Certificate Name: wsl4.projectbids.co.uk
+    Serial Number: 2bb2206751f9ece0ab61e0dfe1aeea4fcac2
+    Key Type: ECDSA
+    Domains: wsl4.projectbids.co.uk
+    Expiry Date: 2025-04-21 23:17:19+00:00 (INVALID: TEST_CERT, EXPIRED)
+    Certificate Path: /etc/letsencrypt/live/wsl4.projectbids.co.uk/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/wsl4.projectbids.co.uk/privkey.pem

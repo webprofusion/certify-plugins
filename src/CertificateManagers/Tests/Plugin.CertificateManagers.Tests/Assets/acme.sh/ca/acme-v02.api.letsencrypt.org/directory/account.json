@@ -1,0 +1,12 @@
+{
+  "key": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "anonymized_x",
+    "y": "anonymized_y"
+  },
+  "contact": [ "mailto:anon@example.com" ],
+  "initialIp": "0.0.0.0",
+  "createdAt": "2024-01-01T00:00:00.000000000Z",
+  "status": "valid"
+}
