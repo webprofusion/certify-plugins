@@ -6,14 +6,13 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
-using Certify.Models.Providers;
 using Certify.Plugin.CertificateManagers.Utils;
 using Certify.Providers.CertificateManagers;
 using Microsoft.Extensions.Logging;
 
 namespace Certify.Plugin.CertificateManagers.Providers.Certbot
 {
-    public class Certbot : ICertificateManager
+    public class Certbot : CertificateManagerBase, ICertificateManager
     {
         private string _settingsPath = "";
         private string _logPath = "";
@@ -40,109 +39,19 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
             }
         }
 
-        public ProviderDefinition GetProviderDefinition()
+        public override ProviderDefinition GetProviderDefinition()
         {
             return Definition;
         }
 
-        public void Init(ILogger logger, string settingsPath = "", string logPath = "")
+        public override void Init(ILogger logger, string settingsPath = "", string logPath = "")
         {
             _logger = logger;
             _settingsPath = settingsPath;
             _logPath = logPath;
         }
 
-        private List<StatusLogResult> ParseLatestLogs(DateTimeOffset searchStart, List<string> searchIds)
-        {
-            var logPath = _logPath;
-
-            var results = new List<StatusLogResult>();
-
-            // parse recent log entries and associate them with item IDs
-
-            var logDirectory = new DirectoryInfo(logPath);
-
-            try
-            {
-                var logFiles = logDirectory.GetFiles("*.log.*", SearchOption.AllDirectories).OrderByDescending(f => f.LastWriteTime);
-
-                // parse logs newest to oldest, stop when we find relevant entries for all search IDs
-                foreach (var log in logFiles)
-                {
-                    var logContent = File.ReadAllText(log.FullName);
-
-                    // parse log from end to start, attempting to identify success or failure status for each item with an associated ID and date/time
-
-                    var logLines = logContent.Split('\n').Reverse();
-
-                    var logResult = new StatusLogResult();
-
-                    foreach (var line in logLines)
-                    {
-                        try
-                        {
-                            // parse log line
-
-                            // check first item is a date, otherwise it is probably a continuation of the previous line
-                            var firstItem = line.Split(',')[0];
-
-                            if (DateTimeOffset.TryParse(firstItem, out var logDate))
-                            {
-                                logResult.StatusDate = logDate;
-
-                                // look for status indicators, these vary between automated renewals and interactive cli usage
-                                if (line.Contains(":Writing certificate to "))
-                                {
-                                    logResult.Status = "Success";
-
-                                    foreach (var id in searchIds.Where(s => !results.Any(r => r.ItemId == s)))
-                                    {
-                                        if (line.Contains($"/{id}/"))
-                                        {
-                                            logResult.ItemId = id;
-                                        }
-                                    }
-                                }
-                                else if (line.Contains(":ERROR:") && line.Contains("Failed to renew"))
-                                {
-                                    logResult.Status = "Error";
-                                    logResult.Message = line.Split(new[] { ".renewal:" }, StringSplitOptions.None)[1];
-
-                                    foreach (var id in searchIds)
-                                    {
-                                        if (line.Contains($"Failed to renew certificate {id}"))
-                                        {
-                                            logResult.ItemId = id;
-                                        }
-                                    }
-                                }
-
-                                if (logResult.ItemId != null && !string.IsNullOrWhiteSpace(logResult.Status) && logResult.StatusDate != null)
-                                {
-                                    // add to results
-
-                                    results.Add(logResult);
-
-                                    logResult = new StatusLogResult();
-                                }
-                            }
-                        }
-                        catch (Exception exp)
-                        {
-                            _logger.LogError("Certbot: Error parsing log line: {line} {exp}", line, exp);
-                        }
-                    }
-                }
-            }
-            catch (Exception exp)
-            {
-                _logger.LogError("Certbot: Error reading log files: {exp}", exp);
-            }
-
-            return results;
-        }
-
-        public async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter? filter = null)
+        public override async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter? filter = null)
         {
             var list = new List<ManagedCertificate>();
 
@@ -278,7 +187,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
             return list;
         }
 
-        public async Task<bool> IsPresent()
+        public override async Task<bool> IsPresent()
         {
             if (!string.IsNullOrWhiteSpace(_settingsPath) && Directory.Exists(_settingsPath))
             {
@@ -328,37 +237,95 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
             }
         }
 
-        public Task PerformCertificateCleanup()
+        private List<StatusLogResult> ParseLatestLogs(DateTimeOffset searchStart, List<string> searchIds)
         {
-            throw new NotImplementedException();
+            var logPath = _logPath;
+
+            var results = new List<StatusLogResult>();
+
+            // parse recent log entries and associate them with item IDs
+
+            var logDirectory = new DirectoryInfo(logPath);
+
+            try
+            {
+                var logFiles = logDirectory.GetFiles("*.log.*", SearchOption.AllDirectories).OrderByDescending(f => f.LastWriteTime);
+
+                // parse logs newest to oldest, stop when we find relevant entries for all search IDs
+                foreach (var log in logFiles)
+                {
+                    var logContent = File.ReadAllText(log.FullName);
+
+                    // parse log from end to start, attempting to identify success or failure status for each item with an associated ID and date/time
+
+                    var logLines = logContent.Split('\n').Reverse();
+
+                    var logResult = new StatusLogResult();
+
+                    foreach (var line in logLines)
+                    {
+                        try
+                        {
+                            // parse log line
+
+                            // check first item is a date, otherwise it is probably a continuation of the previous line
+                            var firstItem = line.Split(',')[0];
+
+                            if (DateTimeOffset.TryParse(firstItem, out var logDate))
+                            {
+                                logResult.StatusDate = logDate;
+
+                                // look for status indicators, these vary between automated renewals and interactive cli usage
+                                if (line.Contains(":Writing certificate to "))
+                                {
+                                    logResult.Status = "Success";
+
+                                    foreach (var id in searchIds.Where(s => !results.Any(r => r.ItemId == s)))
+                                    {
+                                        if (line.Contains($"/{id}/"))
+                                        {
+                                            logResult.ItemId = id;
+                                        }
+                                    }
+                                }
+                                else if (line.Contains(":ERROR:") && line.Contains("Failed to renew"))
+                                {
+                                    logResult.Status = "Error";
+                                    logResult.Message = line.Split(new[] { ".renewal:" }, StringSplitOptions.None)[1];
+
+                                    foreach (var id in searchIds)
+                                    {
+                                        if (line.Contains($"Failed to renew certificate {id}"))
+                                        {
+                                            logResult.ItemId = id;
+                                        }
+                                    }
+                                }
+
+                                if (logResult.ItemId != null && !string.IsNullOrWhiteSpace(logResult.Status) && logResult.StatusDate != null)
+                                {
+                                    // add to results
+
+                                    results.Add(logResult);
+
+                                    logResult = new StatusLogResult();
+                                }
+                            }
+                        }
+                        catch (Exception exp)
+                        {
+                            _logger.LogError("Certbot: Error parsing log line: {line} {exp}", line, exp);
+                        }
+                    }
+                }
+            }
+            catch (Exception exp)
+            {
+                _logger.LogError("Certbot: Error reading log files: {exp}", exp);
+            }
+
+            return results;
         }
 
-        public Task<CertificateRequestResult> PerformCertificateRequest(ILog log, ManagedCertificate managedCertificate, IProgress<RequestProgressState>? progress = null, bool resumePaused = false, bool skipRequest = false, bool failOnSkip = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<CertificateRequestResult>> PerformRenewalAllManagedCertificates(RenewalSettings settings, Dictionary<string, Progress<RequestProgressState>>? progressTrackers = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ManagedCertificate> UpdateManagedCertificate(ManagedCertificate site)
-        {
-            throw new NotImplementedException();
-        }
-        public Task DeleteManagedCertificate(string id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<AccountDetails>> GetAccountRegistrations()
-        {
-            throw new NotImplementedException();
-        }
-        public Task<ManagedCertificate> GetManagedCertificate(string id)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

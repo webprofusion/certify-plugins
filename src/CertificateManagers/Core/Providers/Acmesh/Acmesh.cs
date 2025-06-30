@@ -3,18 +3,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
-using Certify.Models.Providers;
 using Certify.Plugin.CertificateManagers.Utils;
 using Certify.Providers.CertificateManagers;
 using Microsoft.Extensions.Logging;
 
 namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 {
-    public class AcmeSh : ICertificateManager
+    public class AcmeSh : CertificateManagerBase, ICertificateManager
     {
         private string _settingsPath = "";
         private string _logPath = "";
@@ -41,19 +39,19 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
             }
         }
 
-        public void Init(ILogger logger, string settingsPath = "", string logPath = "")
+        public override void Init(ILogger logger, string settingsPath = "", string logPath = "")
         {
             _logger = logger;
             _settingsPath = settingsPath;
             _logPath = logPath;
         }
 
-        public ProviderDefinition GetProviderDefinition()
+        public override ProviderDefinition GetProviderDefinition()
         {
             return Definition;
         }
 
-        public async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter? filter = null)
+        public override async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter? filter = null)
         {
             var list = new List<ManagedCertificate>();
 
@@ -63,11 +61,11 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 
                 if (directorySearch.Exists)
                 {
-                    var acmeScriptFilePath = Path.Combine(_settingsPath, "acme.sh");
+                    var scriptPath = Path.Combine(_settingsPath, "acme.sh");
                     var scriptVersion = "unknown";
-                    if (File.Exists(acmeScriptFilePath))
+                    if (File.Exists(scriptPath))
                     {
-                        var acmeScript = File.ReadAllText(acmeScriptFilePath);
+                        var acmeScript = File.ReadAllText(scriptPath);
                         scriptVersion = acmeScript.Split('\n')[2].Replace("VER=", "").Trim();
                     }
 
@@ -105,61 +103,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                                     var certFile = new FileInfo(Path.Combine(renewalPath, $"{id}.cer"));
                                     if (certFile.Exists)
                                     {
-                                        try
-                                        {
-                                            var cert = Certify.Management.CertificateManager.ReadCertificateFromPem(certFile.FullName);
-
-                                            var parsedCert = X509CertificateLoader.LoadCertificate(cert.GetEncoded());
-
-                                            managedCert.DateStart = new DateTimeOffset(cert.NotBefore);
-                                            managedCert.DateExpiry = new DateTimeOffset(cert.NotAfter);
-                                            managedCert.DateRenewed = new DateTimeOffset(cert.NotBefore);
-                                            managedCert.DateLastRenewalAttempt = new DateTimeOffset(cert.NotBefore);
-                                            managedCert.CertificateThumbprintHash = parsedCert.Thumbprint;
-                                            managedCert.CertificatePath = certFile.FullName;
-                                            managedCert.LastRenewalStatus = RequestState.Success;
-                                            managedCert.CertificatePEM = File.ReadAllText(certFile.FullName);
-
-                                            if (cert.NotAfter < DateTime.UtcNow.AddDays(29))
-                                            {
-                                                // assume certs with less than 30 days left have failed to renew
-                                                managedCert.LastRenewalStatus = RequestState.Error;
-                                                managedCert.RenewalFailureMessage = "Check acme.sh configuration. This certificate will expire in less than 30 days and has not yet automatically renewed.";
-                                            }
-
-                                            managedCert.RequestConfig = new CertRequestConfig
-                                            {
-                                                PrimaryDomain = parsedCert.SubjectName.Name
-                                            };
-
-                                            var sn = cert.GetSubjectAlternativeNames();
-
-                                            var sans = new List<string>();
-                                            foreach (var s in sn)
-                                            {
-                                                if (s[1] != null)
-                                                {
-                                                    sans.Add(s[1].ToString()!);
-                                                }
-                                            }
-
-                                            managedCert.RequestConfig.SubjectAlternativeNames = sans.ToArray();
-
-                                            managedCert.DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
-                                    {
-                                        new DomainOption{
-                                            Domain=managedCert.RequestConfig.PrimaryDomain,
-                                            IsPrimaryDomain=true,
-                                            IsManualEntry=true,
-                                            IsSelected = true
-                                        }
-                                    };
-
-                                        }
-                                        catch (Exception exp)
-                                        {
-                                            _logger.LogWarning("Failed to parse cert: {exp} ", exp);
-                                        }
+                                        PopulateManagedCertificateFromFile(_logger, managedCert, certFile);
                                     }
                                     else
                                     {
@@ -203,6 +147,55 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
             }
 
             return list;
+        }
+
+        public override async Task<bool> IsPresent()
+        {
+            if (!string.IsNullOrEmpty(_settingsPath) && Directory.Exists(_settingsPath))
+            {
+                return true;
+            }
+
+            // certbot may use C:\Certbot or may have moved to appdata
+            // https://github.com/certbot/certbot/issues/7872
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var settingsPath = _winSettingsPath;
+
+                if (Directory.Exists(settingsPath))
+                {
+                    _settingsPath = settingsPath;
+                    return true;
+                }
+
+                // try app data
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+                settingsPath = Path.Combine(appDataPath, "acme.sh");
+
+                if (Directory.Exists(settingsPath))
+                {
+                    _settingsPath = settingsPath;
+                    return await Task.FromResult(true);
+                }
+                else
+                {
+                    return await Task.FromResult(false);
+                }
+            }
+            else
+            {
+                var settingsPath = _nixSettingsPath;
+
+                if (Directory.Exists(settingsPath))
+                {
+                    _settingsPath = settingsPath;
+                    return await Task.FromResult(true);
+                }
+                else
+                {
+                    return await Task.FromResult(false);
+                }
+            }
         }
 
         private List<StatusLogResult> ParseLatestLogs(DateTimeOffset searchStart, List<string> searchIds)
@@ -299,89 +292,6 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
             }
 
             return results;
-        }
-
-        public async Task<bool> IsPresent()
-        {
-            if (!string.IsNullOrEmpty(_settingsPath) && Directory.Exists(_settingsPath))
-            {
-                return true;
-            }
-
-            // certbot may use C:\Certbot or may have moved to appdata
-            // https://github.com/certbot/certbot/issues/7872
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                var settingsPath = _winSettingsPath;
-
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    return true;
-                }
-
-                // try app data
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-                settingsPath = Path.Combine(appDataPath, "acme.sh");
-
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    return await Task.FromResult(true);
-                }
-                else
-                {
-                    return await Task.FromResult(false);
-                }
-            }
-            else
-            {
-                var settingsPath = _nixSettingsPath;
-
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    return await Task.FromResult(true);
-                }
-                else
-                {
-                    return await Task.FromResult(false);
-                }
-            }
-        }
-
-        public Task DeleteManagedCertificate(string id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<AccountDetails>> GetAccountRegistrations()
-        {
-            throw new NotImplementedException();
-        }
-        public Task<ManagedCertificate> GetManagedCertificate(string id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task PerformCertificateCleanup()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<CertificateRequestResult> PerformCertificateRequest(ILog log, ManagedCertificate managedCertificate, IProgress<RequestProgressState>? progress = null, bool resumePaused = false, bool skipRequest = false, bool failOnSkip = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<CertificateRequestResult>> PerformRenewalAllManagedCertificates(RenewalSettings settings, Dictionary<string, Progress<RequestProgressState>>? progressTrackers = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ManagedCertificate> UpdateManagedCertificate(ManagedCertificate site)
-        {
-            throw new NotImplementedException();
         }
     }
 }
