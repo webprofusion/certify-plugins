@@ -12,33 +12,35 @@ using Microsoft.Extensions.Logging;
 
 namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 {
+    /// <summary>
+    /// Certificate manager for acme.sh local config.
+    /// </summary>
     public class AcmeSh : CertificateManagerBase, ICertificateManager
     {
-        private string _settingsPath = "";
-        private string _logPath = "";
+        private string _settingsPath = string.Empty;
+        private string _logPath = string.Empty;
         private ILogger _logger = default!;
 
-        private string _nixLogPath = "~/.acme.sh";
-        private string _nixSettingsPath = "~/.acme.sh";
+        private const string NixLogPath = "~/.acme.sh";
+        private const string NixSettingsPath = "~/.acme.sh";
+        private const string WinLogPath = "C:\\acme.sh";
+        private const string WinSettingsPath = "C:\\acme.sh";
+        private const string ScriptFileName = "acme.sh";
+        private const string ConfigFilePattern = "*.conf";
 
-        private string _winLogPath = "C:\\acme.sh";
-        private string _winSettingsPath = "C:\\acme.sh";
-
-        public static ProviderDefinition Definition
+        /// <summary>
+        /// Provider definition for acme.sh.
+        /// </summary>
+        public static ProviderDefinition Definition => new ProviderDefinition
         {
-            get
-            {
-                return new ProviderDefinition
-                {
-                    Id = "acme.sh",
-                    Title = "acme.sh",
-                    Description = "Queries local config for certificates managed by acme.sh",
-                    HelpUrl = "https://acme.sh",
-                    IsEnabled = true
-                };
-            }
-        }
+            Id = "acme.sh",
+            Title = "acme.sh",
+            Description = "Queries local config for certificates managed by acme.sh",
+            HelpUrl = "https://acme.sh",
+            IsEnabled = true
+        };
 
+        /// <inheritdoc />
         public override void Init(ILogger logger, string settingsPath = "", string logPath = "")
         {
             _logger = logger;
@@ -46,109 +48,119 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
             _logPath = logPath;
         }
 
-        public override ProviderDefinition GetProviderDefinition()
-        {
-            return Definition;
-        }
+        /// <inheritdoc />
+        public override ProviderDefinition GetProviderDefinition() => Definition;
 
+        /// <inheritdoc />
         public override async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter? filter = null)
         {
-            var list = new List<ManagedCertificate>();
+            var managedCertificates = new List<ManagedCertificate>();
 
-            if (await IsPresent())
+            if (!await IsPresent())
             {
-                var directorySearch = new DirectoryInfo(Path.Combine(_settingsPath));
+                return managedCertificates;
+            }
 
-                if (directorySearch.Exists)
+            var directorySearch = new DirectoryInfo(_settingsPath);
+
+            if (!directorySearch.Exists)
+            {
+                return managedCertificates;
+            }
+
+            // Get acme.sh script version if available
+            var scriptVersion = "unknown";
+            var scriptPath = Path.Combine(_settingsPath, ScriptFileName);
+
+            if (File.Exists(scriptPath))
+            {
+                var acmeScript = File.ReadAllLines(scriptPath);
+
+                if (acmeScript.Length > 2 && acmeScript[2].StartsWith("VER="))
                 {
-                    var scriptPath = Path.Combine(_settingsPath, "acme.sh");
-                    var scriptVersion = "unknown";
-                    if (File.Exists(scriptPath))
+                    scriptVersion = acmeScript[2].Replace("VER=", string.Empty).Trim();
+                }
+            }
+
+            var configFiles = directorySearch.GetFiles(ConfigFilePattern, SearchOption.AllDirectories);
+
+            foreach (var config in configFiles)
+            {
+                try
+                {
+                    var settings = IniFileParser.Parse(File.ReadAllText(config.FullName), _logger);
+
+                    if (!settings.ContainsKey("_global") || !settings["_global"].ContainsKey("Le_Domain"))
                     {
-                        var acmeScript = File.ReadAllText(scriptPath);
-                        scriptVersion = acmeScript.Split('\n')[2].Replace("VER=", "").Trim();
+                        _logger.LogDebug("Skipping conf file {name}", config.FullName);
+                        continue;
                     }
 
-                    var configFiles = directorySearch.GetFiles("*.conf", SearchOption.AllDirectories);
+                    var id = settings["_global"]["Le_Domain"].Trim("' ".ToCharArray());
+                    var renewalPath = Path.GetDirectoryName(config.FullName);
 
-                    foreach (var config in configFiles)
+                    if (renewalPath == null)
                     {
-                        try
-                        {
-                            var settings = IniFileParser.Parse(File.ReadAllText(config.FullName), _logger);
-
-                            if (!settings.ContainsKey("_global") || !settings["_global"].ContainsKey("Le_Domain"))
-                            {
-                                // not a renewal config
-                                _logger.LogDebug("Skipping conf file {name}", config.FullName);
-
-                            }
-                            else
-                            {
-
-                                var id = settings["_global"]["Le_Domain"].Trim("' ".ToCharArray());
-                                var renewalPath = Path.GetDirectoryName(config.FullName);
-
-                                if (renewalPath != null)
-                                {
-                                    var managedCert = new ManagedCertificate
-                                    {
-                                        Id = $"ext-acme.sh-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
-                                        Name = id,
-                                        ItemType = ManagedCertificateType.SSL_ExternallyManaged,
-                                        SourceId = Definition.Id,
-                                        SourceName = $"{Definition.Title}-{scriptVersion}",
-                                    };
-
-                                    var certFile = new FileInfo(Path.Combine(renewalPath, $"{id}.cer"));
-                                    if (certFile.Exists)
-                                    {
-                                        PopulateManagedCertificateFromFile(_logger, managedCert, certFile);
-                                    }
-                                    else
-                                    {
-                                        _logger.LogWarning("Failed to access cert file {file}", certFile);
-                                    }
-
-                                    managedCert.IsChanged = false;
-                                    list.Add(managedCert);
-                                }
-                            }
-                        }
-                        catch (Exception exp)
-                        {
-                            _logger.LogError("Failed to parse config: [{exp}] " + exp);
-                        }
+                        continue;
                     }
 
-                    // get latest log entries for each item
-
-                    var lastLogResults = ParseLatestLogs(DateTimeOffset.UtcNow.AddDays(-1), list.Select(l => l.Name ?? "<none>").ToList()).OrderByDescending(l => l.StatusDate);
-                    foreach (var item in list)
+                    var managedCert = new ManagedCertificate
                     {
-                        var logItem = lastLogResults.Where(l => l.ItemId == item.Name).FirstOrDefault(l => l.ItemId == item.Name);
-                        if (logItem != null)
-                        {
-                            if (logItem.Status == "Success")
-                            {
-                                item.LastRenewalStatus = RequestState.Success;
-                            }
-                            else
-                            {
-                                item.LastRenewalStatus = RequestState.Error;
-                                item.RenewalFailureMessage = logItem.Message;
+                        Id = $"ext-acme.sh-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
+                        Name = id,
+                        ItemType = ManagedCertificateType.SSL_ExternallyManaged,
+                        SourceId = Definition.Id,
+                        SourceName = $"{Definition.Title}-{scriptVersion}",
+                        IsChanged = false
+                    };
 
-                                // failure count is count of log items we found with final error status
-                                item.RenewalFailureCount = lastLogResults.Where(l => l.ItemId == item.Name && l.Status == "Error").Count();
-                            }
-                        }
+                    var certFile = new FileInfo(Path.Combine(renewalPath, $"{id}.cer"));
+
+                    if (certFile.Exists)
+                    {
+                        PopulateManagedCertificateFromFile(_logger, managedCert, certFile);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to access cert file {file}", certFile);
+                    }
+
+                    managedCertificates.Add(managedCert);
+                }
+                catch (Exception exp)
+                {
+                    _logger.LogError($"Failed to parse config: [{config.FullName}] {exp}");
+                }
+            }
+
+            // Get latest log entries for each item
+            var lastLogResults = ParseLatestLogs(DateTimeOffset.UtcNow.AddDays(-1), managedCertificates.Select(l => l.Name ?? "<none>").ToList())
+                .OrderByDescending(l => l.StatusDate)
+                .ToList();
+
+            foreach (var item in managedCertificates)
+            {
+                var logItem = lastLogResults.FirstOrDefault(l => l.ItemId == item.Name);
+
+                if (logItem != null)
+                {
+                    if (logItem.Status == "Success")
+                    {
+                        item.LastRenewalStatus = RequestState.Success;
+                    }
+                    else
+                    {
+                        item.LastRenewalStatus = RequestState.Error;
+                        item.RenewalFailureMessage = logItem.Message;
+                        item.RenewalFailureCount = lastLogResults.Count(l => l.ItemId == item.Name && l.Status == "Error");
                     }
                 }
             }
 
-            return list;
+            return managedCertificates;
         }
 
+        /// <inheritdoc />
         public override async Task<bool> IsPresent()
         {
             if (!string.IsNullOrEmpty(_settingsPath) && Directory.Exists(_settingsPath))
@@ -156,11 +168,11 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                 return true;
             }
 
-            // certbot may use C:\Certbot or may have moved to appdata
-            // https://github.com/certbot/certbot/issues/7872
+            string settingsPath;
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var settingsPath = _winSettingsPath;
+                settingsPath = WinSettingsPath;
 
                 if (Directory.Exists(settingsPath))
                 {
@@ -168,86 +180,76 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                     return true;
                 }
 
-                // try app data
                 var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
                 settingsPath = Path.Combine(appDataPath, "acme.sh");
 
                 if (Directory.Exists(settingsPath))
                 {
                     _settingsPath = settingsPath;
-                    return await Task.FromResult(true);
-                }
-                else
-                {
-                    return await Task.FromResult(false);
+                    return true;
                 }
             }
             else
             {
-                var settingsPath = _nixSettingsPath;
+                settingsPath = NixSettingsPath;
 
                 if (Directory.Exists(settingsPath))
                 {
                     _settingsPath = settingsPath;
-                    return await Task.FromResult(true);
-                }
-                else
-                {
-                    return await Task.FromResult(false);
+                    return true;
                 }
             }
+
+            return false;
         }
 
+        /// <summary>
+        /// Parse recent log entries and associate them with item IDs.
+        /// </summary>
         private List<StatusLogResult> ParseLatestLogs(DateTimeOffset searchStart, List<string> searchIds)
         {
-            var logPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? _winLogPath : _nixLogPath;
-
+            var logPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? WinLogPath : NixLogPath;
             var results = new List<StatusLogResult>();
-
-            // parse recent log entries and associate them with item IDs
 
             var logDirectory = new DirectoryInfo(logPath);
 
+            if (!logDirectory.Exists)
+            {
+                return results;
+            }
+
             try
             {
-                var logFiles = logDirectory.GetFiles("*.log.*", SearchOption.AllDirectories).OrderByDescending(f => f.LastWriteTime);
+                var logFiles = logDirectory.GetFiles("*.log.*", SearchOption.AllDirectories)
+                    .OrderByDescending(f => f.LastWriteTime);
 
-                // parse logs newest to oldest, stop when we find relevant entries for all search IDs
                 foreach (var log in logFiles)
                 {
                     var logContent = File.ReadAllText(log.FullName);
-
-                    // parse log from end to start, attempting to identify success or failure status for each item with an associated ID and date/time
-
                     var logLines = logContent.Split('\n').Reverse();
-
                     var logResult = new StatusLogResult();
 
                     foreach (var line in logLines)
                     {
                         try
                         {
-                            // parse log line
-
-                            // check first item is a date, otherwise it is probably a continuation of the previous line
                             var dateToParse = line.Split(']')[0].Replace("[", "");
-                            var compositeDate = "";
+                            var compositeDate = string.Empty;
+
                             try
                             {
-                                // create new date string with date in right place
                                 var year = dateToParse.Substring(dateToParse.Length - 4);
                                 compositeDate = $"{dateToParse.Substring(0, 10)} {year} {dateToParse.Substring(11, 8)}";
                             }
                             catch
                             {
-                                // log line item doesn't start with a date
+                                // Log line item doesn't start with a date
                             }
 
-                            if (DateTimeOffset.TryParse(compositeDate, out var logDate))  //"ddd MMM dd HH:mm:ss yyyy"
+                            if (DateTimeOffset.TryParse(compositeDate, out var logDate))
                             {
                                 logResult.StatusDate = logDate;
 
-                                // look for status indicators, these vary between automated renewals and interactive cli usage
                                 if (line.Contains("Your cert is in:"))
                                 {
                                     logResult.Status = "Success";
@@ -271,24 +273,21 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 
                                 if (logResult.ItemId != null && !string.IsNullOrWhiteSpace(logResult.Status) && logResult.StatusDate != null)
                                 {
-                                    // add to results
-
                                     results.Add(logResult);
-
                                     logResult = new StatusLogResult();
                                 }
                             }
                         }
                         catch (Exception exp)
                         {
-                            _logger.LogError("acme.sh: Error parsing log line: {line} {exp}", line, exp);
+                            _logger.LogError($"acme.sh: Error parsing log line: {line} {exp}");
                         }
                     }
                 }
             }
             catch (Exception exp)
             {
-                _logger.LogError("acme.sh: Error reading log files: {exp}", exp);
+                _logger.LogError($"acme.sh: Error reading log files: {exp}");
             }
 
             return results;
