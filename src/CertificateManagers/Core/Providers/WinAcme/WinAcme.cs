@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
-using Certify.Models.Providers;
 using Certify.Plugin.CertificateManagers.Utils;
 using Certify.Plugin.CertificateManagers.WinAcme;
 using Certify.Providers.CertificateManagers;
@@ -13,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
 {
-    public class WinAcme : ICertificateManager
+    public class WinAcme : CertificateManagerBase, ICertificateManager
     {
         private string _settingsPath = "";
         private string _logPath = "";
@@ -38,31 +37,16 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
 
         internal virtual string IdPrefix => Definition.Id;
 
-        public void Init(ILogger logger, string settingsPath = "", string logPath = "")
+        public override void Init(ILogger logger, string settingsPath = "", string logPath = "")
         {
             _logger = logger;
             _settingsPath = settingsPath;
             _logPath = logPath;
         }
 
-        public ProviderDefinition GetProviderDefinition()
+        public override ProviderDefinition GetProviderDefinition()
         {
             return Definition;
-        }
-
-        public Task DeleteManagedCertificate(string id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<AccountDetails>> GetAccountRegistrations()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ManagedCertificate> GetManagedCertificate(string id)
-        {
-            throw new NotImplementedException();
         }
 
         private async Task<string> ReadAllTextAsync(string path)
@@ -80,8 +64,14 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
 
             if (await IsPresent())
             {
+
                 var directorySearch = new DirectoryInfo(_settingsPath);
                 var configFiles = directorySearch.GetFiles("*.renewal.json", SearchOption.AllDirectories);
+
+                var certsPath = Path.Combine(_settingsPath, "Certificates");
+                var certsDirectorySearch = new DirectoryInfo(certsPath);
+
+                var certFiles = directorySearch.GetFiles(" *.pem", SearchOption.AllDirectories);
 
                 foreach (var config in configFiles)
                 {
@@ -104,6 +94,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
                                 SourceName = ProviderTitle,
                                 CertificateThumbprintHash = lastSuccess?.Thumbprint,
                                 DateRenewed = lastSuccess?.Date,
+                                DateStart = lastSuccess?.Date,
                                 DateExpiry = lastSuccess?.Date != null ? lastSuccess.Date.Value.AddDays(90) : (DateTime?)null,
                                 LastRenewalStatus = lastStatus?.Success == true ? RequestState.Success : (lastStatus != null ? RequestState.Error : (RequestState?)null),
                                 DateLastRenewalAttempt = lastStatus?.Date,
@@ -117,6 +108,22 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
                             new DomainOption{ Domain=cfg.TargetPluginOptions?.CommonName, IsPrimaryDomain=true, IsManualEntry=true, IsSelected = true}
                         }
                             };
+
+                            // find all files in the certificates folder that match this managed cert   
+                            /*
+                               if (certFiles.Length > 0)
+                               {
+                                   // use the first file found
+                                   var certFile = new FileInfo(certFiles.OrderBy(f => f.[0]));
+                                   managedCert.CertificatePath = certFile.FullName;
+                                   managedCert.CertificatePEM = await ReadAllTextAsync(certFile.FullName);
+                                   // populate certificate details
+                                   PopulateManagedCertificateFromFile(_logger, managedCert, certFile);
+                               }
+                               else
+                               {
+                                   _logger.LogWarning($"No certificate file found for managed certificate: {managedCert.Name}");
+                               }*/
 
                             if (managedCert.RequestConfig.SubjectAlternativeNames != null)
                             {
@@ -141,7 +148,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
             return list;
         }
 
-        public async Task<bool> IsPresent()
+        public override async Task<bool> IsPresent()
         {
             if (!string.IsNullOrWhiteSpace(_settingsPath) && Directory.Exists(_settingsPath))
             {
@@ -160,26 +167,6 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
             {
                 return false;
             }
-        }
-
-        public Task PerformCertificateCleanup()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<CertificateRequestResult> PerformCertificateRequest(ILog log, ManagedCertificate managedCertificate, IProgress<RequestProgressState>? progress = null, bool resumePaused = false, bool skipRequest = false, bool failOnSkip = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<CertificateRequestResult>> PerformRenewalAllManagedCertificates(RenewalSettings settings, Dictionary<string, Progress<RequestProgressState>>? progressTrackers = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ManagedCertificate> UpdateManagedCertificate(ManagedCertificate site)
-        {
-            throw new NotImplementedException();
         }
     }
 }
