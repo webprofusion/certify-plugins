@@ -82,7 +82,8 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
                     }
 
                     var lastStatus = cfg.History?.LastOrDefault();
-                    var lastSuccess = cfg.History?.LastOrDefault(x => x.Success);
+                    var lastSuccess = cfg.History?.LastOrDefault(x => x.Success && x.OrderResults?.Any() == true);
+                    var lastSuccessResult = lastSuccess?.OrderResults?.LastOrDefault(x => x.Success);
 
                     var managedCert = new ManagedCertificate
                     {
@@ -91,11 +92,12 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
                         ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                         SourceId = ProviderId,
                         SourceName = ProviderTitle,
-                        CertificateThumbprintHash = lastSuccess?.Thumbprint,
+                        CertificateThumbprintHash = lastSuccessResult?.Thumbprint,
                         DateRenewed = lastSuccess?.Date,
                         DateStart = lastSuccess?.Date,
-                        DateExpiry = lastSuccess?.Date != null ? lastSuccess.Date.Value.AddDays(90) : (DateTime?)null,
+                        DateExpiry = lastSuccessResult?.ExpireDate,
                         LastRenewalStatus = lastStatus?.Success == true ? RequestState.Success : (lastStatus != null ? RequestState.Error : (RequestState?)null),
+                        RenewalFailureMessage = lastStatus?.Success == false ? string.Join("\n", lastStatus.OrderResults?.Select(r => r.ErrorMessages).Where(m => m != null).SelectMany(m => m)) : null,
                         DateLastRenewalAttempt = lastStatus?.Date,
                         RequestConfig = new CertRequestConfig
                         {

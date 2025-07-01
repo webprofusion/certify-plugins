@@ -1,6 +1,6 @@
 {
   "Id": "ryaYpYnybEqLtmhGawIRMQ",
-  "LastFriendlyName": "[IIS] test.projectbids.co.uk, (any host)",
+  "LastFriendlyName": "[IIS] test.projectbids.co.uk, (any host : test)",
   "PfxPasswordProtected": "",
   "TargetPluginOptions": {
     "CommonName": "test.projectbids.co.uk",
@@ -42,6 +42,31 @@
           "Name": "main",
           "Success": true,
           "Thumbprint": "528C4FD13AFFBF6471D5CD8E6B9FAC641A18DE84"
+        }
+      ]
+    },
+    {
+      "Date": "2025-06-27T08:39:47.7382113Z",
+      "Success": true,
+      "OrderResults": [
+        {
+          "ExpireDate": "2025-09-29T07:42:25Z",
+          "Name": "main",
+          "Success": true,
+          "Thumbprint": "67619FFF90E36CA4BC3C48B28FD79EA34F5E34F9"
+        }
+      ]
+    },
+    {
+      "Date": "2025-06-28T08:39:47.7382113Z",
+      "Success": false,
+      "OrderResults": [
+        {
+          "Success": false,
+          "ErrorMessages": [
+            "First error message.",
+            "Second error message."
+          ]
         }
       ]
     }
