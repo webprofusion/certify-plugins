@@ -46,11 +46,11 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
         public override ProviderDefinition GetProviderDefinition() => Definition;
 
         /// <inheritdoc />
-        public override void Init(ILogger logger, string settingsPath = "", string logPath = "")
+        public override void Init(ILogger logger, CertificateManagerPreference prefs)
         {
             _logger = logger;
-            _settingsPath = settingsPath;
-            _logPath = logPath;
+            _settingsPath = prefs?.ConfigPath ?? "";
+            _logPath = prefs?.LogPath ?? "";
         }
 
         /// <inheritdoc />
