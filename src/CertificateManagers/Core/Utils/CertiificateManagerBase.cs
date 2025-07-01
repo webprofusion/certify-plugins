@@ -43,7 +43,7 @@ namespace Certify.Plugin.CertificateManagers.Utils
         /// <summary>
         /// Initialize the provider with logger and paths.
         /// </summary>
-        public virtual void Init(ILogger logger, string settingsPath = "", string logPath = "") => throw new NotImplementedException();
+        public virtual void Init(ILogger logger, CertificateManagerPreference prefs) => throw new NotImplementedException();
 
         /// <summary>
         /// Check if the provider/config is present.
