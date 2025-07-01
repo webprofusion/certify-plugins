@@ -13,7 +13,16 @@ namespace Certify.Plugin.CertificateManagers.WinAcme
     {
         public DateTime? Date { get; set; }
         public bool Success { get; set; }
+        public List<HistoryResult>? OrderResults { get; set; } = [];
+    }
+
+    public class HistoryResult
+    {
+        public DateTime? ExpireDate { get; set; }
+        public DateTime? DueDate { get; set; }
+        public bool Success { get; set; }
         public string? Thumbprint { get; set; }
+        public List<string>? ErrorMessages { get; set; }
     }
 
     public class ConfigSettings
