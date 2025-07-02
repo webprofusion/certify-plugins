@@ -308,7 +308,30 @@ namespace Certify.Datastore.SQLite
                             await cmd.ExecuteNonQueryAsync();
                         }
                     }
+
+                    //migrate legacy securityprinciple items TODO: can be removed post-beta
+
+                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET id=replace(id,'securityprinciple','securityprincipal') WHERE id like 'securityprinciple%';", db))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET itemtype='securityprincipal' WHERE itemtype ='securityprinciple';", db))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET config=replace(config,'Principle','Principal') WHERE config like '%Principle%';", db))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET config=replace(config,'principle','principal') WHERE config like '%principle%';", db))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
                 }
+
                 catch (Exception exp)
                 {
                     _log?.Error(exp, "Error during schema upgrade");

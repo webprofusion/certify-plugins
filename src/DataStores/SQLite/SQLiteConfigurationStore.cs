@@ -80,7 +80,7 @@ namespace Certify.Datastore.SQLite
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        private async Task<List<ConfigurationItem>> GetItems(string itemType = nameof(SecurityPrinciple),
+        private async Task<List<ConfigurationItem>> GetItems(string itemType = nameof(SecurityPrincipal),
             string id = null)
         {
             var items = new List<ConfigurationItem>();
