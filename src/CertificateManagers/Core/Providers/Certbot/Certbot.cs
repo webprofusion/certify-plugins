@@ -56,19 +56,21 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
         /// <inheritdoc />
         public override async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter? filter = null)
         {
-            var managedCertificates = new List<ManagedCertificate>();
 
             if (!await IsPresent())
             {
-                return managedCertificates;
+                return [];
             }
 
             var renewalDir = new DirectoryInfo(Path.Combine(_settingsPath, RenewalFolder));
 
             if (!renewalDir.Exists)
             {
-                return managedCertificates;
+                _logger.LogWarning($"Certbot renewal directory not found: {renewalDir.FullName}");
+                return [];
             }
+
+            var managedCertificates = new List<ManagedCertificate>();
 
             var configFiles = renewalDir.GetFiles(ConfigFilePattern, SearchOption.AllDirectories);
 
@@ -168,27 +170,34 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
             }
 
             // Get latest log entries for each item
-            var lastLogResults = ParseLatestLogs(DateTimeOffset.UtcNow.AddDays(-1), managedCertificates.Select(l => l.Name ?? "<none>").ToList())
-                .OrderByDescending(l => l.StatusDate);
-
-            foreach (var item in managedCertificates)
+            try
             {
-                var logItem = lastLogResults.FirstOrDefault(l => l.ItemId == item.Name);
+                var lastLogResults = ParseLatestLogs(DateTimeOffset.UtcNow.AddDays(-1), managedCertificates.Select(l => l.Name ?? "<none>").ToList())
+                    .OrderByDescending(l => l.StatusDate);
 
-                if (logItem != null)
+                foreach (var item in managedCertificates)
                 {
-                    if (logItem.Status == "Success")
+                    var logItem = lastLogResults.FirstOrDefault(l => l.ItemId == item.Name);
+
+                    if (logItem != null)
                     {
-                        item.LastRenewalStatus = RequestState.Success;
-                    }
-                    else
-                    {
-                        item.LastRenewalStatus = RequestState.Error;
-                        item.RenewalFailureMessage = logItem.Message;
-                        // Failure count is count of log items we found with final error status
-                        item.RenewalFailureCount = lastLogResults.Count(l => l.ItemId == item.Name && l.Status == "Error");
+                        if (logItem.Status == "Success")
+                        {
+                            item.LastRenewalStatus = RequestState.Success;
+                        }
+                        else
+                        {
+                            item.LastRenewalStatus = RequestState.Error;
+                            item.RenewalFailureMessage = logItem.Message;
+                            // Failure count is count of log items we found with final error status
+                            item.RenewalFailureCount = lastLogResults.Count(l => l.ItemId == item.Name && l.Status == "Error");
+                        }
                     }
                 }
+            }
+            catch (Exception exp)
+            {
+                _logger.LogError($"Certbot: Error parsing logs from {_logPath}: {exp}");
             }
 
             return managedCertificates;
@@ -211,6 +220,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                 if (Directory.Exists(settingsPath))
                 {
                     _settingsPath = settingsPath;
+                    _logPath = WinLogPath;
                     return true;
                 }
 
@@ -221,6 +231,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                 if (Directory.Exists(settingsPath))
                 {
                     _settingsPath = settingsPath;
+                    _logPath = Path.Combine(settingsPath, "log");
                     return true;
                 }
             }
@@ -231,6 +242,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                 if (Directory.Exists(settingsPath))
                 {
                     _settingsPath = settingsPath;
+                    _logPath = NixLogPath;
                     return true;
                 }
             }
@@ -244,13 +256,20 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
         private List<StatusLogResult> ParseLatestLogs(DateTimeOffset searchStart, List<string> searchIds)
         {
             var logPath = _logPath;
-            var results = new List<StatusLogResult>();
+
+            if (string.IsNullOrEmpty(logPath))
+            {
+                return [];
+            }
+
             var logDirectory = new DirectoryInfo(logPath);
 
             if (!logDirectory.Exists)
             {
-                return results;
+                return [];
             }
+
+            var results = new List<StatusLogResult>();
 
             try
             {
