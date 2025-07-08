@@ -41,8 +41,6 @@ namespace Plugin.DeploymentTasks.Azure
             };
         }
 
-
-
         /// <summary>
         /// Deploy current cert to Azure Key Vault
         /// </summary>
