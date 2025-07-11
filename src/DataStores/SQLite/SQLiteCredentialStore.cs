@@ -299,7 +299,7 @@ namespace Certify.Datastore.SQLite
                 return null;
             }
 
-            credentialInfo.DateCreated = DateTime.UtcNow;
+            credentialInfo.DateCreated = DateTimeOffset.UtcNow;
 
             var protectedContent = CredentialsUtil.Protect(credentialInfo.Secret, PROTECTIONENTROPY, DataProtectionScope.CurrentUser);
 
