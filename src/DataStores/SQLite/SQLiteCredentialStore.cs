@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -10,6 +9,7 @@ using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Providers;
+using Microsoft.Data.Sqlite;
 using Newtonsoft.Json;
 
 namespace Certify.Datastore.SQLite
@@ -73,12 +73,12 @@ namespace Certify.Datastore.SQLite
             {
                 var credentials = new List<StoredCredential>();
                 // migrate content from legacy db to configurationitems
-                using (var db = new SQLiteConnection($"Data Source={dbPath}"))
+                using (var db = new SqliteConnection($"Data Source={dbPath}"))
                 {
                     db.Open();
 
                     var sql = @"SELECT id, json, protectedvalue FROM credential ";
-                    using (var cmd = new SQLiteCommand(sql, db))
+                    using (var cmd = new SqliteCommand(sql, db))
                     {
                         using (var reader = cmd.ExecuteReader())
                         {
@@ -163,24 +163,24 @@ namespace Certify.Datastore.SQLite
             {
                 var credentials = new List<StoredCredential>();
 
-                using (var db = new SQLiteConnection($"Data Source={path}"))
+                using (var db = new SqliteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
 
-                    var queryParameters = new List<SQLiteParameter>();
+                    var queryParameters = new List<SqliteParameter>();
                     var conditions = new List<string>();
                     var sql = @"SELECT id, config FROM manageditem ";
 
                     if (!string.IsNullOrEmpty(storageKey))
                     {
                         conditions.Add("id = @id");
-                        queryParameters.Add(new SQLiteParameter("@id", storageKey));
+                        queryParameters.Add(new SqliteParameter("@id", storageKey));
                     }
 
                     if (!string.IsNullOrEmpty(type))
                     {
                         conditions.Add(" config->>'ProviderType' = @providerType");
-                        queryParameters.Add(new SQLiteParameter("@providerType", type));
+                        queryParameters.Add(new SqliteParameter("@providerType", type));
                     }
 
                     sql += $" WHERE itemtype='{_itemType}' ";
@@ -195,7 +195,7 @@ namespace Certify.Datastore.SQLite
 
                     sql += $" ORDER BY config->>'Title' ASC";
 
-                    using (var cmd = new SQLiteCommand(sql, db))
+                    using (var cmd = new SqliteCommand(sql, db))
                     {
                         cmd.Parameters.AddRange(queryParameters.ToArray());
 
@@ -241,11 +241,11 @@ namespace Certify.Datastore.SQLite
             //load protected string from db
             if (File.Exists(path))
             {
-                using (var db = new SQLiteConnection($"Data Source={path}"))
-                using (var cmd = new SQLiteCommand("SELECT config, itemvalue FROM manageditem WHERE id=@id and itemtype=@itemtype", db))
+                using (var db = new SqliteConnection($"Data Source={path}"))
+                using (var cmd = new SqliteCommand("SELECT config, itemvalue FROM manageditem WHERE id=@id and itemtype=@itemtype", db))
                 {
-                    cmd.Parameters.Add(new SQLiteParameter("@id", storageKey));
-                    cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
+                    cmd.Parameters.Add(new SqliteParameter("@id", storageKey));
+                    cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
 
                     db.Open();
                     using (var reader = await cmd.ExecuteReaderAsync())
@@ -311,17 +311,18 @@ namespace Certify.Datastore.SQLite
                 var path = GetDbPath();
 
                 // save new/modified item into credentials database
-                using (var db = new SQLiteConnection($"Data Source={path}"))
+                using (var db = new SqliteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
-                        using (var cmd = new SQLiteCommand("INSERT OR REPLACE INTO manageditem (id, config, itemtype, itemvalue) VALUES (@id, @config, @itemtype, @itemvalue)", db))
+                        using (var cmd = new SqliteCommand("INSERT OR REPLACE INTO manageditem (id, config, itemtype, itemvalue) VALUES (@id, @config, @itemtype, @itemvalue)", db))
                         {
-                            cmd.Parameters.Add(new SQLiteParameter("@id", credentialInfo.StorageKey));
-                            cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(credentialInfo)));
-                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
-                            cmd.Parameters.Add(new SQLiteParameter("@itemvalue", protectedContent));
+                            cmd.Transaction = tran;
+                            cmd.Parameters.Add(new SqliteParameter("@id", credentialInfo.StorageKey));
+                            cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(credentialInfo)));
+                            cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
+                            cmd.Parameters.Add(new SqliteParameter("@itemvalue", protectedContent));
                             await cmd.ExecuteNonQueryAsync();
                         }
 

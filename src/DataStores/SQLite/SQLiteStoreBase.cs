@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Providers;
+using Microsoft.Data.Sqlite;
 using Polly;
 using Polly.Retry;
 
@@ -50,11 +50,13 @@ namespace Certify.Datastore.SQLite
             _log = log;
 
             _retryPolicy = Policy
-                    .Handle<ArgumentException>()
-                    .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
-                    {
-                        _log.Warning($"Retrying DB operation..{retryCount} {exception}");
-                    });
+                .Handle<SqliteException>()
+                .Or<ArgumentException>()
+                .Or<InvalidOperationException>()
+                .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
+                {
+                    _log?.Warning($"Retrying DB operation..{retryCount} {exception}");
+                });
 
             if (!string.IsNullOrEmpty(storageSubfolder))
             {
@@ -63,7 +65,7 @@ namespace Certify.Datastore.SQLite
 
             _dbPath = GetDbPath();
 
-            _connectionString = $"Data Source={_dbPath};PRAGMA journal_mode=WAL;";
+            _connectionString = $"Data Source={_dbPath};";
 
             try
             {
@@ -116,7 +118,7 @@ namespace Certify.Datastore.SQLite
             {
                 PerformDBBackup();
 
-                using (var db = new SQLiteConnection(_connectionString))
+                using (var db = new SqliteConnection(_connectionString))
                 {
                     db.Open();
                     var walCmd = db.CreateCommand();
@@ -141,7 +143,7 @@ namespace Certify.Datastore.SQLite
         {
             try
             {
-                using (var db = new SQLiteConnection(_connectionString))
+                using (var db = new SqliteConnection(_connectionString))
                 {
                     db.Open();
                     var walCmd = db.CreateCommand();
@@ -153,9 +155,10 @@ namespace Certify.Datastore.SQLite
                     db.Close();
                 }
             }
-            catch (SQLiteException exp)
+            catch (SqliteException exp)
             {
-                if (exp.ResultCode == SQLiteErrorCode.ReadOnly)
+                // Check for readonly error (SQLITE_READONLY = 8)
+                if (exp.SqliteErrorCode == 8)
                 {
                     _log?.Error($"Encountered a read only database. A backup of the original database was recently performed to {_dbPath}.bak, you should revert to this backup.");
                 }
@@ -174,7 +177,7 @@ namespace Certify.Datastore.SQLite
             {
                 if (File.Exists(_dbPath))
                 {
-                    using (var db = new SQLiteConnection(_connectionString))
+                    using (var db = new SqliteConnection(_connectionString))
                     {
                         db.Open();
 
@@ -195,11 +198,16 @@ namespace Certify.Datastore.SQLite
                             }
 
                             // create new backup
-
-                            using (var backupDB = new SQLiteConnection($"Data Source ={backupFile}"))
+                            using (var backupDB = new SqliteConnection($"Data Source ={backupFile}"))
                             {
                                 backupDB.Open();
-                                db.BackupDatabase(backupDB, "main", "main", -1, null, 1000);
+
+                                // Microsoft.Data.Sqlite doesn't have BackupDatabase method, so we'll use SQL VACUUM INTO
+                                using (var cmd = new SqliteCommand($"VACUUM INTO '{backupFile}'", db))
+                                {
+                                    cmd.ExecuteNonQuery();
+                                }
+
                                 backupDB.Close();
 
                                 _log?.Information($"Performed db backup to {backupFile}. To switch to the backup, rename the old manageditems.db file and rename the .bak file as manageditems.db, then restart service to recover. ");
@@ -215,7 +223,7 @@ namespace Certify.Datastore.SQLite
                     }
                 }
             }
-            catch (SQLiteException exp)
+            catch (SqliteException exp)
             {
                 _log?.Error("Failed to perform db backup: " + exp);
             }
@@ -226,16 +234,18 @@ namespace Certify.Datastore.SQLite
             try
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-                // save modified items into settings database
-                using (var db = new SQLiteConnection(_connectionString))
+
+                // delete specific item
+                using (var db = new SqliteConnection(_connectionString))
                 {
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
-                        using (var cmd = new SQLiteCommand($"DELETE FROM manageditem WHERE id=@id AND @itemtype=itemtype", db))
+                        using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
                         {
-                            cmd.Parameters.Add(new SQLiteParameter("@id", id));
-                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", itemType.ToLowerInvariant()));
+                            cmd.Transaction = tran;
+                            cmd.Parameters.Add(new SqliteParameter("@id", id));
+                            cmd.Parameters.Add(new SqliteParameter("@itemtype", itemType.ToLowerInvariant()));
                             await cmd.ExecuteNonQueryAsync();
                         }
 
@@ -256,12 +266,12 @@ namespace Certify.Datastore.SQLite
             // attempt column upgrades
             var cols = new List<string>();
 
-            using (var db = new SQLiteConnection(_connectionString))
+            using (var db = new SqliteConnection(_connectionString))
             {
                 await db.OpenAsync();
                 try
                 {
-                    using (var cmd = new SQLiteCommand("PRAGMA table_info(manageditem);", db))
+                    using (var cmd = new SqliteCommand("PRAGMA table_info(manageditem);", db))
                     {
 
                         using (var reader = await cmd.ExecuteReaderAsync())
@@ -279,7 +289,7 @@ namespace Certify.Datastore.SQLite
 
                     if (cols.Contains("json"))
                     {
-                        using (var cmd = new SQLiteCommand("ALTER TABLE manageditem RENAME COLUMN json TO config;", db))
+                        using (var cmd = new SqliteCommand("ALTER TABLE manageditem RENAME COLUMN json TO config;", db))
                         {
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -287,7 +297,7 @@ namespace Certify.Datastore.SQLite
 
                     if (!cols.Contains("itemtype"))
                     {
-                        using (var cmd = new SQLiteCommand($"ALTER TABLE manageditem ADD COLUMN itemtype TEXT NOT NULL DEFAULT 'managedcertificate';", db))
+                        using (var cmd = new SqliteCommand($"ALTER TABLE manageditem ADD COLUMN itemtype TEXT NOT NULL DEFAULT 'managedcertificate';", db))
                         {
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -295,7 +305,7 @@ namespace Certify.Datastore.SQLite
 
                     if (!cols.Contains("itemvalue"))
                     {
-                        using (var cmd = new SQLiteCommand("ALTER TABLE manageditem ADD COLUMN itemvalue TEXT NULL;", db))
+                        using (var cmd = new SqliteCommand("ALTER TABLE manageditem ADD COLUMN itemvalue TEXT NULL;", db))
                         {
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -303,7 +313,7 @@ namespace Certify.Datastore.SQLite
 
                     if (cols.Contains("parentid"))
                     {
-                        using (var cmd = new SQLiteCommand("ALTER TABLE manageditem DROP COLUMN parentid;", db))
+                        using (var cmd = new SqliteCommand("ALTER TABLE manageditem DROP COLUMN parentid;", db))
                         {
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -311,22 +321,22 @@ namespace Certify.Datastore.SQLite
 
                     //migrate legacy securityprinciple items TODO: can be removed post-beta
 
-                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET id=replace(id,'securityprinciple','securityprincipal') WHERE id like 'securityprinciple%';", db))
+                    using (var cmd = new SqliteCommand("UPDATE manageditem SET id=replace(id,'securityprinciple','securityprincipal') WHERE id like 'securityprinciple%';", db))
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
 
-                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET itemtype='securityprincipal' WHERE itemtype ='securityprinciple';", db))
+                    using (var cmd = new SqliteCommand("UPDATE manageditem SET itemtype='securityprincipal' WHERE itemtype ='securityprinciple';", db))
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
 
-                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET config=replace(config,'Principle','Principal') WHERE config like '%Principle%';", db))
+                    using (var cmd = new SqliteCommand("UPDATE manageditem SET config=replace(config,'Principle','Principal') WHERE config like '%Principle%';", db))
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
 
-                    using (var cmd = new SQLiteCommand("UPDATE manageditem SET config=replace(config,'principle','principal') WHERE config like '%principle%';", db))
+                    using (var cmd = new SqliteCommand("UPDATE manageditem SET config=replace(config,'principle','principal') WHERE config like '%principle%';", db))
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
@@ -350,18 +360,20 @@ namespace Certify.Datastore.SQLite
 
             try
             {
-                using (var db = new SQLiteConnection(_connectionString))
+                using (var db = new SqliteConnection(_connectionString))
                 {
                     await db.OpenAsync();
-                    using (var cmd = new SQLiteCommand("CREATE TABLE manageditem (id TEXT NOT NULL UNIQUE PRIMARY KEY, itemtype TEXT NOT NULL, config TEXT NOT NULL, itemvalue TEXT NULL)", db))
+                    using (var cmd = new SqliteCommand("CREATE TABLE manageditem (id TEXT NOT NULL UNIQUE PRIMARY KEY, itemtype TEXT NOT NULL, config TEXT NOT NULL, itemvalue TEXT NULL)", db))
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
-
-                    db.Close();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to create managed items schema");
+                throw;
+            }
         }
     }
 }
