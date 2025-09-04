@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +7,7 @@ using Certify.Models.Config;
 using Certify.Models.Hub;
 using Certify.Models.Providers;
 using Certify.Providers;
+using Microsoft.Data.Sqlite;
 using Newtonsoft.Json;
 
 namespace Certify.Datastore.SQLite
@@ -88,20 +88,20 @@ namespace Certify.Datastore.SQLite
 
             if (File.Exists(path))
             {
-                using (var db = new SQLiteConnection($"Data Source={path}"))
+                using (var db = new SqliteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
 
-                    var queryParameters = new List<SQLiteParameter>();
+                    var queryParameters = new List<SqliteParameter>();
                     var conditions = new List<string>();
                     var sql = @"SELECT id, itemtype, config FROM manageditem ";
 
-                    queryParameters.Add(new SQLiteParameter("@itemType", itemType.ToLowerInvariant()));
+                    queryParameters.Add(new SqliteParameter("@itemType", itemType.ToLowerInvariant()));
 
                     if (id != null)
                     {
                         conditions.Add("id = @id");
-                        queryParameters.Add(new SQLiteParameter("@id", id));
+                        queryParameters.Add(new SqliteParameter("@id", id));
                     }
 
                     sql += $" WHERE itemtype='{itemType.ToLowerInvariant()}' ";
@@ -114,7 +114,7 @@ namespace Certify.Datastore.SQLite
                         }
                     }
 
-                    using (var cmd = new SQLiteCommand(sql, db))
+                    using (var cmd = new SqliteCommand(sql, db))
                     {
                         cmd.Parameters.AddRange(queryParameters.ToArray());
 
@@ -148,7 +148,7 @@ namespace Certify.Datastore.SQLite
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
                 // save new/modified item into credentials database
-                using (var db = new SQLiteConnection($"Data Source={path}"))
+                using (var db = new SqliteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
@@ -160,10 +160,10 @@ namespace Certify.Datastore.SQLite
 
                         var exists = false;
                         var dupe = "";
-                        using (var cmd = new SQLiteCommand(query, db))
+                        using (var cmd = new SqliteCommand(query, db))
                         {
-                            cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SQLiteParameter("@itemType", item.ItemType.ToLowerInvariant()));
+                            cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
+                            cmd.Parameters.Add(new SqliteParameter("@itemType", item.ItemType.ToLowerInvariant()));
 
                             using (var reader = await cmd.ExecuteReaderAsync())
                             {
@@ -181,13 +181,13 @@ namespace Certify.Datastore.SQLite
                         }
 #endif
 
-                        using (var cmd = new SQLiteCommand(
+                        using (var cmd = new SqliteCommand(
                                    "INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)",
                                    db))
                         {
-                            cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", item.ItemType.ToLowerInvariant()));
-                            cmd.Parameters.Add(new SQLiteParameter("@config", item.Config));
+                            cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
+                            cmd.Parameters.Add(new SqliteParameter("@itemtype", item.ItemType.ToLowerInvariant()));
+                            cmd.Parameters.Add(new SqliteParameter("@config", item.Config));
 
                             await cmd.ExecuteNonQueryAsync();
                         }
