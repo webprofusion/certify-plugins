@@ -240,6 +240,7 @@ namespace Certify.Datastore.SQLite
                     {
                         using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE id=@id AND @itemtype=itemtype", db))
                         {
+                            cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", id));
                             cmd.Parameters.Add(new SqliteParameter("@itemtype", itemType.ToLowerInvariant()));
                             await cmd.ExecuteNonQueryAsync();

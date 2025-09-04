@@ -162,6 +162,7 @@ namespace Certify.Datastore.SQLite
                         var dupe = "";
                         using (var cmd = new SqliteCommand(query, db))
                         {
+                            cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
                             cmd.Parameters.Add(new SqliteParameter("@itemType", item.ItemType.ToLowerInvariant()));
 
@@ -185,6 +186,7 @@ namespace Certify.Datastore.SQLite
                                    "INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)",
                                    db))
                         {
+                            cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
                             cmd.Parameters.Add(new SqliteParameter("@itemtype", item.ItemType.ToLowerInvariant()));
                             cmd.Parameters.Add(new SqliteParameter("@config", item.Config));
