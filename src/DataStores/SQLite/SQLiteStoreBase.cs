@@ -50,11 +50,13 @@ namespace Certify.Datastore.SQLite
             _log = log;
 
             _retryPolicy = Policy
-                    .Handle<ArgumentException>()
-                    .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
-                    {
-                        _log.Warning($"Retrying DB operation..{retryCount} {exception}");
-                    });
+                .Handle<SqliteException>()
+                .Or<ArgumentException>()
+                .Or<InvalidOperationException>()
+                .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
+                {
+                    _log?.Warning($"Retrying DB operation..{retryCount} {exception}");
+                });
 
             if (!string.IsNullOrEmpty(storageSubfolder))
             {
@@ -232,13 +234,14 @@ namespace Certify.Datastore.SQLite
             try
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-                // save modified items into settings database
+
+                // delete specific item
                 using (var db = new SqliteConnection(_connectionString))
                 {
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
-                        using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE id=@id AND @itemtype=itemtype", db))
+                        using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
                         {
                             cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", id));
@@ -364,11 +367,13 @@ namespace Certify.Datastore.SQLite
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
-
-                    db.Close();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to create managed items schema");
+                throw;
+            }
         }
     }
 }
