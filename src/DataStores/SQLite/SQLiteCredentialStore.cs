@@ -318,6 +318,7 @@ namespace Certify.Datastore.SQLite
                     {
                         using (var cmd = new SqliteCommand("INSERT OR REPLACE INTO manageditem (id, config, itemtype, itemvalue) VALUES (@id, @config, @itemtype, @itemvalue)", db))
                         {
+                            cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", credentialInfo.StorageKey));
                             cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(credentialInfo)));
                             cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));

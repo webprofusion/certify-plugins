@@ -65,6 +65,7 @@ namespace Certify.Datastore.SQLite
                     {
                         using (var cmd = new SqliteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
                         {
+                            cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
                             cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
                             cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(item)));
@@ -417,6 +418,7 @@ namespace Certify.Datastore.SQLite
                         {
                             using (var cmd = new SqliteCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
                             {
+                                cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqliteParameter("@id", managedCertificate.Id));
                                 cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
 
@@ -451,6 +453,7 @@ namespace Certify.Datastore.SQLite
 
                             using (var cmd = new SqliteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
                             {
+                                cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqliteParameter("@id", managedCertificate.Id));
                                 cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
                                 cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
@@ -488,6 +491,7 @@ namespace Certify.Datastore.SQLite
                 {
                     using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
                     {
+                        cmd.Transaction = tran;
                         cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
                         cmd.Parameters.Add(new SqliteParameter("@nameStartsWith", nameStartsWith));
                         await cmd.ExecuteNonQueryAsync();
