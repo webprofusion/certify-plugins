@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -55,7 +55,7 @@ namespace Certify.Datastore.SQLite
 
             // save all new/modified items into settings database
 
-            using (var db = new SQLiteConnection(_connectionString))
+            using (var db = new SqliteConnection(_connectionString))
             {
 
                 await db.OpenAsync();
@@ -63,11 +63,11 @@ namespace Certify.Datastore.SQLite
                 {
                     foreach (var item in list)
                     {
-                        using (var cmd = new SQLiteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
+                        using (var cmd = new SqliteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
                         {
-                            cmd.Parameters.Add(new SQLiteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
-                            cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(item)));
+                            cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
+                            cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
+                            cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(item)));
                             await cmd.ExecuteNonQueryAsync();
                         }
                     }
@@ -90,7 +90,7 @@ namespace Certify.Datastore.SQLite
             }
         }
 
-        public static (string sql, List<SQLiteParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
+        public static (string sql, List<SqliteParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
             var sql = @"SELECT i.id, i.config, i.config ->> 'Name' as Name, 
                 datetime(i.config ->> 'DateRenewed') as DateRenewed, 
@@ -103,60 +103,60 @@ namespace Certify.Datastore.SQLite
                 sql = "SELECT COUNT (1) as numItems, i.config ->> 'Name' as Name  FROM manageditem i ";
             }
 
-            var queryParameters = new List<SQLiteParameter>();
+            var queryParameters = new List<SqliteParameter>();
             var conditions = new List<string>();
 
             if (!string.IsNullOrEmpty(filter.Id))
             {
                 conditions.Add(" i.id = @id");
-                queryParameters.Add(new SQLiteParameter("@id", filter.Id));
+                queryParameters.Add(new SqliteParameter("@id", filter.Id));
             }
 
             if (!string.IsNullOrEmpty(filter.Name))
             {
                 conditions.Add(" Name LIKE @name"); // case insensitive string match
-                queryParameters.Add(new SQLiteParameter("@name", filter.Name));
+                queryParameters.Add(new SqliteParameter("@name", filter.Name));
             }
 
             if (!string.IsNullOrEmpty(filter.Keyword))
             {
                 conditions.Add(" (Name LIKE '%' || @keyword || '%')"); // case insensitive string contains
-                queryParameters.Add(new SQLiteParameter("@keyword", filter.Keyword));
+                queryParameters.Add(new SqliteParameter("@keyword", filter.Keyword));
             }
 
             if (filter.LastOCSPCheckMins != null)
             {
                 conditions.Add(" datetime(i.config ->> 'DateLastOcspCheck') < @ocspCheckDate");
-                queryParameters.Add(new SQLiteParameter("@ocspCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
+                queryParameters.Add(new SqliteParameter("@ocspCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastOCSPCheckMins).ToUniversalTime()));
             }
 
             if (filter.LastRenewalInfoCheckMins != null)
             {
                 conditions.Add(" datetime(i.config ->> 'DateLastRenewalInfoCheck') < @renewalInfoCheckDate");
-                queryParameters.Add(new SQLiteParameter("@renewalInfoCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
+                queryParameters.Add(new SqliteParameter("@renewalInfoCheckDate", DateTime.UtcNow.AddMinutes((int)-filter.LastRenewalInfoCheckMins).ToUniversalTime()));
             }
 
             if (filter.ChallengeType != null)
             {
                 conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeType'=@challengeType)"); // challenges.value->>'ChallengeType'=@challengeType
-                queryParameters.Add(new SQLiteParameter("@challengeType", filter.ChallengeType));
+                queryParameters.Add(new SqliteParameter("@challengeType", filter.ChallengeType));
             }
 
             if (filter.ChallengeProvider != null)
             {
                 conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeProvider'=@challengeProvider)");
-                queryParameters.Add(new SQLiteParameter("@challengeProvider", filter.ChallengeProvider));
+                queryParameters.Add(new SqliteParameter("@challengeProvider", filter.ChallengeProvider));
             }
 
             if (filter.StoredCredentialKey != null)
             {
                 conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeCredentialKey'=@challengeCredentialKey)");
-                queryParameters.Add(new SQLiteParameter("@challengeCredentialKey", filter.StoredCredentialKey));
+                queryParameters.Add(new SqliteParameter("@challengeCredentialKey", filter.StoredCredentialKey));
             }
 
             sql += $" WHERE itemtype=@itemtype ";
 
-            queryParameters.Add(new SQLiteParameter("@itemtype", _itemType));
+            queryParameters.Add(new SqliteParameter("@itemtype", _itemType));
 
             if (conditions.Any())
             {
@@ -198,8 +198,8 @@ namespace Certify.Datastore.SQLite
 
                     await _retryPolicy.ExecuteAsync(async () =>
                     {
-                        using (var db = new SQLiteConnection(_connectionString))
-                        using (var cmd = new SQLiteCommand(sql, db))
+                        using (var db = new SqliteConnection(_connectionString))
+                        using (var cmd = new SqliteCommand(sql, db))
                         {
                             cmd.Parameters.AddRange(queryParameters.ToArray());
 
@@ -246,8 +246,8 @@ namespace Certify.Datastore.SQLite
 
                     await _retryPolicy.ExecuteAsync(async () =>
                     {
-                        using (var db = new SQLiteConnection(_connectionString))
-                        using (var cmd = new SQLiteCommand(sql, db))
+                        using (var db = new SqliteConnection(_connectionString))
+                        using (var cmd = new SqliteCommand(sql, db))
                         {
                             cmd.Parameters.AddRange(queryParameters.ToArray());
 
@@ -355,11 +355,11 @@ namespace Certify.Datastore.SQLite
 
             await _retryPolicy.ExecuteAsync(async () =>
             {
-                using (var db = new SQLiteConnection(_connectionString))
-                using (var cmd = new SQLiteCommand("SELECT config FROM manageditem WHERE id=@id and itemtype=@itemtype", db))
+                using (var db = new SqliteConnection(_connectionString))
+                using (var cmd = new SqliteCommand("SELECT config FROM manageditem WHERE id=@id and itemtype=@itemtype", db))
                 {
-                    cmd.Parameters.Add(new SQLiteParameter("@id", siteId));
-                    cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
+                    cmd.Parameters.Add(new SqliteParameter("@id", siteId));
+                    cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
 
                     await db.OpenAsync();
                     using (var reader = await cmd.ExecuteReaderAsync())
@@ -406,7 +406,7 @@ namespace Certify.Datastore.SQLite
 
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    using (var db = new SQLiteConnection(_connectionString))
+                    using (var db = new SqliteConnection(_connectionString))
                     {
                         await db.OpenAsync();
 
@@ -415,10 +415,10 @@ namespace Certify.Datastore.SQLite
                         // get current version from DB
                         using (var tran = db.BeginTransaction())
                         {
-                            using (var cmd = new SQLiteCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
+                            using (var cmd = new SqliteCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
                             {
-                                cmd.Parameters.Add(new SQLiteParameter("@id", managedCertificate.Id));
-                                cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new SqliteParameter("@id", managedCertificate.Id));
+                                cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
 
                                 using (var reader = await cmd.ExecuteReaderAsync())
                                 {
@@ -449,11 +449,11 @@ namespace Certify.Datastore.SQLite
                                 }
                             }
 
-                            using (var cmd = new SQLiteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
+                            using (var cmd = new SqliteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
                             {
-                                cmd.Parameters.Add(new SQLiteParameter("@id", managedCertificate.Id));
-                                cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
-                                cmd.Parameters.Add(new SQLiteParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
+                                cmd.Parameters.Add(new SqliteParameter("@id", managedCertificate.Id));
+                                cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
 
                                 await cmd.ExecuteNonQueryAsync();
                             }
@@ -481,15 +481,15 @@ namespace Certify.Datastore.SQLite
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            using (var db = new SQLiteConnection(_connectionString))
+            using (var db = new SqliteConnection(_connectionString))
             {
                 await db.OpenAsync();
                 using (var tran = db.BeginTransaction())
                 {
-                    using (var cmd = new SQLiteCommand($"DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
+                    using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
                     {
-                        cmd.Parameters.Add(new SQLiteParameter("@itemtype", _itemType));
-                        cmd.Parameters.Add(new SQLiteParameter("@nameStartsWith", nameStartsWith));
+                        cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
+                        cmd.Parameters.Add(new SqliteParameter("@nameStartsWith", nameStartsWith));
                         await cmd.ExecuteNonQueryAsync();
                     }
 
