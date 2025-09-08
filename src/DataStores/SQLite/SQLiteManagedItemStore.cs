@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Data.Sqlite;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,6 +9,7 @@ using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Models.Reporting;
 using Certify.Providers;
+using Microsoft.Data.Sqlite;
 using Newtonsoft.Json;
 
 namespace Certify.Datastore.SQLite
@@ -299,8 +299,8 @@ namespace Certify.Datastore.SQLite
         {
             var appDataPath = EnvironmentUtil.EnsuredAppDataPath(_storageSubFolder);
 
-            var json = Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.json");
-            var db = Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.db");
+            var json = Path.Combine(appDataPath, $"{_customDbFileName ?? ITEMMANAGERCONFIG}.json");
+            var db = Path.Combine(appDataPath, $"{_customDbFileName ?? ITEMMANAGERCONFIG}.db");
 
             var managedCertificateList = new List<ManagedCertificate>();
 
