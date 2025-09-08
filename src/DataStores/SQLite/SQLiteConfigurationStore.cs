@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,11 +12,50 @@ using Newtonsoft.Json;
 
 namespace Certify.Datastore.SQLite
 {
-    class ConfigurationItem
+    /// <summary>
+    /// Base class for individual configuration items stored in the database
+    /// </summary>
+    public class ConfigurationItem
     {
         public string Id { get; set; }
         public string ItemType { get; set; }
         public string Config { get; set; }
+    }
+
+    /// <summary>
+    /// Strongly typed configuration item for individual objects
+    /// </summary>
+    /// <typeparam name="T">The type of object being stored</typeparam>
+    public class TypedConfigurationItem<T> : ConfigurationItem
+    {
+        public TypedConfigurationItem()
+        {
+            ItemType = typeof(T).Name.ToLowerInvariant();
+        }
+
+        public TypedConfigurationItem(string id, T item) : this()
+        {
+            Id = id;
+            SetItem(item);
+        }
+
+        public void SetItem(T item)
+        {
+            Config = JsonConvert.SerializeObject(item, Formatting.Indented, new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+        }
+
+        public T GetItem()
+        {
+            if (string.IsNullOrEmpty(Config))
+            {
+                return default(T);
+            }
+
+            return JsonConvert.DeserializeObject<T>(Config);
+        }
     }
 
     public class SQLiteConfigurationStore : SQLiteStoreBase, IConfigurationStore
