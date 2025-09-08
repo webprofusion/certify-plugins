@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -61,7 +61,10 @@ namespace Certify.Datastore.SQLite
     public class SQLiteConfigurationStore : SQLiteStoreBase, IConfigurationStore
     {
         public SQLiteConfigurationStore() { }
-        public SQLiteConfigurationStore(string storageSubfolder = null, ILog log = null) : base(storageSubfolder, log) { }
+        public SQLiteConfigurationStore(string storageSubfolder = null, ILog log = null, string customDbFileName = null) : base(storageSubfolder, log, customDbFileName)
+        {
+
+        }
 
         private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -87,7 +90,7 @@ namespace Certify.Datastore.SQLite
         {
             try
             {
-                await GetItems();
+                await GetItems<ConfigurationStoreItem>("ConfigurationStoreItem");
                 return true;
             }
             catch
@@ -97,61 +100,186 @@ namespace Certify.Datastore.SQLite
         }
 
         /// <summary>
-        /// Delete item by key
+        /// Delete item by key and type
         /// </summary>
-        /// <param name="storageKey"></param>
+        /// <param name="itemType">The type of item to delete</param>
+        /// <param name="id">The ID of the item to delete</param>
         /// <returns></returns>
         public async Task<bool> Delete<T>(string itemType, string id)
         {
             try
             {
-                await base.Delete(id, itemType);
+                await base.Delete(id, GetNormalizedItemType<T>(itemType));
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                _log?.Error(ex, "Failed to delete item {ItemType} with ID {Id}", itemType, id);
                 return false;
             }
         }
 
         /// <summary>
-        /// Return list of items for given type 
+        /// Get a specific item by type and ID
         /// </summary>
-        /// <param name="type"></param>
+        /// <typeparam name="T">The type to deserialize to</typeparam>
+        /// <param name="itemType">The item type identifier</param>
+        /// <param name="id">The item ID</param>
         /// <returns></returns>
-        private async Task<List<ConfigurationItem>> GetItems(string itemType = nameof(SecurityPrincipal),
-            string id = null)
+        public async Task<T> Get<T>(string itemType, string id)
+        {
+            var items = await GetConfigurationItems(GetNormalizedItemType<T>(itemType), id);
+            var item = items.FirstOrDefault();
+            
+            if (item != null)
+            {
+                return JsonConvert.DeserializeObject<T>(item.Config);
+            }
+            
+            return default(T);
+        }
+
+        /// <summary>
+        /// Add a new item
+        /// </summary>
+        /// <typeparam name="T">The type of item to add</typeparam>
+        /// <param name="itemType">The item type identifier</param>
+        /// <param name="item">The item to add</param>
+        /// <returns></returns>
+        public async Task Add<T>(string itemType, T item)
+        {
+            await Update(itemType, item);
+        }
+
+        /// <summary>
+        /// Update an existing item or add if it doesn't exist
+        /// </summary>
+        /// <typeparam name="T">The type of item to update</typeparam>
+        /// <param name="itemType">The item type identifier</param>
+        /// <param name="item">The item to update</param>
+        /// <returns></returns>
+        public async Task Update<T>(string itemType, T item)
+        {
+            string itemId;
+            string normalizedItemType = GetNormalizedItemType<T>(itemType);
+
+            // Extract ID from the item
+            if (item is ConfigurationStoreItem configStoreItem)
+            {
+                itemId = configStoreItem.Id;
+            }
+            else if (item is IIdentifiable identifiable)
+            {
+                itemId = identifiable.Id;
+            }
+            else
+            {
+                // Try to find an Id property using reflection
+                var idProperty = typeof(T).GetProperty("Id");
+                if (idProperty != null && idProperty.PropertyType == typeof(string))
+                {
+                    itemId = (string)idProperty.GetValue(item);
+                }
+                else
+                {
+                    throw new ArgumentException($"Item of type {typeof(T).Name} must have an 'Id' property of type string or implement IIdentifiable");
+                }
+            }
+
+            if (string.IsNullOrEmpty(itemId))
+            {
+                throw new ArgumentException("Item ID cannot be null or empty");
+            }
+
+            var configItem = new TypedConfigurationItem<T>(itemId, item)
+            {
+                ItemType = normalizedItemType
+            };
+
+            await UpdateConfigurationItem(configItem);
+        }
+
+        /// <summary>
+        /// Get all items of a specific type
+        /// </summary>
+        /// <typeparam name="T">The type of items to retrieve</typeparam>
+        /// <param name="itemType">The item type identifier</param>
+        /// <returns></returns>
+        public async Task<List<T>> GetItems<T>(string itemType)
+        {
+            var items = await GetConfigurationItems(GetNormalizedItemType<T>(itemType), null);
+            var results = new List<T>();
+
+            foreach (var item in items)
+            {
+                try
+                {
+                    var deserializedItem = JsonConvert.DeserializeObject<T>(item.Config);
+                    if (deserializedItem != null)
+                    {
+                        results.Add(deserializedItem);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log?.Error(ex, "Failed to deserialize item {ItemId} of type {ItemType}", item.Id, item.ItemType);
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Get normalized item type for storage
+        /// </summary>
+        /// <typeparam name="T">The type being stored</typeparam>
+        /// <param name="itemType">The provided item type</param>
+        /// <returns></returns>
+        private string GetNormalizedItemType<T>(string itemType)
+        {
+            // Use provided itemType if available, otherwise use the type name
+            return string.IsNullOrEmpty(itemType) 
+                ? typeof(T).Name.ToLowerInvariant() 
+                : itemType.ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Get configuration items from database
+        /// </summary>
+        /// <param name="itemType">The item type to filter by</param>
+        /// <param name="id">Optional specific ID to retrieve</param>
+        /// <returns></returns>
+        private async Task<List<ConfigurationItem>> GetConfigurationItems(string itemType, string id = null)
         {
             var items = new List<ConfigurationItem>();
             var path = GetDbPath();
 
-            if (File.Exists(path))
+            if (!File.Exists(path))
             {
+                return items;
+            }
+
+            try
+            {
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
                 using (var db = new SqliteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
 
                     var queryParameters = new List<SqliteParameter>();
                     var conditions = new List<string>();
-                    var sql = @"SELECT id, itemtype, config FROM manageditem ";
+                    var sql = "SELECT id, itemtype, config FROM manageditem WHERE itemtype = @itemType";
 
-                    queryParameters.Add(new SqliteParameter("@itemType", itemType.ToLowerInvariant()));
+                    queryParameters.Add(new SqliteParameter("@itemType", itemType));
 
-                    if (id != null)
+                    if (!string.IsNullOrEmpty(id))
                     {
-                        conditions.Add("id = @id");
+                        sql += " AND id = @id";
                         queryParameters.Add(new SqliteParameter("@id", id));
                     }
 
-                    sql += $" WHERE itemtype='{itemType.ToLowerInvariant()}' ";
-
-                    if (conditions.Any())
-                    {
-                        foreach (var c in conditions)
-                        {
-                            sql += $" AND {c} ";
-                        }
-                    }
+                    sql += " ORDER BY id";
 
                     using (var cmd = new SqliteCommand(sql, db))
                     {
@@ -171,53 +299,57 @@ namespace Certify.Datastore.SQLite
                             }
                         }
                     }
-
-                    db.Close();
                 }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to get configuration items of type {ItemType}", itemType);
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
 
             return items;
         }
 
-        private async Task<ConfigurationItem> Update(ConfigurationItem item)
+        /// <summary>
+        /// Update a configuration item in the database
+        /// </summary>
+        /// <param name="item">The configuration item to update</param>
+        /// <returns></returns>
+        private async Task UpdateConfigurationItem(ConfigurationItem item)
         {
             var path = GetDbPath();
 
             try
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-                // save new/modified item into credentials database
+
                 using (var db = new SqliteConnection($"Data Source={path}"))
                 {
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
 #if DEBUG
-
-                        // check if anything exists with same id but different item type
-                        var query = "SELECT id, itemtype, config FROM manageditem WHERE id=@id AND itemtype!=@itemType";
-
-                        var exists = false;
-                        var dupe = "";
-                        using (var cmd = new SqliteCommand(query, db))
+                        // Debug check: ensure no duplicate IDs with different item types
+                        var query = "SELECT id, itemtype FROM manageditem WHERE id = @id AND itemtype != @itemType";
+                        
+                        using (var checkCmd = new SqliteCommand(query, db))
                         {
-                            cmd.Transaction = tran;
-                            cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SqliteParameter("@itemType", item.ItemType.ToLowerInvariant()));
+                            checkCmd.Transaction = tran;
+                            checkCmd.Parameters.Add(new SqliteParameter("@id", item.Id));
+                            checkCmd.Parameters.Add(new SqliteParameter("@itemType", item.ItemType));
 
-                            using (var reader = await cmd.ExecuteReaderAsync())
+                            using (var reader = await checkCmd.ExecuteReaderAsync())
                             {
                                 if (await reader.ReadAsync())
                                 {
-                                    exists = true;
-                                    dupe = $"{item.Id} :: {(string)reader["itemType"]}";
+                                    var existingType = (string)reader["itemtype"];
+                                    _log?.Warning("Config Store: Item {Id} already exists with different type {ExistingType}, updating to {NewType}", 
+                                        item.Id, existingType, item.ItemType);
                                 }
                             }
-                        }
-
-                        if (exists)
-                        {
-                            throw new Exception($"Config Store: Item {item.Id} already exists with different type {dupe}");
                         }
 #endif
 
@@ -227,7 +359,7 @@ namespace Certify.Datastore.SQLite
                         {
                             cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SqliteParameter("@itemtype", item.ItemType.ToLowerInvariant()));
+                            cmd.Parameters.Add(new SqliteParameter("@itemtype", item.ItemType));
                             cmd.Parameters.Add(new SqliteParameter("@config", item.Config));
 
                             await cmd.ExecuteNonQueryAsync();
@@ -235,62 +367,25 @@ namespace Certify.Datastore.SQLite
 
                         tran.Commit();
                     }
-
-                    db.Close();
                 }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to update configuration item {Id} of type {ItemType}", item.Id, item.ItemType);
+                throw;
             }
             finally
             {
                 _dbMutex.Release();
             }
-
-            return item;
         }
+    }
 
-        public async Task<T> Get<T>(string itemType, string id)
-        {
-            var items = await GetItems(itemType, id);
-            var item = items.FirstOrDefault();
-            if (item != null)
-            {
-                return JsonConvert.DeserializeObject<T>(item.Config);
-            }
-            else
-            {
-                return default;
-            }
-        }
-
-        public async Task Add<T>(string itemType, T item)
-        {
-            await Update(itemType, item);
-        }
-
-        public async Task Update<T>(string itemType, T item)
-        {
-
-            if (item is ConfigurationStoreItem)
-            {
-
-                var configItem = new ConfigurationItem
-                {
-                    Id = (item as ConfigurationStoreItem).Id,
-                    ItemType = typeof(T).Name,
-                    Config = JsonConvert.SerializeObject(item, _jsonSerializerSettings)
-                };
-
-                await Update(configItem);
-            }
-            else
-            {
-                throw new Exception("Could not store item type");
-            }
-        }
-
-        public async Task<List<T>> GetItems<T>(string itemType)
-        {
-            var items = await GetItems(itemType, null);
-            return items.Select(i => JsonConvert.DeserializeObject<T>(i.Config)).ToList();
-        }
+    /// <summary>
+    /// Interface for objects that can provide their own ID
+    /// </summary>
+    public interface IIdentifiable
+    {
+        string Id { get; }
     }
 }
