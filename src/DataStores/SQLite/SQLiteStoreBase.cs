@@ -23,6 +23,7 @@ namespace Certify.Datastore.SQLite
         /// path to storage db, actual path is determined on init
         /// </summary>
         protected string _dbPath = $"C:\\programdata\\certify\\{ITEMMANAGERCONFIG}.db";
+        protected string _customDbFileName = null;
         protected string _connectionString;
         protected AsyncRetryPolicy _retryPolicy;
         protected ILog _log;
@@ -35,8 +36,22 @@ namespace Certify.Datastore.SQLite
 
         }
 
-        public SQLiteStoreBase(string storageSubfolder = null, ILog log = null)
+        /// <summary>
+        /// Default dn file is manageditems.db, this allows override for other uses
+        /// </summary>
+        /// <param name="name"></param>
+        public void SetCustomDbFileName(string name)
         {
+            _customDbFileName = name;
+        }
+
+        public SQLiteStoreBase(string storageSubfolder = null, ILog log = null, string customDbFileName = null)
+        {
+            if (customDbFileName != null)
+            {
+                _customDbFileName = customDbFileName;
+            }
+
             Init(storageSubfolder, log);
         }
 
@@ -121,13 +136,21 @@ namespace Certify.Datastore.SQLite
                 using (var db = new SqliteConnection(_connectionString))
                 {
                     db.Open();
-                    var walCmd = db.CreateCommand();
-                    walCmd.CommandText =
-                    @"
-                    PRAGMA wal_checkpoint(FULL);
-                    VACUUM;
-                ";
-                    walCmd.ExecuteNonQuery();
+
+                    using (var walCmd = db.CreateCommand())
+                    {
+                        // checkpoint (commit transaction log to main db file) and truncate log to reduce size
+                        // then run VACUUM to defragment db and reduce size
+
+                        walCmd.CommandText =
+                            @"
+                        PRAGMA wal_checkpoint(TRUNCATE);
+                        VACUUM;
+                        ";
+
+                        walCmd.ExecuteNonQuery();
+                    }
+
                     db.Close();
                 }
             }
@@ -146,12 +169,15 @@ namespace Certify.Datastore.SQLite
                 using (var db = new SqliteConnection(_connectionString))
                 {
                     db.Open();
-                    var walCmd = db.CreateCommand();
-                    walCmd.CommandText =
-                    @"
-                    PRAGMA journal_mode = 'wal';
-                ";
-                    walCmd.ExecuteNonQuery();
+
+                    using (var walCmd = db.CreateCommand())
+                    {
+                        // Enable WRITE AHEAD LOGGING to allow concurrent reads and writes
+                        walCmd.CommandText = "PRAGMA journal_mode = 'wal';";
+
+                        walCmd.ExecuteNonQuery();
+                    }
+
                     db.Close();
                 }
             }
@@ -168,7 +194,7 @@ namespace Certify.Datastore.SQLite
         protected string GetDbPath()
         {
             var appDataPath = EnvironmentUtil.EnsuredAppDataPath(_storageSubFolder);
-            return Path.Combine(appDataPath, $"{ITEMMANAGERCONFIG}.db");
+            return Path.Combine(appDataPath, $"{_customDbFileName ?? ITEMMANAGERCONFIG}.db");
         }
 
         private void PerformDBBackup()
