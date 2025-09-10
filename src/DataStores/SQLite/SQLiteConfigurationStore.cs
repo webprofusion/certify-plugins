@@ -38,7 +38,11 @@ namespace Certify.Datastore.SQLite
             Id = id;
             SetItem(item);
         }
-
+        public TypedConfigurationItem(T item) : this()
+        {
+            Id = Guid.NewGuid().ToString();
+            SetItem(item);
+        }
         public void SetItem(T item)
         {
             Config = JsonConvert.SerializeObject(item, Formatting.Indented, new JsonSerializerSettings
@@ -130,12 +134,12 @@ namespace Certify.Datastore.SQLite
         {
             var items = await GetConfigurationItems(GetNormalizedItemType<T>(itemType), id);
             var item = items.FirstOrDefault();
-            
+
             if (item != null)
             {
                 return JsonConvert.DeserializeObject<T>(item.Config);
             }
-            
+
             return default(T);
         }
 
@@ -238,8 +242,8 @@ namespace Certify.Datastore.SQLite
         private string GetNormalizedItemType<T>(string itemType)
         {
             // Use provided itemType if available, otherwise use the type name
-            return string.IsNullOrEmpty(itemType) 
-                ? typeof(T).Name.ToLowerInvariant() 
+            return string.IsNullOrEmpty(itemType)
+                ? typeof(T).Name.ToLowerInvariant()
                 : itemType.ToLowerInvariant();
         }
 
@@ -334,7 +338,7 @@ namespace Certify.Datastore.SQLite
 #if DEBUG
                         // Debug check: ensure no duplicate IDs with different item types
                         var query = "SELECT id, itemtype FROM manageditem WHERE id = @id AND itemtype != @itemType";
-                        
+
                         using (var checkCmd = new SqliteCommand(query, db))
                         {
                             checkCmd.Transaction = tran;
@@ -346,7 +350,7 @@ namespace Certify.Datastore.SQLite
                                 if (await reader.ReadAsync())
                                 {
                                     var existingType = (string)reader["itemtype"];
-                                    _log?.Warning("Config Store: Item {Id} already exists with different type {ExistingType}, updating to {NewType}", 
+                                    _log?.Warning("Config Store: Item {Id} already exists with different type {ExistingType}, updating to {NewType}",
                                         item.Id, existingType, item.ItemType);
                                 }
                             }
