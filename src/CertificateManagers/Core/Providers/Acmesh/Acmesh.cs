@@ -226,7 +226,10 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                 foreach (var log in logFiles)
                 {
                     var logContent = File.ReadAllText(log.FullName);
-                    var logLines = logContent.Split('\n').Reverse();
+                    var logLines = logContent.Split('\n');
+
+                    logLines.Reverse();
+
                     var logResult = new StatusLogResult();
 
                     foreach (var line in logLines)
