@@ -26,11 +26,26 @@ namespace Certify.Providers.DeploymentTasks
 
                 var p = definition.ProviderParameters.First(k => k.Key == "servicename");
 
-                p.OptionsList = string.Join(";", services.Select(s => s.ServiceName + "=" + s.DisplayName));
+                p.OptionsList = string.Join(";", services.Select(s => s.ServiceName + "=" + FormatSvcName(s.DisplayName, s.ServiceName)));
             }
             catch { }
 
             return definition;
+        }
+
+        private string FormatSvcName(string displayName, string svcName)
+        {
+            if (displayName == null)
+            {
+                return svcName;
+            }
+
+            if (displayName.Length > 48)
+            {
+                return displayName.Substring(0, 48) + "..";
+            }
+
+            return displayName;
         }
 
         private static int MAX_DURATION = 10 * 60;
