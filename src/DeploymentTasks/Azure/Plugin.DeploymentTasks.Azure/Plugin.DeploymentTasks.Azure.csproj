@@ -11,8 +11,10 @@
         <PackageReference Include="Azure.Security.KeyVault.Certificates" Version="4.8.0" />
         <PackageReference Include="Microsoft.Azure.Management.AppService.Fluent" Version="1.38.1" />
         <PackageReference Include="Microsoft.Azure.Management.ResourceManager.Fluent" Version="1.38.1" />
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.8" />
-        <PackageReference Include="System.Text.Json" Version="9.0.8" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.9" />
+
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.9" />
+        <PackageReference Include="System.Text.Json" Version="9.0.9" />
     </ItemGroup>
 
     <ItemGroup>
