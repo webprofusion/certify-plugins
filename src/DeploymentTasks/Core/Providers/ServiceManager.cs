@@ -55,13 +55,13 @@ namespace Certify.Providers.DeploymentTasks
             Definition = new DeploymentProviderDefinition
             {
                 Id = "Certify.Providers.DeploymentTasks.ServiceManager",
-                Title = "Stop, Start or Restart a Service",
+                Title = "Restart a Service",
                 IsExperimental = false,
                 HasDynamicParameters = true,
                 UsageType = DeploymentProviderUsage.Any,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 SupportsRemoteTarget = false,
-                Description = "Used to restart a service affected by certificate updates.",
+                Description = "Used to stop, start or restart a service affected by certificate updates.",
                 ProviderParameters = new List<ProviderParameter>
                 {
                     new ProviderParameter{ Key="servicename", Name="Service", IsRequired=true, IsCredential=false, Type= OptionType.Select, OptionsList="W3SVC=World Wide Web Publishing Service;"},
