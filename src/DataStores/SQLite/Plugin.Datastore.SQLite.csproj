@@ -6,7 +6,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
-        <PackageReference Include="Polly" Version="8.6.3" />
+        <PackageReference Include="Polly" Version="8.6.4" />
     </ItemGroup>
 
     <ItemGroup>
