@@ -41,7 +41,6 @@ namespace Plugin.DeploymentTasks.Azure
             };
         }
 
-
         /// <summary>
         /// Deploy current cert to Azure App Service
         /// </summary>
@@ -224,8 +223,6 @@ namespace Plugin.DeploymentTasks.Azure
 
                     results.Add(new ActionResult("Certificate Deployed to Azure App Service", true));
                 }
-
-
             }
             catch (AuthenticationFailedException exp)
             {
