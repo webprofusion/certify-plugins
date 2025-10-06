@@ -146,12 +146,19 @@ namespace Certify.Datastore.SQLite
                 throw new ArgumentException("Item ID cannot be null or empty");
             }
 
-            var configItem = new TypedConfigurationItem<T>(itemId, item)
+            if (item is TypedConfigurationItem<T> typedItem)
             {
-                ItemType = normalizedItemType
-            };
+                await UpdateConfigurationItem(typedItem);
 
-            await UpdateConfigurationItem(configItem);
+            }
+            else
+            {
+                var configItem = new TypedConfigurationItem<T>(itemId, item)
+                {
+                    ItemType = normalizedItemType
+                };
+                await UpdateConfigurationItem(configItem);
+            }
         }
 
         /// <summary>
@@ -204,9 +211,9 @@ namespace Certify.Datastore.SQLite
         /// <param name="itemType">The item type to filter by</param>
         /// <param name="id">Optional specific ID to retrieve</param>
         /// <returns></returns>
-        private async Task<List<ConfigurationItem>> GetConfigurationItems(string itemType, string id = null)
+        private async Task<List<SerializedConfigurationItem>> GetConfigurationItems(string itemType, string id = null)
         {
-            var items = new List<ConfigurationItem>();
+            var items = new List<SerializedConfigurationItem>();
             var path = GetDbPath();
 
             if (!File.Exists(path))
@@ -244,7 +251,7 @@ namespace Certify.Datastore.SQLite
                         {
                             while (await reader.ReadAsync())
                             {
-                                var configItem = new ConfigurationItem
+                                var configItem = new SerializedConfigurationItem
                                 {
                                     Id = (string)reader["id"],
                                     ItemType = (string)reader["itemtype"],
@@ -273,7 +280,7 @@ namespace Certify.Datastore.SQLite
         /// </summary>
         /// <param name="item">The configuration item to update</param>
         /// <returns></returns>
-        private async Task UpdateConfigurationItem(ConfigurationItem item)
+        private async Task UpdateConfigurationItem(SerializedConfigurationItem item)
         {
             var path = GetDbPath();
 
@@ -334,13 +341,5 @@ namespace Certify.Datastore.SQLite
                 _dbMutex.Release();
             }
         }
-    }
-
-    /// <summary>
-    /// Interface for objects that can provide their own ID
-    /// </summary>
-    public interface IIdentifiable
-    {
-        string Id { get; }
     }
 }
