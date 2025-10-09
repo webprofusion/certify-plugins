@@ -253,6 +253,9 @@ namespace Certify.Datastore.SQLite
             {
                 _log?.Error("Failed to perform db backup: " + exp);
             }
+
+            // clear connection pool to release file locks
+            SqliteConnection.ClearAllPools();
         }
 
         public async Task Delete(string id, string itemType)
