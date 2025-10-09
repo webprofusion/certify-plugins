@@ -117,12 +117,23 @@ namespace Certify.Datastore.SQLite
 
                     _log?.Warning("Stored credentials database migrated to configuration items.");
 
-                    // check we have the credentials we just tried to store, then remove the old db
+                    // ensure all connections to old db are closed
+                    SqliteConnection.ClearAllPools();
+
+                    // check we have the credentials backup we just tried to store, then remove the old db so we don't try to migrate again
                     File.Copy(dbPath, $"{dbPath}.old", true);
+
                     if (File.Exists($"{dbPath}.old"))
                     {
-                        File.Delete(dbPath);
-                        _log?.Warning("Legacy credentials database backup created.");
+                        try
+                        {
+                            File.Delete(dbPath);
+                            _log?.Warning("Legacy credentials database backup created, old db removed.");
+                        }
+                        catch (Exception exp)
+                        {
+                            _log?.Error("Failed to delete legacy credentials database after migration: " + exp.ToString());
+                        }
                     }
                 }
             }
