@@ -44,7 +44,7 @@ namespace DeploymentTaskTests
 
             // test file list
             var fileList = client.ListFiles(destPath);
-            Assert.IsTrue(fileList.Count > 0);
+            Assert.IsNotEmpty(fileList);
 
             // test file copy
             var results = client.CopyLocalToRemote(_log, files);
@@ -87,7 +87,7 @@ namespace DeploymentTaskTests
 
             // test file list
             var fileList = client.ListFiles(destPath, null);
-            Assert.IsTrue(fileList.Count > 0);
+            Assert.IsNotEmpty(fileList);
 
             // test file copy
             var copiedOK = client.CopyLocalToRemote(files, null);

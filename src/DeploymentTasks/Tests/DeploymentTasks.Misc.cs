@@ -67,14 +67,13 @@ namespace DeploymentTaskTests
             var allProviders = await DeploymentTaskProviderFactory.GetDeploymentTaskProviders(_pluginManager.DeploymentTaskProviders);
 
             // all providers have a unique title
-            Assert.IsTrue(allProviders.Select(p => p.Title).Distinct().Count() == allProviders.Count);
+            Assert.AreEqual(allProviders.Count, allProviders.Select(p => p.Title).Distinct().Count());
 
             // all providers have a unique id
-            Assert.IsTrue(allProviders.Select(p => p.Id).Distinct().Count() == allProviders.Count);
+            Assert.AreEqual(allProviders.Count, allProviders.Select(p => p.Id).Distinct().Count());
 
             // all providers have a unique description
-            Assert.IsTrue(allProviders.Select(p => p.Description).Distinct().Count() == allProviders.Count);
+            Assert.AreEqual(allProviders.Count, allProviders.Select(p => p.Description).Distinct().Count());
         }
-
     }
 }
