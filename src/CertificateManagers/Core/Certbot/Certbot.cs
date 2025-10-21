@@ -159,7 +159,7 @@ namespace Plugin.CertificateManagers
                                         }
                                     };
 
-
+                                    parsedCert.Dispose();
                                 }
                                 catch (Exception exp)
                                 {
