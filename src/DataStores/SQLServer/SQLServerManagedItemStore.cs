@@ -87,6 +87,7 @@ namespace Certify.Datastore.SQLServer
                                 tran.Commit();
                             }
                         }
+
                         conn.Close();
 
                     }
@@ -144,6 +145,7 @@ namespace Certify.Datastore.SQLServer
 
                         tran.Commit();
                     }
+
                     db.Close();
                 }
             }
@@ -282,7 +284,6 @@ namespace Certify.Datastore.SQLServer
                 _dbMutex.Release();
             }
 
-
             Debug.WriteLine($"CountAll[SQL Server] took {watch.ElapsedMilliseconds}ms for {count} records");
 
             return count;
@@ -334,6 +335,7 @@ namespace Certify.Datastore.SQLServer
                             }
                         }
                     }
+
                     conn.Close();
                 }
             });
@@ -365,6 +367,7 @@ namespace Certify.Datastore.SQLServer
                             reader.Close();
                         }
                     }
+
                     conn.Close();
                 }
             });
@@ -389,8 +392,8 @@ namespace Certify.Datastore.SQLServer
                         {
                             await cmd.ExecuteReaderAsync();
                             queryOK = true;
-
                         }
+
                         conn.Close();
                     }
                 });
