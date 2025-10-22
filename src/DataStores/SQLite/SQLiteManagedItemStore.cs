@@ -8,6 +8,7 @@ using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
 using Certify.Models.Reporting;
+using Certify.Models.Shared;
 using Certify.Providers;
 using Microsoft.Data.Sqlite;
 using Newtonsoft.Json;
@@ -153,6 +154,26 @@ namespace Certify.Datastore.SQLite
             {
                 conditions.Add(" EXISTS (SELECT 1 FROM json_each(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeCredentialKey'=@challengeCredentialKey)");
                 queryParameters.Add(new SqliteParameter("@challengeCredentialKey", filter.StoredCredentialKey));
+            }
+
+            if (filter.Health != null)
+            {
+                if (filter.Health.ToLower() == "ok")
+                {
+                    conditions.Add("  (i.config ->>'LastRenewalStatus' = " + (int)RequestState.Success + " OR i.config ->>'LastRenewalStatus' IS NULL) ");
+                }
+                else if (filter.Health.ToLower() == "nocertificate")
+                {
+                    conditions.Add("  (i.config ->>'DateExpiry' IS NULL) ");
+                }
+                else if (filter.Health.ToLower() == "paused")
+                {
+                    conditions.Add("  (i.config ->>'LastRenewalStatus' = " + (int)RequestState.Paused + ") ");
+                }
+                else if (filter.Health.ToLower() == "warning" || filter.Health.ToLower() == "error")
+                {
+                    conditions.Add("  (i.config ->>'LastRenewalStatus' = " + (int)RequestState.Error+")" );
+                }
             }
 
             sql += $" WHERE itemtype=@itemtype ";
