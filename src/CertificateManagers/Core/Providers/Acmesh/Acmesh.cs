@@ -82,79 +82,89 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                 }
             }
 
-            var configFiles = directorySearch.GetFiles(ConfigFilePattern, SearchOption.AllDirectories);
-
-            foreach (var config in configFiles)
+            // attempt to read config files
+            try
             {
-                try
+                var configFiles = directorySearch.GetFiles(ConfigFilePattern, SearchOption.AllDirectories);
+
+                foreach (var config in configFiles)
                 {
-                    var settings = IniFileParser.Parse(File.ReadAllText(config.FullName), _logger);
-
-                    if (!settings.ContainsKey("_global") || !settings["_global"].ContainsKey("Le_Domain"))
+                    try
                     {
-                        _logger.LogDebug("Skipping conf file {name}", config.FullName);
-                        continue;
+                        var settings = IniFileParser.Parse(File.ReadAllText(config.FullName), _logger);
+
+                        if (!settings.ContainsKey("_global") || !settings["_global"].ContainsKey("Le_Domain"))
+                        {
+                            _logger.LogDebug("Skipping conf file {name}", config.FullName);
+                            continue;
+                        }
+
+                        var id = settings["_global"]["Le_Domain"].Trim("' ".ToCharArray());
+                        var renewalPath = Path.GetDirectoryName(config.FullName);
+
+                        if (renewalPath == null)
+                        {
+                            continue;
+                        }
+
+                        var managedCert = new ManagedCertificate
+                        {
+                            Id = $"ext-acme.sh-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
+                            Name = id,
+                            ItemType = ManagedCertificateType.SSL_ExternallyManaged,
+                            SourceId = Definition.Id,
+                            SourceName = $"{Definition.Title}-{scriptVersion}",
+                            IsChanged = false
+                        };
+
+                        var certFile = new FileInfo(Path.Combine(renewalPath, $"{id}.cer"));
+
+                        if (certFile.Exists)
+                        {
+                            PopulateManagedCertificateFromFile(_logger, managedCert, certFile);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to access cert file {file}", certFile);
+                        }
+
+                        managedCertificates.Add(managedCert);
                     }
-
-                    var id = settings["_global"]["Le_Domain"].Trim("' ".ToCharArray());
-                    var renewalPath = Path.GetDirectoryName(config.FullName);
-
-                    if (renewalPath == null)
+                    catch (Exception exp)
                     {
-                        continue;
+                        _logger.LogError($"Failed to parse config: [{config.FullName}] {exp}");
                     }
-
-                    var managedCert = new ManagedCertificate
-                    {
-                        Id = $"ext-acme.sh-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
-                        Name = id,
-                        ItemType = ManagedCertificateType.SSL_ExternallyManaged,
-                        SourceId = Definition.Id,
-                        SourceName = $"{Definition.Title}-{scriptVersion}",
-                        IsChanged = false
-                    };
-
-                    var certFile = new FileInfo(Path.Combine(renewalPath, $"{id}.cer"));
-
-                    if (certFile.Exists)
-                    {
-                        PopulateManagedCertificateFromFile(_logger, managedCert, certFile);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Failed to access cert file {file}", certFile);
-                    }
-
-                    managedCertificates.Add(managedCert);
                 }
-                catch (Exception exp)
+
+                // Get latest log entries for each item
+                var lastLogResults = ParseLatestLogs(DateTimeOffset.UtcNow.AddDays(-1), managedCertificates.Select(l => l.Name ?? "<none>").ToList())
+                    .OrderByDescending(l => l.StatusDate)
+                    .ToList();
+
+                foreach (var item in managedCertificates)
                 {
-                    _logger.LogError($"Failed to parse config: [{config.FullName}] {exp}");
+                    var logItem = lastLogResults.FirstOrDefault(l => l.ItemId == item.Name);
+
+                    if (logItem != null)
+                    {
+                        if (logItem.Status == "Success")
+                        {
+                            item.LastRenewalStatus = RequestState.Success;
+                        }
+                        else
+                        {
+                            item.LastRenewalStatus = RequestState.Error;
+                            item.RenewalFailureMessage = logItem.Message;
+                            item.RenewalFailureCount = lastLogResults.Count(l => l.ItemId == item.Name && l.Status == "Error");
+                        }
+                    }
                 }
             }
-
-            // Get latest log entries for each item
-            var lastLogResults = ParseLatestLogs(DateTimeOffset.UtcNow.AddDays(-1), managedCertificates.Select(l => l.Name ?? "<none>").ToList())
-                .OrderByDescending(l => l.StatusDate)
-                .ToList();
-
-            foreach (var item in managedCertificates)
+            catch (System.IO.IOException exp)
             {
-                var logItem = lastLogResults.FirstOrDefault(l => l.ItemId == item.Name);
+                // failed to read one or more files, process does not have permission
 
-                if (logItem != null)
-                {
-                    if (logItem.Status == "Success")
-                    {
-                        item.LastRenewalStatus = RequestState.Success;
-                    }
-                    else
-                    {
-                        item.LastRenewalStatus = RequestState.Error;
-                        item.RenewalFailureMessage = logItem.Message;
-                        item.RenewalFailureCount = lastLogResults.Count(l => l.ItemId == item.Name && l.Status == "Error");
-                    }
-                }
+                _logger.LogError("Monitoring Agent for acme.sh: failed to read one or more files from {settingsPath} - process may not have the required permissions: {exp}", _settingsPath, exp);
             }
 
             return managedCertificates;
