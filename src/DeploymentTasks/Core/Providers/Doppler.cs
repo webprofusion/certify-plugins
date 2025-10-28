@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -35,7 +35,6 @@ namespace Certify.Providers.DeploymentTasks
                     new ProviderParameter{ Key="secretname_key", Name="Name for Private Key", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="e.g. EXAMPLE_COM_KEY" },
                     new ProviderParameter{ Key="secretname_fullchain", Name="Name for Fullchain", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="(optional)" },
                     new ProviderParameter{ Key="secretname_pfx", Name="Name for PFX", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="(optional)" }
-
                 }
             };
         }
@@ -58,6 +57,7 @@ namespace Certify.Providers.DeploymentTasks
                 results.Add(new ActionResult("No certificate to deploy.", false));
                 return results;
             }
+
             var doppler_project = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "project")?.Value;
             var doppler_config = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "config")?.Value;
             var secretname_cert = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "secretname_cert")?.Value;

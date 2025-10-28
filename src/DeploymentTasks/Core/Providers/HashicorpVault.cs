@@ -56,6 +56,7 @@ namespace Certify.Providers.DeploymentTasks
                 return results;
 
             }
+            
             var vaultUri = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
             var vaultPath = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_secret_path")?.Value;
             var vaultNamespace = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_namespace")?.Value;
