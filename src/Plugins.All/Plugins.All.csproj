@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\AcmeDns\AcmeDns\Plugin.DNS.AcmeDns.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\Aliyun\Plugin.DNS.Aliyun.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\AWSRoute53\Plugin.DNS.AWSRoute53.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\Azure\Plugin.DNS.Azure.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\CertifyDns\Plugin.DNS.CertifyDns.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\CertifyManaged\Plugin.DNS.CertifyManaged.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\Cloudflare\Plugin.DNS.Cloudflare.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\DnsMadeEasy\Plugin.DNS.DnsMadeEasy.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\GoDaddy\Plugin.DNS.GoDaddy.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\IONOS\Plugin.DNS.IONOS.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\MSDNS\Plugin.DNS.MSDNS.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\NameCheap\Plugin.DNS.NameCheap.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\OVH\Plugin.DNS.OVH.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\SimpleDNSPlus\Plugin.DNS.SimpleDNSPlus.csproj" />
+    <ProjectReference Include="..\..\..\certify\src\Certify.Providers\DNS\TransIP\Plugin.DNS.TransIP.csproj" />
+    <ProjectReference Include="..\CertificateManagers\Core\Plugin.CertificateManagers.csproj" />
+    <ProjectReference Include="..\DataStores\Postgres\Plugin.Datastore.Postgres.csproj" />
+    <ProjectReference Include="..\DataStores\SQLite\Plugin.Datastore.SQLite.csproj" />
+    <ProjectReference Include="..\DataStores\SQLServer\Plugin.Datastore.SQLServer.csproj" />
+    <ProjectReference Include="..\DeploymentTasks\Azure\Plugin.DeploymentTasks.Azure\Plugin.DeploymentTasks.Azure.csproj" />
+    <ProjectReference Include="..\DeploymentTasks\Core\Plugin.DeploymentTasks.Core.csproj" />
+    <ProjectReference Include="..\ServerProviders\Nginx\Plugins.ServerProviders.Nginx\Plugin.ServerProviders.Nginx.csproj" />
+  </ItemGroup>
+
+</Project>
