@@ -122,7 +122,7 @@ namespace Certify.Datastore.SQLite
 
             if (!string.IsNullOrEmpty(filter.Keyword))
             {
-                conditions.Add(" (Name LIKE '%' || @keyword || '%')"); // case insensitive string contains
+                conditions.Add(" ((Name LIKE '%' || @keyword || '%') OR (i.config ->> 'Comments' LIKE '%' || @keyword || '%'))"); // case insensitive string contains
                 queryParameters.Add(new SqliteParameter("@keyword", filter.Keyword));
             }
 
@@ -174,6 +174,12 @@ namespace Certify.Datastore.SQLite
                 {
                     conditions.Add("  (i.config ->>'LastRenewalStatus' = " + (int)RequestState.Error+")" );
                 }
+            }
+
+            if (filter.IncludeOnlyNextAutoRenew == true)
+            {
+                //exclude items that are not set to auto renew
+                conditions.Add( " (i.config ->> 'IncludeInAutoRenew' = 'true') ");
             }
 
             sql += $" WHERE itemtype=@itemtype ";
