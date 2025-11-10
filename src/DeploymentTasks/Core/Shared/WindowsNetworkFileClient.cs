@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Principal;
@@ -46,7 +46,6 @@ namespace Certify.Providers.Deployment.Core.Shared
 
             return CopyLocalToRemote(log, destFiles);
         }
-
         public List<ActionResult> CopyLocalToRemote(ILog log, Dictionary<string, byte[]> destFiles)
         {
             if (_credentials == null)

@@ -264,12 +264,12 @@ namespace Certify.Providers.DeploymentTasks
                     var _client = new WindowsNetworkFileClient(windowsCredentials);
                     if (execParams.IsPreviewOnly)
                     {
-                        var step = $"{definition.Title}: (Preview) Windows file copy to {destPath}";
+                        var step = $"{definition.Title}: (Preview) file copy to {destPath}";
                         msg += step + " \r\n";
                     }
                     else
                     {
-                        var step = $"{definition.Title}: Copying file (Windows file copy) to {destPath}";
+                        var step = $"{definition.Title}: Copying file to {destPath}";
                         msg += step + " \r\n";
                         log.Information(step);
 
