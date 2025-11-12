@@ -40,7 +40,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="SimpleImpersonation" Version="4.2.0" />
     <PackageReference Include="SSH.NET" Version="2025.0.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0-rc.2.25502.107" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>

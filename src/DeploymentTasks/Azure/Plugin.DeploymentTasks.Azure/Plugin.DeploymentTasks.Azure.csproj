@@ -6,15 +6,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.Core" Version="1.49.0" />
+        <PackageReference Include="Azure.Core" Version="1.50.0" />
         <PackageReference Include="Azure.Identity" Version="1.17.0" />
         <PackageReference Include="Azure.Security.KeyVault.Certificates" Version="4.8.0" />
         <PackageReference Include="Microsoft.Azure.Management.AppService.Fluent" Version="1.38.1" />
         <PackageReference Include="Microsoft.Azure.Management.ResourceManager.Fluent" Version="1.38.1" />
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0-rc.2.25502.107" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
 
-        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.0-rc.2.25502.107" />
-        <PackageReference Include="System.Text.Json" Version="10.0.0-rc.2.25502.107" />
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.0" />
+        <PackageReference Include="System.Text.Json" Version="10.0.0" />
     </ItemGroup>
 
     <ItemGroup>
