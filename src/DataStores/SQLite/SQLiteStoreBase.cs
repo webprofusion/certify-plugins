@@ -350,9 +350,20 @@ namespace Certify.Datastore.SQLite
 
                     //migrate legacy securityprinciple items TODO: can be removed post-beta
 
-                    using (var cmd = new SqliteCommand("UPDATE manageditem SET id=replace(id,'securityprinciple','securityprincipal') WHERE id like 'securityprinciple%';", db))
+                    try
                     {
-                        await cmd.ExecuteNonQueryAsync();
+                        using (var cmd = new SqliteCommand("UPDATE manageditem SET id=replace(id,'securityprinciple','securityprincipal') WHERE id like 'securityprinciple%';", db))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+                    catch
+                    {
+                        // remove any failing items ebcuase they clash on id
+                        using (var cmd = new SqliteCommand("DELETE FROM manageditem WHERE id like 'securityprinciple%';", db))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
                     }
 
                     using (var cmd = new SqliteCommand("UPDATE manageditem SET itemtype='securityprincipal' WHERE itemtype ='securityprinciple';", db))
