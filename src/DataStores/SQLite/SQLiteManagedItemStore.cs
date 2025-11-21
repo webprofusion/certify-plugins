@@ -179,7 +179,7 @@ namespace Certify.Datastore.SQLite
             if (filter.IncludeOnlyNextAutoRenew == true)
             {
                 //exclude items that are not set to auto renew
-                conditions.Add( " (i.config ->> 'IncludeInAutoRenew' = 'true') ");
+                conditions.Add( " (i.config ->> 'IncludeInAutoRenew' = true) ");
             }
 
             sql += $" WHERE itemtype=@itemtype ";
