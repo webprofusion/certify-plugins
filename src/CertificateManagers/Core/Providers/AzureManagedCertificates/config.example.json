@@ -1,0 +1,25 @@
+{
+  "//": "Azure Managed Certificates Provider Configuration",
+  "//": "This file configures how Certify The Web discovers and monitors Azure App Service Managed Certificates",
+  
+  "SubscriptionId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  
+  "//": "Optional: Limit discovery to specific resource groups. Remove or leave empty to scan all resource groups",
+  "ResourceGroups": [
+    "production-webapps",
+    "staging-webapps"
+  ],
+  
+  "//": "Authentication Method 1: Service Principal (recommended for production)",
+  "//": "Create an Azure AD App Registration and grant it Reader role on your subscription",
+  "TenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "ClientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "ClientSecret": "your-client-secret-here",
+  
+  "//": "Authentication Method 2: Managed Identity (for Azure-hosted Management Hub)",
+  "//": "Use this if running Certify Management Hub in Azure. Comment out service principal settings above.",
+  "ManagedIdentityClientId": null,
+  
+  "//": "Authentication Method 3: Default Azure Credential (for development)",
+  "//": "Leave all authentication properties empty/null to use Azure CLI or Visual Studio credentials"
+}
