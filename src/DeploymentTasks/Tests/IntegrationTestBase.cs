@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
-namespace DeploymentTaskTests
+namespace Certify.Tests.DeploymentTaskTests
 {
     public class IntegrationTestBase
     {

@@ -10,7 +10,7 @@ using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace DeploymentTaskTests
+namespace Certify.Tests.DeploymentTaskTests
 {
     [TestClass]
     public class DeploymentTasksAzure : IntegrationTestBase

@@ -10,7 +10,7 @@ using Certify.Providers.CertificateManagers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Plugin.Tests
+namespace Tests.Plugin.CertificateManagers
 {
     [TestClass]
     public class CertificateManagerTests

@@ -7,7 +7,7 @@ using Certify.Providers.Deployment.Core.Shared;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Plugin.DeploymentTasks.Core.Shared.Model;
 
-namespace DeploymentTaskTests
+namespace Certify.Tests.DeploymentTaskTests
 {
     [TestClass]
     public class DeploymentTasksFileCopy : IntegrationTestBase

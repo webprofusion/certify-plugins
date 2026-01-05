@@ -8,7 +8,7 @@ using Certify.Models.Config;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
-namespace DeploymentTaskTests
+namespace Certify.Tests.DeploymentTaskTests
 {
     [TestClass]
     public class DeploymentTaskMisc : IntegrationTestBase

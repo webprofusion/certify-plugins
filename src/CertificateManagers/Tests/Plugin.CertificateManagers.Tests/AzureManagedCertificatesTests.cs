@@ -6,7 +6,7 @@ using Certify.Plugin.CertificateManagers.Providers.AzureManagedCertificates;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Plugin.Tests
+namespace Tests.Plugin.CertificateManagers
 {
     [TestClass]
     public class AzureManagedCertificatesTests
