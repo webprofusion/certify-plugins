@@ -47,6 +47,7 @@ namespace Certify.Providers.DeploymentTasks
                     new List<ProviderParameter> {
                         new ProviderParameter { Key = "path", Name = "Destination File Path", IsRequired = true, IsCredential = false, Description="output file, e.g. C:\\CertifyCerts\\mycert.ext" },
                         new ProviderParameter { Key = "type", Name = "Export As", IsRequired = true, IsCredential = false, Value = "pfxfull", Type=OptionType.Select, OptionsList = optionsList },
+                        new ProviderParameter { Key = "strict", Name = "Strict Export", IsRequired = false, IsCredential = false, Type=OptionType.Boolean, Description="If enabled, only export certificates from the PFX file, do not include certificates from the local certificate store", Value = "false" },
                         }
             };
         }
@@ -137,6 +138,13 @@ namespace Certify.Providers.DeploymentTasks
 
                 var exportType = specificType?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "type")?.Value.Trim();
 
+                var strictExport = false;
+                var strictParam = settings.Parameters.FirstOrDefault(c => c.Key == "strict")?.Value?.Trim();
+                if (!string.IsNullOrWhiteSpace(strictParam) && bool.TryParse(strictParam, out var strictVal))
+                {
+                    strictExport = strictVal;
+                }
+
                 var files = new Dictionary<string, byte[]>();
 
                 var certPwd = "";
@@ -170,31 +178,31 @@ namespace Certify.Providers.DeploymentTasks
                 }
                 else if (exportType == "pemkey")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey, strictExport));
                 }
                 else if (exportType == "pemchain")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate, strictExport));
                 }
                 else if (exportType == "pemintermediates")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.IntermediateCertificates, strictExport));
                 }
                 else if (exportType == "pemcrt")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate, strictExport));
                 }
                 else if (exportType == "pemcrtpartialchain")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates, strictExport));
                 }
                 else if (exportType == "pemfull")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate, strictExport));
                 }
                 else if (exportType == "pemfullnokey")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate, strictExport));
                 }
 
                 if (!files.Any())
