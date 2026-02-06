@@ -149,7 +149,7 @@ namespace Certify.Datastore.SQLServer
                     }
                 }
 
-                sql += $" ORDER BY JSON_VALUE(config, '$.Name') ";
+                sql += $" ORDER BY JSON_VALUE(config, '$.Title') ";
 
                 using (var cmd = new SqlCommand(sql, db))
                 {

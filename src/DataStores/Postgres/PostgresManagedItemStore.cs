@@ -18,6 +18,8 @@ namespace Certify.Datastore.Postgres
 {
     public class PostgresManagedItemStore : IManagedItemStore, IDisposable
     {
+        private const string _itemType = "managedcertificate";
+
         private ILog _log;
         private string _connectionString;
 
@@ -51,10 +53,14 @@ namespace Certify.Datastore.Postgres
 
             _retryPolicy = Policy
                     .Handle<ArgumentException>()
+                    .Or<NpgsqlException>()
                     .WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(1), onRetry: (exception, retryCount, context) =>
                     {
-                        _log.Warning($"Retrying DB operation..{retryCount} {exception}");
+                        _log?.Warning($"Retrying DB operation..{retryCount} {exception}");
                     });
+
+            // Perform schema upgrade on init
+            UpgradeSchema().Wait();
 
             return true;
         }
@@ -62,6 +68,110 @@ namespace Certify.Datastore.Postgres
         public PostgresManagedItemStore(string connectionString = null, ILog log = null)
         {
             Init(connectionString, log);
+        }
+
+        /// <summary>
+        /// Upgrade the database schema to support itemtype column
+        /// </summary>
+        private async Task<bool> UpgradeSchema()
+        {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                return false;
+            }
+
+            try
+            {
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    // Check if itemtype column exists
+                    var cols = new List<string>();
+                    using (var cmd = new NpgsqlCommand(
+                        "SELECT column_name FROM information_schema.columns WHERE table_name = 'manageditem'", conn))
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                cols.Add(reader.GetString(0).ToLowerInvariant());
+                            }
+                        }
+                    }
+
+                    // Rename 'json' column to 'config' if it exists (legacy)
+                    if (cols.Contains("json") && !cols.Contains("config"))
+                    {
+                        using (var cmd = new NpgsqlCommand("ALTER TABLE manageditem RENAME COLUMN json TO config;", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        _log?.Information("Postgres: Renamed 'json' column to 'config'");
+                    }
+
+                    // Add itemtype column if it doesn't exist
+                    if (!cols.Contains("itemtype"))
+                    {
+                        using (var cmd = new NpgsqlCommand(
+                            "ALTER TABLE manageditem ADD COLUMN itemtype TEXT NOT NULL DEFAULT 'managedcertificate';", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        _log?.Information("Postgres: Added 'itemtype' column");
+                    }
+
+                    // Add itemvalue column if it doesn't exist
+                    if (!cols.Contains("itemvalue"))
+                    {
+                        using (var cmd = new NpgsqlCommand(
+                            "ALTER TABLE manageditem ADD COLUMN itemvalue TEXT NULL;", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        _log?.Information("Postgres: Added 'itemvalue' column");
+                    }
+
+                    // Update existing records to have correct itemtype
+                    using (var cmd = new NpgsqlCommand(
+                        "UPDATE manageditem SET itemtype = 'managedcertificate' WHERE itemtype IS NULL OR itemtype = '';", conn))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Create index on itemtype for query performance
+                    try
+                    {
+                        using (var cmd = new NpgsqlCommand(
+                            "CREATE INDEX IF NOT EXISTS idx_manageditem_itemtype ON manageditem(itemtype);", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+                    catch (NpgsqlException)
+                    {
+                        // Index may already exist
+                    }
+
+                    await conn.CloseAsync();
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log?.Error($"Postgres: Schema upgrade failed: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                _dbMutex.Release();
+            }
         }
 
         public async Task Delete(ManagedCertificate item)
@@ -76,9 +186,10 @@ namespace Certify.Datastore.Postgres
                     await conn.OpenAsync();
                     using (var tran = conn.BeginTransaction())
                     {
-                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id=@id", conn))
+                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
                         {
                             cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
+                            cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
                             await cmd.ExecuteNonQueryAsync();
 
                             await tran.CommitAsync();
@@ -107,8 +218,9 @@ namespace Certify.Datastore.Postgres
                 {
                     await conn.OpenAsync();
 
-                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem", conn))
+                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype", conn))
                     {
+                        cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
                         await cmd.ExecuteNonQueryAsync();
                     }
 
@@ -132,8 +244,9 @@ namespace Certify.Datastore.Postgres
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
-                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE config ->>'Name' LIKE @nameStartsWith || '%' ", db))
+                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
                         {
+                            cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
                             cmd.Parameters.Add(new NpgsqlParameter("@nameStartsWith", nameStartsWith));
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -153,7 +266,7 @@ namespace Certify.Datastore.Postgres
 
         }
 
-        private static (string sql, List<NpgsqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
+        private (string sql, List<NpgsqlParameter> queryParameters) BuildQuery(ManagedCertificateFilter filter, bool countMode)
         {
             var sql = @"SELECT * FROM ";
 
@@ -170,10 +283,12 @@ namespace Certify.Datastore.Postgres
                                                         (subquery.config ->> 'DateRenewed')::timestamp with time zone as dateRenewed,
                                                         (subquery.config ->> 'DateLastRenewalAttempt')::timestamp with time zone as dateLastRenewalAttempt,
                                                         (subquery.config ->> 'DateExpiry')::timestamp with time zone as dateExpiry
-                                                   FROM manageditem subquery  
+                                                   FROM manageditem subquery WHERE subquery.itemtype = @itemtype
                           ) AS i ";
 
             var queryParameters = new List<NpgsqlParameter>();
+            queryParameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+
             var conditions = new List<string>();
 
             if (!string.IsNullOrEmpty(filter.Id))
@@ -184,13 +299,13 @@ namespace Certify.Datastore.Postgres
 
             if (!string.IsNullOrEmpty(filter.Name))
             {
-                conditions.Add(" Name LIKE @name"); // case insensitive string match
+                conditions.Add(" Name ILIKE @name"); // case insensitive string match
                 queryParameters.Add(new NpgsqlParameter("@name", filter.Name));
             }
 
             if (!string.IsNullOrEmpty(filter.Keyword))
             {
-                conditions.Add(" (Name LIKE '%' || @keyword || '%')"); // case insensitive string contains
+                conditions.Add(" ((Name ILIKE '%' || @keyword || '%') OR (i.config ->> 'Comments' ILIKE '%' || @keyword || '%'))"); // case insensitive string contains
                 queryParameters.Add(new NpgsqlParameter("@keyword", filter.Keyword));
             }
 
@@ -222,6 +337,31 @@ namespace Certify.Datastore.Postgres
             {
                 conditions.Add(" EXISTS (SELECT 1 FROM jsonb_array_elements(i.config -> 'RequestConfig' -> 'Challenges') challenges WHERE challenges.value->>'ChallengeCredentialKey'=@challengeCredentialKey)");
                 queryParameters.Add(new NpgsqlParameter("@challengeCredentialKey", filter.StoredCredentialKey));
+            }
+
+            if (filter.Health != null)
+            {
+                if (filter.Health.ToLower() == "ok")
+                {
+                    conditions.Add($" (i.config ->>'LastRenewalStatus' = '{(int)RequestState.Success}' OR i.config ->>'LastRenewalStatus' IS NULL) ");
+                }
+                else if (filter.Health.ToLower() == "nocertificate")
+                {
+                    conditions.Add(" (i.config ->>'DateExpiry' IS NULL) ");
+                }
+                else if (filter.Health.ToLower() == "paused")
+                {
+                    conditions.Add($" (i.config ->>'LastRenewalStatus' = '{(int)RequestState.Paused}') ");
+                }
+                else if (filter.Health.ToLower() == "warning" || filter.Health.ToLower() == "error")
+                {
+                    conditions.Add($" (i.config ->>'LastRenewalStatus' = '{(int)RequestState.Error}') ");
+                }
+            }
+
+            if (filter.IncludeOnlyNextAutoRenew == true)
+            {
+                conditions.Add(" (i.config ->> 'IncludeInAutoRenew' = 'true') ");
             }
 
             if (conditions.Any())
@@ -348,9 +488,10 @@ namespace Certify.Datastore.Postgres
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
-                    using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
+                    using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
                     {
                         cmd.Parameters.Add(new NpgsqlParameter("@id", itemId));
+                        cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -392,7 +533,7 @@ namespace Certify.Datastore.Postgres
                         }
                         catch (Exception ex)
                         {
-                            _log.Error("Failed to init data store: " + ex.Message);
+                            _log?.Error("Failed to init data store: " + ex.Message);
                         }
                     }
 
@@ -444,9 +585,10 @@ namespace Certify.Datastore.Postgres
                         // get current version from DB
                         using (var tran = conn.BeginTransaction())
                         {
-                            using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id", conn))
+                            using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
                             {
                                 cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
+                                cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
 
                                 using (var reader = await cmd.ExecuteReaderAsync())
                                 {
@@ -478,9 +620,10 @@ namespace Certify.Datastore.Postgres
 
                                 try
                                 {
-                                    using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id;", conn))
+                                    using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id AND itemtype=@itemtype;", conn))
                                     {
                                         cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
+                                        cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
                                         cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings) });
 
                                         await cmd.ExecuteNonQueryAsync();
@@ -499,9 +642,10 @@ namespace Certify.Datastore.Postgres
                             {
                                 try
                                 {
-                                    using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id,config) VALUES(@id,@config);", conn))
+                                    using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id, itemtype, config) VALUES(@id, @itemtype, @config);", conn))
                                     {
                                         cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
+                                        cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
                                         cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings) });
 
                                         await cmd.ExecuteNonQueryAsync();
