@@ -23,6 +23,7 @@ namespace Certify.Datastore.SQLServer
 
         private ILog _log;
         private string _connectionString;
+        private string _instanceId = "";
         private AsyncRetryPolicy _retryPolicy;
 
         private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
@@ -43,10 +44,11 @@ namespace Certify.Datastore.SQLServer
                 Description = "SQL Server DataStore provider"
             };
 
-        public bool Init(string connectionString, ILog log)
+        public bool Init(string connectionString, ILog log, string instanceId = null)
         {
             _connectionString = connectionString;
             _log = log;
+            _instanceId = instanceId ?? "";
 
             _retryPolicy = Policy
                     .Handle<ArgumentException>()
@@ -64,9 +66,9 @@ namespace Certify.Datastore.SQLServer
 
         public SQLServerManagedItemStore() { }
 
-        public SQLServerManagedItemStore(string connectionString = null, ILog log = null)
+        public SQLServerManagedItemStore(string connectionString = null, ILog log = null, string instanceId = null)
         {
-            Init(connectionString, log);
+            Init(connectionString, log, instanceId);
         }
 
         /// <summary>
@@ -160,6 +162,44 @@ namespace Certify.Datastore.SQLServer
                         // Index may already exist
                     }
 
+                    // Add instanceid column if it doesn't exist
+                    if (!cols.Contains("instanceid"))
+                    {
+                        using (var cmd = new SqlCommand(
+                            "ALTER TABLE manageditem ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        try
+                        {
+                            using (var cmd = new SqlCommand(@"
+                                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_manageditem_instanceid' AND object_id = OBJECT_ID('manageditem'))
+                                BEGIN
+                                    CREATE INDEX idx_manageditem_instanceid ON manageditem(instanceid);
+                                END", conn))
+                            {
+                                await cmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                        catch (SqlException)
+                        {
+                            // Index may already exist
+                        }
+
+                        _log?.Information("SQL Server: Added 'instanceid' column");
+                    }
+
+                    if (!string.IsNullOrEmpty(_instanceId))
+                    {
+                        using (var cmd = new SqlCommand(
+                            "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
                     conn.Close();
                 }
 
@@ -191,11 +231,12 @@ namespace Certify.Datastore.SQLServer
                         await conn.OpenAsync();
                         using (var tran = conn.BeginTransaction())
                         {
-                            using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
+                            using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                             {
                                 cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", item.Id));
                                 cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                                 await cmd.ExecuteNonQueryAsync();
 
                                 tran.Commit();
@@ -225,9 +266,10 @@ namespace Certify.Datastore.SQLServer
                 {
                     await conn.OpenAsync();
 
-                    using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype", conn))
+                    using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND instanceid=@instanceid", conn))
                     {
                         cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                        cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                         await cmd.ExecuteNonQueryAsync();
                     }
 
@@ -251,10 +293,11 @@ namespace Certify.Datastore.SQLServer
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
-                        using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND JSON_VALUE(config, '$.Name') LIKE @nameStartsWith + '%' ", db))
+                        using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND instanceid=@instanceid AND JSON_VALUE(config, '$.Name') LIKE @nameStartsWith + '%' ", db))
                         {
                             cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                             cmd.Parameters.Add(new SqlParameter("@nameStartsWith", nameStartsWith));
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -283,15 +326,16 @@ namespace Certify.Datastore.SQLServer
                         CAST(JSON_VALUE(config, '$.DateRenewed') AS datetimeoffset(7)) as [DateRenewed], 
                         CAST(JSON_VALUE(config, '$.DateLastRenewalAttempt') AS datetimeoffset(7)) as [DateLastRenewalAttempt] ,
                         CAST(JSON_VALUE(config, '$.DateExpiry') AS datetimeoffset(7)) as [DateExpiry] 
-            FROM manageditem WHERE itemtype = @itemtype) i ";
+            FROM manageditem WHERE itemtype = @itemtype AND instanceid = @instanceid) i ";
 
             if (countMode)
             {
-                sql = @"SELECT COUNT(1) as numItems FROM(SELECT id, config, JSON_VALUE(config, '$.Name') as Name FROM manageditem WHERE itemtype = @itemtype) i ";
+                sql = @"SELECT COUNT(1) as numItems FROM(SELECT id, config, JSON_VALUE(config, '$.Name') as Name FROM manageditem WHERE itemtype = @itemtype AND instanceid = @instanceid) i ";
             }
 
             var queryParameters = new List<SqlParameter>();
             queryParameters.Add(new SqlParameter("@itemtype", _itemType));
+            queryParameters.Add(new SqlParameter("@instanceid", _instanceId));
 
             var conditions = new List<string>();
 
@@ -495,10 +539,11 @@ namespace Certify.Datastore.SQLServer
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
-                    using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
+                    using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                     {
                         cmd.Parameters.Add(new SqlParameter("@id", itemId));
                         cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                        cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -592,11 +637,12 @@ namespace Certify.Datastore.SQLServer
                         // get current version from DB
                         using (var tran = conn.BeginTransaction())
                         {
-                            using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
+                            using (var cmd = new SqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                             {
                                 cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
                                 cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                                 using (var reader = await cmd.ExecuteReaderAsync())
                                 {
@@ -628,12 +674,13 @@ namespace Certify.Datastore.SQLServer
 
                                 try
                                 {
-                                    using (var cmd = new SqlCommand("UPDATE manageditem SET config = @config WHERE id=@id AND itemtype=@itemtype", conn))
+                                    using (var cmd = new SqlCommand("UPDATE manageditem SET config = @config WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                                     {
                                         cmd.Transaction = tran;
 
                                         cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
                                         cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                        cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                                         cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
 
                                         await cmd.ExecuteNonQueryAsync();
@@ -653,11 +700,12 @@ namespace Certify.Datastore.SQLServer
 
                                 try
                                 {
-                                    using (var cmd = new SqlCommand("INSERT INTO manageditem(id, itemtype, config) VALUES(@id, @itemtype, @config)", conn))
+                                    using (var cmd = new SqlCommand("INSERT INTO manageditem(id, itemtype, instanceid, config) VALUES(@id, @itemtype, @instanceid, @config)", conn))
                                     {
                                         cmd.Transaction = tran;
                                         cmd.Parameters.Add(new SqlParameter("@id", managedCertificate.Id));
                                         cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                        cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                                         cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
 
                                         await cmd.ExecuteNonQueryAsync();

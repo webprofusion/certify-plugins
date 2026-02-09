@@ -34,11 +34,11 @@ namespace Certify.Datastore.SQLite
             }
         }
         public SQLiteCredentialStore() { }
-        public new bool Init(string connectionString, ILog log)
+        public new bool Init(string connectionString, ILog log, string instanceId = null)
         {
             _log = log;
 
-            base.Init(connectionString, log);
+            base.Init(connectionString, log, performBackup: false);
 
             MigrateLegacyDB().Wait(); ;
 

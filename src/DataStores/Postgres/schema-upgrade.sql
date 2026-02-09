@@ -39,6 +39,30 @@ UPDATE manageditem SET itemtype = 'managedcertificate' WHERE itemtype IS NULL OR
 -- Step 5: Create index on itemtype for query performance
 CREATE INDEX IF NOT EXISTS idx_manageditem_itemtype ON manageditem(itemtype);
 
+-- Step 6: Add instanceid column if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'manageditem' AND column_name = 'instanceid') THEN
+        ALTER TABLE manageditem ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';
+        RAISE NOTICE 'Added instanceid column';
+    END IF;
+END $$;
+
+-- Step 7: Create index on instanceid for query performance
+CREATE INDEX IF NOT EXISTS idx_manageditem_instanceid ON manageditem(instanceid);
+
+-- Step 8: Add instanceid column for credential table if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'credential' AND column_name = 'instanceid') THEN
+        ALTER TABLE credential ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';
+        RAISE NOTICE 'Added instanceid column to credential table';
+    END IF;
+END $$;
+
+-- Step 9: Create index on credential.instanceid for query performance
+CREATE INDEX IF NOT EXISTS idx_credential_instanceid ON credential(instanceid);
+
 -- Verify the upgrade
 SELECT column_name, data_type, is_nullable 
 FROM information_schema.columns 

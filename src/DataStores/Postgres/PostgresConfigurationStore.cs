@@ -18,6 +18,7 @@ namespace Certify.Datastore.Postgres
     {
         private ILog _log;
         private string _connectionString;
+        private string _instanceId = "";
 
         private AsyncRetryPolicy _retryPolicy;
 
@@ -41,10 +42,11 @@ namespace Certify.Datastore.Postgres
 
         public PostgresConfigurationStore() { }
 
-        public bool Init(string connectionString, ILog log)
+        public bool Init(string connectionString, ILog log, string instanceId = null)
         {
             _connectionString = connectionString;
             _log = log;
+            _instanceId = instanceId ?? "";
 
             _retryPolicy = Policy
                     .Handle<ArgumentException>()
@@ -54,12 +56,66 @@ namespace Certify.Datastore.Postgres
                         _log?.Warning($"Retrying DB operation..{retryCount} {exception}");
                     });
 
+            EnsureSchema().Wait();
+
             return true;
         }
 
-        public PostgresConfigurationStore(string connectionString, ILog log = null)
+        public PostgresConfigurationStore(string connectionString, ILog log = null, string instanceId = null)
         {
-            Init(connectionString, log);
+            Init(connectionString, log, instanceId);
+        }
+
+        private async Task EnsureSchema()
+        {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    var hasInstanceId = false;
+                    using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.columns WHERE table_name = 'manageditem' AND column_name = 'instanceid'", conn))
+                    {
+                        var result = await cmd.ExecuteScalarAsync();
+                        hasInstanceId = result != null;
+                    }
+
+                    if (!hasInstanceId)
+                    {
+                        using (var cmd = new NpgsqlCommand("ALTER TABLE manageditem ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        using (var cmd = new NpgsqlCommand("CREATE INDEX IF NOT EXISTS idx_manageditem_instanceid ON manageditem(instanceid);", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(_instanceId))
+                    {
+                        using (var cmd = new NpgsqlCommand("UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                        {
+                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    await conn.CloseAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to ensure configuration store schema");
+                throw;
+            }
         }
 
         public async Task<bool> IsInitialised()
@@ -91,10 +147,11 @@ namespace Certify.Datastore.Postgres
                     await conn.OpenAsync();
                     using (var tran = conn.BeginTransaction())
                     {
-                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id = @id AND itemtype = @itemtype", conn))
+                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
                         {
                             cmd.Parameters.Add(new NpgsqlParameter("@id", id));
                             cmd.Parameters.Add(new NpgsqlParameter("@itemtype", normalizedItemType));
+                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                             await cmd.ExecuteNonQueryAsync();
                         }
 
@@ -210,6 +267,16 @@ namespace Certify.Datastore.Postgres
             return results;
         }
 
+        public async Task<List<SerializedConfigurationItem>> GetAllSerializedItems()
+        {
+            return await GetConfigurationItems(itemType: null, id: null);
+        }
+
+        public async Task UpsertSerializedItem(SerializedConfigurationItem item)
+        {
+            await UpdateConfigurationItem(item);
+        }
+
         private string GetNormalizedItemType<T>(string itemType)
         {
             return string.IsNullOrEmpty(itemType)
@@ -232,8 +299,14 @@ namespace Certify.Datastore.Postgres
                         await conn.OpenAsync();
 
                         var queryParameters = new List<NpgsqlParameter>();
-                        var sql = "SELECT id, itemtype, config FROM manageditem WHERE itemtype = @itemType";
-                        queryParameters.Add(new NpgsqlParameter("@itemType", itemType));
+                        var sql = "SELECT id, itemtype, config FROM manageditem WHERE instanceid = @instanceid";
+                        queryParameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+
+                        if (!string.IsNullOrEmpty(itemType))
+                        {
+                            sql += " AND itemtype = @itemType";
+                            queryParameters.Add(new NpgsqlParameter("@itemType", itemType));
+                        }
 
                         if (!string.IsNullOrEmpty(id))
                         {
@@ -294,30 +367,33 @@ namespace Certify.Datastore.Postgres
                         {
                             // Check if item exists
                             bool exists = false;
-                            using (var checkCmd = new NpgsqlCommand("SELECT 1 FROM manageditem WHERE id = @id AND itemtype = @itemtype", conn))
+                            using (var checkCmd = new NpgsqlCommand("SELECT 1 FROM manageditem WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
                             {
                                 checkCmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                                 checkCmd.Parameters.Add(new NpgsqlParameter("@itemtype", item.ItemType));
+                                checkCmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                 var result = await checkCmd.ExecuteScalarAsync();
                                 exists = result != null;
                             }
 
                             if (exists)
                             {
-                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config AS jsonb) WHERE id = @id AND itemtype = @itemtype", conn))
+                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config AS jsonb) WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
                                 {
                                     cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                                     cmd.Parameters.Add(new NpgsqlParameter("@itemtype", item.ItemType));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                     cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = item.Config });
                                     await cmd.ExecuteNonQueryAsync();
                                 }
                             }
                             else
                             {
-                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, CAST(@config AS jsonb))", conn))
+                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem (id, itemtype, instanceid, config) VALUES (@id, @itemtype, @instanceid, CAST(@config AS jsonb))", conn))
                                 {
                                     cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                                     cmd.Parameters.Add(new NpgsqlParameter("@itemtype", item.ItemType));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                     cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = item.Config });
                                     await cmd.ExecuteNonQueryAsync();
                                 }

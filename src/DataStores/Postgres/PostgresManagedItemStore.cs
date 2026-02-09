@@ -22,6 +22,7 @@ namespace Certify.Datastore.Postgres
 
         private ILog _log;
         private string _connectionString;
+        private string _instanceId = "";
 
         private AsyncRetryPolicy _retryPolicy;
 
@@ -46,10 +47,11 @@ namespace Certify.Datastore.Postgres
 
         public PostgresManagedItemStore() { }
 
-        public bool Init(string connectionString, ILog log)
+        public bool Init(string connectionString, ILog log, string instanceId = null)
         {
             _connectionString = connectionString;
             _log = log;
+            _instanceId = instanceId ?? "";
 
             _retryPolicy = Policy
                     .Handle<ArgumentException>()
@@ -65,9 +67,9 @@ namespace Certify.Datastore.Postgres
             return true;
         }
 
-        public PostgresManagedItemStore(string connectionString = null, ILog log = null)
+        public PostgresManagedItemStore(string connectionString = null, ILog log = null, string instanceId = null)
         {
-            Init(connectionString, log);
+            Init(connectionString, log, instanceId);
         }
 
         /// <summary>
@@ -158,6 +160,41 @@ namespace Certify.Datastore.Postgres
                         // Index may already exist
                     }
 
+                    // Add instanceid column if it doesn't exist
+                    if (!cols.Contains("instanceid"))
+                    {
+                        using (var cmd = new NpgsqlCommand(
+                            "ALTER TABLE manageditem ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        try
+                        {
+                            using (var cmd = new NpgsqlCommand(
+                                "CREATE INDEX IF NOT EXISTS idx_manageditem_instanceid ON manageditem(instanceid);", conn))
+                            {
+                                await cmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                        catch (NpgsqlException)
+                        {
+                            // Index may already exist
+                        }
+
+                        _log?.Information("Postgres: Added 'instanceid' column");
+                    }
+
+                    if (!string.IsNullOrEmpty(_instanceId))
+                    {
+                        using (var cmd = new NpgsqlCommand(
+                            "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                        {
+                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
                     await conn.CloseAsync();
                 }
 
@@ -186,10 +223,11 @@ namespace Certify.Datastore.Postgres
                     await conn.OpenAsync();
                     using (var tran = conn.BeginTransaction())
                     {
-                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
+                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                         {
                             cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                             cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                             await cmd.ExecuteNonQueryAsync();
 
                             await tran.CommitAsync();
@@ -218,9 +256,10 @@ namespace Certify.Datastore.Postgres
                 {
                     await conn.OpenAsync();
 
-                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype", conn))
+                    using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND instanceid=@instanceid", conn))
                     {
                         cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                        cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                         await cmd.ExecuteNonQueryAsync();
                     }
 
@@ -244,9 +283,10 @@ namespace Certify.Datastore.Postgres
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
-                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
+                        using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND instanceid=@instanceid AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
                         {
                             cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                             cmd.Parameters.Add(new NpgsqlParameter("@nameStartsWith", nameStartsWith));
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -283,11 +323,12 @@ namespace Certify.Datastore.Postgres
                                                         (subquery.config ->> 'DateRenewed')::timestamp with time zone as dateRenewed,
                                                         (subquery.config ->> 'DateLastRenewalAttempt')::timestamp with time zone as dateLastRenewalAttempt,
                                                         (subquery.config ->> 'DateExpiry')::timestamp with time zone as dateExpiry
-                                                   FROM manageditem subquery WHERE subquery.itemtype = @itemtype
+                                                   FROM manageditem subquery WHERE subquery.itemtype = @itemtype AND subquery.instanceid = @instanceid
                           ) AS i ";
 
             var queryParameters = new List<NpgsqlParameter>();
             queryParameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+            queryParameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
             var conditions = new List<string>();
 
@@ -488,10 +529,11 @@ namespace Certify.Datastore.Postgres
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
-                    using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
+                    using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                     {
                         cmd.Parameters.Add(new NpgsqlParameter("@id", itemId));
                         cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                        cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -585,10 +627,11 @@ namespace Certify.Datastore.Postgres
                         // get current version from DB
                         using (var tran = conn.BeginTransaction())
                         {
-                            using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", conn))
+                            using (var cmd = new NpgsqlCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                             {
                                 cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
                                 cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                                 using (var reader = await cmd.ExecuteReaderAsync())
                                 {
@@ -620,10 +663,11 @@ namespace Certify.Datastore.Postgres
 
                                 try
                                 {
-                                    using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id AND itemtype=@itemtype;", conn))
+                                    using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config as jsonb) WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid;", conn))
                                     {
                                         cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
                                         cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                        cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                         cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings) });
 
                                         await cmd.ExecuteNonQueryAsync();
@@ -642,10 +686,11 @@ namespace Certify.Datastore.Postgres
                             {
                                 try
                                 {
-                                    using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id, itemtype, config) VALUES(@id, @itemtype, @config);", conn))
+                                    using (var cmd = new NpgsqlCommand("INSERT INTO manageditem(id, itemtype, instanceid, config) VALUES(@id, @itemtype, @instanceid, @config);", conn))
                                     {
                                         cmd.Parameters.Add(new NpgsqlParameter("@id", managedCertificate.Id));
                                         cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                        cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                         cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings) });
 
                                         await cmd.ExecuteNonQueryAsync();

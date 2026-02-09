@@ -16,6 +16,7 @@ namespace Certify.Datastore.SQLServer
     {
         private ILog _log;
         private string _connectionString;
+        private string _instanceId = "";
 
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
@@ -39,10 +40,12 @@ namespace Certify.Datastore.SQLServer
         }
 
         public SQLServerCredentialStore() { }
-        public bool Init(string connectionString, ILog log)
+        public bool Init(string connectionString, ILog log, string instanceId = null)
         {
             _log = log;
             _connectionString = connectionString;
+            _instanceId = instanceId ?? "";
+            EnsureSchema().Wait();
             return true;
         }
 
@@ -59,9 +62,66 @@ namespace Certify.Datastore.SQLServer
             }
         }
 
-        public SQLServerCredentialStore(string connectionString, ILog log = null)
+        private async Task EnsureSchema()
         {
-            Init(connectionString, log);
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    var hasInstanceId = false;
+                    using (var cmd = new SqlCommand("SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('credential') AND name = 'instanceid'", conn))
+                    {
+                        var result = await cmd.ExecuteScalarAsync();
+                        hasInstanceId = result != null;
+                    }
+
+                    if (!hasInstanceId)
+                    {
+                        using (var cmd = new SqlCommand("ALTER TABLE credential ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        using (var cmd = new SqlCommand(@"
+                            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_credential_instanceid' AND object_id = OBJECT_ID('credential'))
+                            BEGIN
+                                CREATE INDEX idx_credential_instanceid ON credential(instanceid);
+                            END", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(_instanceId))
+                    {
+                        using (var cmd = new SqlCommand(
+                            "UPDATE credential SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    conn.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to ensure credential store schema");
+                throw;
+            }
+        }
+
+        public SQLServerCredentialStore(string connectionString, ILog log = null, string instanceId = null)
+        {
+            Init(connectionString, log, instanceId);
         }
 
         /// <summary>
@@ -84,10 +144,11 @@ namespace Certify.Datastore.SQLServer
                     await conn.OpenAsync();
                     using (var tran = conn.BeginTransaction())
                     {
-                        using (var cmd = new SqlCommand("DELETE FROM credential WHERE id=@id", conn))
+                        using (var cmd = new SqlCommand("DELETE FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
                         {
                             cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqlParameter("@id", storageKey));
+                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                             await cmd.ExecuteNonQueryAsync();
 
                             tran.Commit();
@@ -124,6 +185,9 @@ namespace Certify.Datastore.SQLServer
                 var queryParameters = new List<SqlParameter>();
                 var conditions = new List<string>();
                 var sql = @"SELECT id, config FROM credential ";
+
+                conditions.Add("instanceid = @instanceid");
+                queryParameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                 if (!string.IsNullOrEmpty(storageKey))
                 {
@@ -189,9 +253,10 @@ namespace Certify.Datastore.SQLServer
             var itemExists = false;
 
             using (var db = new SqlConnection(_connectionString))
-            using (var cmd = new SqlCommand("SELECT config, protectedvalue FROM credential WHERE id=@id", db))
+            using (var cmd = new SqlCommand("SELECT config, protectedvalue FROM credential WHERE id=@id AND instanceid=@instanceid", db))
             {
                 cmd.Parameters.Add(new SqlParameter("@id", storageKey));
+                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                 db.Open();
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -259,10 +324,11 @@ namespace Certify.Datastore.SQLServer
                 // get current version from DB
                 using (var tran = conn.BeginTransaction())
                 {
-                    using (var cmd = new SqlCommand("SELECT config FROM credential WHERE id=@id", conn))
+                    using (var cmd = new SqlCommand("SELECT config FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
                     {
                         cmd.Transaction = tran;
                         cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
+                        cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -281,10 +347,11 @@ namespace Certify.Datastore.SQLServer
 
                         try
                         {
-                            using (var cmd = new SqlCommand("UPDATE credential SET config = @config, protectedvalue= @protectedvalue WHERE id=@id;", conn))
+                            using (var cmd = new SqlCommand("UPDATE credential SET config = @config, protectedvalue= @protectedvalue WHERE id=@id AND instanceid=@instanceid;", conn))
                             {
                                 cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
+                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                                 cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
                                 cmd.Parameters.Add(new SqlParameter("@protectedvalue", protectedContent));
 
@@ -304,10 +371,11 @@ namespace Certify.Datastore.SQLServer
                     {
                         try
                         {
-                            using (var cmd = new SqlCommand("INSERT INTO credential(id,config,protectedvalue) VALUES(@id,@config,@protectedvalue);", conn))
+                            using (var cmd = new SqlCommand("INSERT INTO credential(id,instanceid,config,protectedvalue) VALUES(@id,@instanceid,@config,@protectedvalue);", conn))
                             {
                                 cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
+                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                                 cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
                                 cmd.Parameters.Add(new SqlParameter("@protectedvalue", protectedContent));
 

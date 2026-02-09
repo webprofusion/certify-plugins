@@ -52,10 +52,10 @@ namespace Certify.Datastore.SQLite
                 _customDbFileName = customDbFileName;
             }
 
-            Init(storageSubfolder, log);
+            Init(storageSubfolder, log, performBackup: false);
         }
 
-        public bool Init(string storageSubfolder, ILog log)
+        public bool Init(string storageSubfolder, ILog log, string instanceId = null)
         {
             return Init(storageSubfolder, log, performBackup: false);
         }

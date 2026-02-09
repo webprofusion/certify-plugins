@@ -191,6 +191,16 @@ namespace Certify.Datastore.SQLite
             return results;
         }
 
+        public async Task<List<SerializedConfigurationItem>> GetAllSerializedItems()
+        {
+            return await GetConfigurationItems(itemType: null, id: null);
+        }
+
+        public async Task UpsertSerializedItem(SerializedConfigurationItem item)
+        {
+            await UpdateConfigurationItem(item);
+        }
+
         /// <summary>
         /// Get normalized item type for storage
         /// </summary>
@@ -231,13 +241,17 @@ namespace Certify.Datastore.SQLite
 
                     var queryParameters = new List<SqliteParameter>();
                     var conditions = new List<string>();
-                    var sql = "SELECT id, itemtype, config FROM manageditem WHERE itemtype = @itemType";
+                    var sql = "SELECT id, itemtype, config FROM manageditem";
 
-                    queryParameters.Add(new SqliteParameter("@itemType", itemType));
+                    if (!string.IsNullOrEmpty(itemType))
+                    {
+                        sql += " WHERE itemtype = @itemType";
+                        queryParameters.Add(new SqliteParameter("@itemType", itemType));
+                    }
 
                     if (!string.IsNullOrEmpty(id))
                     {
-                        sql += " AND id = @id";
+                        sql += string.IsNullOrEmpty(itemType) ? " WHERE id = @id" : " AND id = @id";
                         queryParameters.Add(new SqliteParameter("@id", id));
                     }
 

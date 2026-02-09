@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models.Config;
-using Certify.Models.Config;
 using Certify.Models.Hub;
 using Certify.Models.Providers;
 using Certify.Providers;
@@ -18,6 +17,7 @@ namespace Certify.Datastore.SQLServer
     {
         private ILog _log;
         private string _connectionString;
+        private string _instanceId = "";
 
         private AsyncRetryPolicy _retryPolicy;
 
@@ -41,10 +41,11 @@ namespace Certify.Datastore.SQLServer
 
         public SQLServerConfigurationStore() { }
 
-        public bool Init(string connectionString, ILog log)
+        public bool Init(string connectionString, ILog log, string instanceId = null)
         {
             _connectionString = connectionString;
             _log = log;
+            _instanceId = instanceId ?? "";
 
             _retryPolicy = Policy
                     .Handle<ArgumentException>()
@@ -54,12 +55,71 @@ namespace Certify.Datastore.SQLServer
                         _log?.Warning($"Retrying DB operation..{retryCount} {exception}");
                     });
 
+            EnsureSchema().Wait();
+
             return true;
         }
 
-        public SQLServerConfigurationStore(string connectionString, ILog log = null)
+        public SQLServerConfigurationStore(string connectionString, ILog log = null, string instanceId = null)
         {
-            Init(connectionString, log);
+            Init(connectionString, log, instanceId);
+        }
+
+        private async Task EnsureSchema()
+        {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    var hasInstanceId = false;
+                    using (var cmd = new SqlCommand("SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('manageditem') AND name = 'instanceid'", conn))
+                    {
+                        var result = await cmd.ExecuteScalarAsync();
+                        hasInstanceId = result != null;
+                    }
+
+                    if (!hasInstanceId)
+                    {
+                        using (var cmd = new SqlCommand("ALTER TABLE manageditem ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        using (var cmd = new SqlCommand(@"
+                            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_manageditem_instanceid' AND object_id = OBJECT_ID('manageditem'))
+                            BEGIN
+                                CREATE INDEX idx_manageditem_instanceid ON manageditem(instanceid);
+                            END", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(_instanceId))
+                    {
+                        using (var cmd = new SqlCommand(
+                            "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                        {
+                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    conn.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to ensure configuration store schema");
+                throw;
+            }
         }
 
         public async Task<bool> IsInitialised()
@@ -91,11 +151,12 @@ namespace Certify.Datastore.SQLServer
                     await conn.OpenAsync();
                     using (var tran = conn.BeginTransaction())
                     {
-                        using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id = @id AND itemtype = @itemtype", conn))
+                        using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
                         {
                             cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqlParameter("@id", id));
                             cmd.Parameters.Add(new SqlParameter("@itemtype", normalizedItemType));
+                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                             await cmd.ExecuteNonQueryAsync();
                         }
 
@@ -211,6 +272,16 @@ namespace Certify.Datastore.SQLServer
             return results;
         }
 
+        public async Task<List<SerializedConfigurationItem>> GetAllSerializedItems()
+        {
+            return await GetConfigurationItems(itemType: null, id: null);
+        }
+
+        public async Task UpsertSerializedItem(SerializedConfigurationItem item)
+        {
+            await UpdateConfigurationItem(item);
+        }
+
         private string GetNormalizedItemType<T>(string itemType)
         {
             return string.IsNullOrEmpty(itemType)
@@ -233,8 +304,14 @@ namespace Certify.Datastore.SQLServer
                         await conn.OpenAsync();
 
                         var queryParameters = new List<SqlParameter>();
-                        var sql = "SELECT id, itemtype, config FROM manageditem WHERE itemtype = @itemType";
-                        queryParameters.Add(new SqlParameter("@itemType", itemType));
+                        var sql = "SELECT id, itemtype, config FROM manageditem WHERE instanceid = @instanceid";
+                        queryParameters.Add(new SqlParameter("@instanceid", _instanceId));
+
+                        if (!string.IsNullOrEmpty(itemType))
+                        {
+                            sql += " AND itemtype = @itemType";
+                            queryParameters.Add(new SqlParameter("@itemType", itemType));
+                        }
 
                         if (!string.IsNullOrEmpty(id))
                         {
@@ -296,18 +373,19 @@ namespace Certify.Datastore.SQLServer
                             // Use MERGE for upsert in SQL Server
                             var sql = @"
                                 MERGE INTO manageditem AS target
-                                USING (SELECT @id AS id, @itemtype AS itemtype) AS source
-                                ON target.id = source.id AND target.itemtype = source.itemtype
+                                USING (SELECT @id AS id, @itemtype AS itemtype, @instanceid AS instanceid) AS source
+                                ON target.id = source.id AND target.itemtype = source.itemtype AND target.instanceid = source.instanceid
                                 WHEN MATCHED THEN
                                     UPDATE SET config = @config
                                 WHEN NOT MATCHED THEN
-                                    INSERT (id, itemtype, config) VALUES (@id, @itemtype, @config);";
+                                    INSERT (id, itemtype, instanceid, config) VALUES (@id, @itemtype, @instanceid, @config);";
 
                             using (var cmd = new SqlCommand(sql, conn))
                             {
                                 cmd.Transaction = tran;
                                 cmd.Parameters.Add(new SqlParameter("@id", item.Id));
                                 cmd.Parameters.Add(new SqlParameter("@itemtype", item.ItemType));
+                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                                 cmd.Parameters.Add(new SqlParameter("@config", item.Config));
                                 await cmd.ExecuteNonQueryAsync();
                             }

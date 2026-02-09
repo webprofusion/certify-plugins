@@ -17,6 +17,7 @@ namespace Certify.Datastore.Postgres
     {
         private ILog _log;
         private string _connectionString;
+        private string _instanceId = "";
 
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
@@ -41,16 +42,70 @@ namespace Certify.Datastore.Postgres
         }
 
         public PostgresCredentialStore() { }
-        public bool Init(string connectionString, ILog log)
+        public bool Init(string connectionString, ILog log, string instanceId = null)
         {
             _log = log;
             _connectionString = connectionString;
+            _instanceId = instanceId ?? "";
+            EnsureSchema().Wait();
             return true;
         }
 
-        public PostgresCredentialStore(string connectionString, ILog log = null)
+        public PostgresCredentialStore(string connectionString, ILog log = null, string instanceId = null)
         {
-            Init(connectionString, log);
+            Init(connectionString, log, instanceId);
+        }
+
+        private async Task EnsureSchema()
+        {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    var hasInstanceId = false;
+                    using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.columns WHERE table_name = 'credential' AND column_name = 'instanceid'", conn))
+                    {
+                        var result = await cmd.ExecuteScalarAsync();
+                        hasInstanceId = result != null;
+                    }
+
+                    if (!hasInstanceId)
+                    {
+                        using (var cmd = new NpgsqlCommand("ALTER TABLE credential ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        using (var cmd = new NpgsqlCommand("CREATE INDEX IF NOT EXISTS idx_credential_instanceid ON credential(instanceid);", conn))
+                        {
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(_instanceId))
+                    {
+                        using (var cmd = new NpgsqlCommand("UPDATE credential SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                        {
+                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    await conn.CloseAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error(ex, "Failed to ensure credential store schema");
+                throw;
+            }
         }
 
         public async Task<bool> IsInitialised()
@@ -86,9 +141,10 @@ namespace Certify.Datastore.Postgres
                     await conn.OpenAsync();
                     using (var tran = conn.BeginTransaction())
                     {
-                        using (var cmd = new NpgsqlCommand("DELETE FROM credential WHERE id=@id", conn))
+                        using (var cmd = new NpgsqlCommand("DELETE FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
                         {
                             cmd.Parameters.Add(new NpgsqlParameter("@id", storageKey));
+                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                             await cmd.ExecuteNonQueryAsync();
 
                             tran.Commit();
@@ -125,6 +181,9 @@ namespace Certify.Datastore.Postgres
                 var queryParameters = new List<NpgsqlParameter>();
                 var conditions = new List<string>();
                 var sql = @"SELECT id, config FROM credential ";
+
+                conditions.Add("instanceid = @instanceid");
+                queryParameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                 if (!string.IsNullOrEmpty(storageKey))
                 {
@@ -190,9 +249,10 @@ namespace Certify.Datastore.Postgres
             var itemExists = false;
 
             using (var db = new NpgsqlConnection(_connectionString))
-            using (var cmd = new NpgsqlCommand("SELECT config, protectedvalue FROM credential WHERE id=@id", db))
+            using (var cmd = new NpgsqlCommand("SELECT config, protectedvalue FROM credential WHERE id=@id AND instanceid=@instanceid", db))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("@id", storageKey));
+                cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                 db.Open();
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -260,9 +320,10 @@ namespace Certify.Datastore.Postgres
                 // get current version from DB
                 using (var tran = conn.BeginTransaction())
                 {
-                    using (var cmd = new NpgsqlCommand("SELECT config FROM credential WHERE id=@id", conn))
+                    using (var cmd = new NpgsqlCommand("SELECT config FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
                     {
                         cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
+                        cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -281,9 +342,10 @@ namespace Certify.Datastore.Postgres
 
                         try
                         {
-                            using (var cmd = new NpgsqlCommand("UPDATE credential SET config = CAST(@config as jsonb), protectedvalue= @protectedvalue WHERE id=@id;", conn))
+                            using (var cmd = new NpgsqlCommand("UPDATE credential SET config = CAST(@config as jsonb), protectedvalue= @protectedvalue WHERE id=@id AND instanceid=@instanceid;", conn))
                             {
                                 cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
+                                cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                 cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
                                 cmd.Parameters.Add(new NpgsqlParameter("@protectedvalue", protectedContent));
 
@@ -303,9 +365,10 @@ namespace Certify.Datastore.Postgres
                     {
                         try
                         {
-                            using (var cmd = new NpgsqlCommand("INSERT INTO credential(id,config,protectedvalue) VALUES(@id,@config,@protectedvalue);", conn))
+                            using (var cmd = new NpgsqlCommand("INSERT INTO credential(id,instanceid,config,protectedvalue) VALUES(@id,@instanceid,@config,@protectedvalue);", conn))
                             {
                                 cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
+                                cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                 cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
                                 cmd.Parameters.Add(new NpgsqlParameter("@protectedvalue", protectedContent));
 

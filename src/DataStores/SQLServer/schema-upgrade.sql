@@ -43,6 +43,38 @@ BEGIN
 END
 GO
 
+-- Step 6: Add instanceid column if it doesn't exist
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('manageditem') AND name = 'instanceid')
+BEGIN
+    ALTER TABLE manageditem ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';
+    PRINT 'Added instanceid column';
+END
+GO
+
+-- Step 7: Create index on instanceid for query performance
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_manageditem_instanceid' AND object_id = OBJECT_ID('manageditem'))
+BEGIN
+    CREATE INDEX idx_manageditem_instanceid ON manageditem(instanceid);
+    PRINT 'Created index idx_manageditem_instanceid';
+END
+GO
+
+-- Step 8: Add instanceid column for credential table if it doesn't exist
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('credential') AND name = 'instanceid')
+BEGIN
+    ALTER TABLE credential ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';
+    PRINT 'Added instanceid column to credential table';
+END
+GO
+
+-- Step 9: Create index on credential.instanceid for query performance
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_credential_instanceid' AND object_id = OBJECT_ID('credential'))
+BEGIN
+    CREATE INDEX idx_credential_instanceid ON credential(instanceid);
+    PRINT 'Created index idx_credential_instanceid';
+END
+GO
+
 -- Verify the upgrade
 SELECT c.name, t.name as type, c.is_nullable
 FROM sys.columns c
