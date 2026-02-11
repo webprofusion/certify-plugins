@@ -59,19 +59,20 @@ BEGIN
 END
 GO
 
--- Step 8: Add instanceid column for credential table if it doesn't exist
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('credential') AND name = 'instanceid')
+-- Step 8: Migrate credentials from legacy credential table to manageditem table (if legacy table exists)
+IF OBJECT_ID('credential', 'U') IS NOT NULL
 BEGIN
-    ALTER TABLE credential ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';
-    PRINT 'Added instanceid column to credential table';
-END
-GO
+    -- Migrate rows that don't already exist in manageditem
+    INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue)
+    SELECT c.id, 'credential', ISNULL(c.instanceid, ''), c.config, c.protectedvalue
+    FROM credential c
+    WHERE NOT EXISTS (
+        SELECT 1 FROM manageditem m WHERE m.id = c.id AND m.itemtype = 'credential'
+    );
 
--- Step 9: Create index on credential.instanceid for query performance
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_credential_instanceid' AND object_id = OBJECT_ID('credential'))
-BEGIN
-    CREATE INDEX idx_credential_instanceid ON credential(instanceid);
-    PRINT 'Created index idx_credential_instanceid';
+    -- Rename legacy table
+    EXEC sp_rename 'credential', 'credential_legacy';
+    PRINT 'Migrated credentials from credential table to manageditem table and renamed legacy table';
 END
 GO
 

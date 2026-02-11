@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Certify.Management;
 using Certify.Models;
@@ -18,7 +19,11 @@ namespace Certify.Datastore.SQLServer
         private string _connectionString;
         private string _instanceId = "";
 
+        private const string _itemType = "credential";
         private const string PROTECTIONENTROPY = "Certify.Credentials";
+
+        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
+        private const int _semaphoreMaxWaitMS = 10 * 1000;
 
         private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -45,7 +50,7 @@ namespace Certify.Datastore.SQLServer
             _log = log;
             _connectionString = connectionString;
             _instanceId = instanceId ?? "";
-            EnsureSchema().Wait();
+            MigrateLegacyCredentialTable().Wait();
             return true;
         }
 
@@ -62,7 +67,10 @@ namespace Certify.Datastore.SQLServer
             }
         }
 
-        private async Task EnsureSchema()
+        /// <summary>
+        /// Migrate credentials from the legacy 'credential' table into the 'manageditem' table
+        /// </summary>
+        private async Task MigrateLegacyCredentialTable()
         {
             if (string.IsNullOrEmpty(_connectionString))
             {
@@ -75,47 +83,105 @@ namespace Certify.Datastore.SQLServer
                 {
                     await conn.OpenAsync();
 
-                    var hasInstanceId = false;
-                    using (var cmd = new SqlCommand("SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('credential') AND name = 'instanceid'", conn))
+                    // Check if legacy credential table exists
+                    bool hasLegacyTable;
+                    using (var cmd = new SqlCommand("SELECT OBJECT_ID('credential', 'U')", conn))
                     {
                         var result = await cmd.ExecuteScalarAsync();
-                        hasInstanceId = result != null;
+                        hasLegacyTable = result != null && result != DBNull.Value;
                     }
 
-                    if (!hasInstanceId)
+                    if (!hasLegacyTable)
                     {
-                        using (var cmd = new SqlCommand("ALTER TABLE credential ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        using (var cmd = new SqlCommand(@"
-                            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_credential_instanceid' AND object_id = OBJECT_ID('credential'))
-                            BEGIN
-                                CREATE INDEX idx_credential_instanceid ON credential(instanceid);
-                            END", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
+                        conn.Close();
+                        return;
                     }
 
-                    if (!string.IsNullOrEmpty(_instanceId))
+                    // Check if there are any rows to migrate
+                    int legacyCount;
+                    using (var cmd = new SqlCommand("SELECT COUNT(*) FROM credential", conn))
                     {
-                        using (var cmd = new SqlCommand(
-                            "UPDATE credential SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
-                        {
-                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
+                        legacyCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                     }
+
+                    if (legacyCount > 0)
+                    {
+                        _log?.Information($"SQL Server: Migrating {legacyCount} credentials from legacy credential table to manageditem table");
+
+                        // Determine which columns exist in legacy table
+                        var hasInstanceId = false;
+                        using (var cmd = new SqlCommand("SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('credential') AND name = 'instanceid'", conn))
+                        {
+                            var result = await cmd.ExecuteScalarAsync();
+                            hasInstanceId = result != null;
+                        }
+
+                        var selectSql = hasInstanceId
+                            ? "SELECT id, config, protectedvalue, instanceid FROM credential"
+                            : "SELECT id, config, protectedvalue FROM credential";
+
+                        using (var readCmd = new SqlCommand(selectSql, conn))
+                        {
+                            using (var reader = await readCmd.ExecuteReaderAsync())
+                            {
+                                var rows = new List<(string Id, string Config, string ProtectedValue, string InstanceId)>();
+                                while (await reader.ReadAsync())
+                                {
+                                    var id = (string)reader["id"];
+                                    var config = (string)reader["config"];
+                                    var protectedValue = reader["protectedvalue"] as string;
+                                    var instId = hasInstanceId ? (reader["instanceid"] as string ?? "") : "";
+                                    rows.Add((id, config, protectedValue, instId));
+                                }
+
+                                reader.Close();
+
+                                foreach (var row in rows)
+                                {
+                                    // Check if already migrated
+                                    using (var checkCmd = new SqlCommand("SELECT 1 FROM manageditem WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
+                                    {
+                                        checkCmd.Parameters.Add(new SqlParameter("@id", row.Id));
+                                        checkCmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                        checkCmd.Parameters.Add(new SqlParameter("@instanceid", row.InstanceId));
+                                        var exists = await checkCmd.ExecuteScalarAsync();
+                                        if (exists != null)
+                                        {
+                                            continue;
+                                        }
+                                    }
+
+                                    using (var insertCmd = new SqlCommand(
+                                        "INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, @config, @itemvalue)", conn))
+                                    {
+                                        insertCmd.Parameters.Add(new SqlParameter("@id", row.Id));
+                                        insertCmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                        insertCmd.Parameters.Add(new SqlParameter("@instanceid", row.InstanceId));
+                                        insertCmd.Parameters.Add(new SqlParameter("@config", row.Config));
+                                        insertCmd.Parameters.Add(new SqlParameter("@itemvalue", (object)row.ProtectedValue ?? DBNull.Value));
+                                        await insertCmd.ExecuteNonQueryAsync();
+                                    }
+                                }
+                            }
+                        }
+
+                        _log?.Information("SQL Server: Credential migration to manageditem table complete");
+                    }
+
+                    // Rename legacy table so we don't migrate again
+                    using (var cmd = new SqlCommand("EXEC sp_rename 'credential', 'credential_legacy'", conn))
+                    {
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    _log?.Information("SQL Server: Legacy credential table renamed to credential_legacy");
 
                     conn.Close();
                 }
             }
             catch (Exception ex)
             {
-                _log?.Error(ex, "Failed to ensure credential store schema");
-                throw;
+                _log?.Error(ex, "Failed to migrate legacy credential table");
             }
         }
 
@@ -135,35 +201,41 @@ namespace Certify.Datastore.SQLServer
 
             if (!inUse)
             {
-                //delete credential in database
-
                 _log?.Warning("Deleting stored credential ", storageKey);
 
-                using (var conn = new SqlConnection(_connectionString))
+                try
                 {
-                    await conn.OpenAsync();
-                    using (var tran = conn.BeginTransaction())
+                    await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                    using (var conn = new SqlConnection(_connectionString))
                     {
-                        using (var cmd = new SqlCommand("DELETE FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
+                        await conn.OpenAsync();
+                        using (var tran = conn.BeginTransaction())
                         {
-                            cmd.Transaction = tran;
-                            cmd.Parameters.Add(new SqlParameter("@id", storageKey));
-                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
-                            await cmd.ExecuteNonQueryAsync();
+                            using (var cmd = new SqlCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
+                            {
+                                cmd.Transaction = tran;
+                                cmd.Parameters.Add(new SqlParameter("@id", storageKey));
+                                cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                                await cmd.ExecuteNonQueryAsync();
+                            }
 
                             tran.Commit();
                         }
+
+                        conn.Close();
                     }
-
-                    conn.Close();
-
+                }
+                finally
+                {
+                    _dbMutex.Release();
                 }
 
                 return new ActionResult("Credential Deleted", true);
             }
             else
             {
-                //could not delete
                 return new ActionResult("Credential in use, could not delete.", false);
             }
         }
@@ -175,7 +247,6 @@ namespace Certify.Datastore.SQLServer
         /// <returns></returns>
         public async Task<List<StoredCredential>> GetCredentials(string type = null, string storageKey = null)
         {
-
             var credentials = new List<StoredCredential>();
 
             using (var db = new SqlConnection(_connectionString))
@@ -183,37 +254,24 @@ namespace Certify.Datastore.SQLServer
                 await db.OpenAsync();
 
                 var queryParameters = new List<SqlParameter>();
-                var conditions = new List<string>();
-                var sql = @"SELECT id, config FROM credential ";
+                var sql = @"SELECT id, config FROM manageditem WHERE itemtype = @itemtype AND instanceid = @instanceid";
 
-                conditions.Add("instanceid = @instanceid");
+                queryParameters.Add(new SqlParameter("@itemtype", _itemType));
                 queryParameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                 if (!string.IsNullOrEmpty(storageKey))
                 {
-                    conditions.Add("id = @id");
+                    sql += " AND id = @id";
                     queryParameters.Add(new SqlParameter("@id", storageKey));
                 }
 
                 if (!string.IsNullOrEmpty(type))
                 {
-                    conditions.Add("JSON_VALUE(config, '$.ProviderType') = @providerType");
+                    sql += " AND JSON_VALUE(config, '$.ProviderType') = @providerType";
                     queryParameters.Add(new SqlParameter("@providerType", type));
                 }
 
-                if (conditions.Any())
-                {
-                    sql += " WHERE ";
-                    var isFirstCondition = true;
-                    foreach (var c in conditions)
-                    {
-                        sql += (!isFirstCondition ? " AND " + c : c);
-
-                        isFirstCondition = false;
-                    }
-                }
-
-                sql += $" ORDER BY JSON_VALUE(config, '$.Title') ";
+                sql += " ORDER BY JSON_VALUE(config, '$.Title') ";
 
                 using (var cmd = new SqlCommand(sql, db))
                 {
@@ -233,7 +291,6 @@ namespace Certify.Datastore.SQLServer
             }
 
             return credentials;
-
         }
 
         public async Task<StoredCredential> GetCredential(string storageKey)
@@ -253,9 +310,10 @@ namespace Certify.Datastore.SQLServer
             var itemExists = false;
 
             using (var db = new SqlConnection(_connectionString))
-            using (var cmd = new SqlCommand("SELECT config, protectedvalue FROM credential WHERE id=@id AND instanceid=@instanceid", db))
+            using (var cmd = new SqlCommand("SELECT config, itemvalue FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", db))
             {
                 cmd.Parameters.Add(new SqlParameter("@id", storageKey));
+                cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
                 cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                 db.Open();
@@ -264,8 +322,7 @@ namespace Certify.Datastore.SQLServer
                     if (await reader.ReadAsync())
                     {
                         itemExists = true;
-                        var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["config"]);
-                        protectedString = (string)reader["protectedvalue"];
+                        protectedString = reader["itemvalue"] as string;
                     }
                 }
 
@@ -315,47 +372,54 @@ namespace Certify.Datastore.SQLServer
 
             credentialInfo.Secret = "protected";
 
-            using (var conn = new SqlConnection(_connectionString))
+            try
             {
-                await conn.OpenAsync();
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                ManagedCertificate current = null;
-
-                // get current version from DB
-                using (var tran = conn.BeginTransaction())
+                using (var conn = new SqlConnection(_connectionString))
                 {
-                    using (var cmd = new SqlCommand("SELECT config FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
-                    {
-                        cmd.Transaction = tran;
-                        cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
-                        cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                    await conn.OpenAsync();
 
-                        using (var reader = await cmd.ExecuteReaderAsync())
+                    using (var tran = conn.BeginTransaction())
+                    {
+                        bool exists = false;
+                        using (var checkCmd = new SqlCommand("SELECT 1 FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                         {
-                            if (await reader.ReadAsync())
-                            {
-                                current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-                                current.IsChanged = false;
-                            }
-
-                            reader.Close();
+                            checkCmd.Transaction = tran;
+                            checkCmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
+                            checkCmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                            checkCmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                            var result = await checkCmd.ExecuteScalarAsync();
+                            exists = result != null;
                         }
-                    }
-
-                    if (current != null)
-                    {
 
                         try
                         {
-                            using (var cmd = new SqlCommand("UPDATE credential SET config = @config, protectedvalue= @protectedvalue WHERE id=@id AND instanceid=@instanceid;", conn))
+                            if (exists)
                             {
-                                cmd.Transaction = tran;
-                                cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
-                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
-                                cmd.Parameters.Add(new SqlParameter("@protectedvalue", protectedContent));
-
-                                await cmd.ExecuteNonQueryAsync();
+                                using (var cmd = new SqlCommand("UPDATE manageditem SET config = @config, itemvalue = @itemvalue WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
+                                {
+                                    cmd.Transaction = tran;
+                                    cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
+                                    cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                    cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                                    cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
+                                    cmd.Parameters.Add(new SqlParameter("@itemvalue", protectedContent));
+                                    await cmd.ExecuteNonQueryAsync();
+                                }
+                            }
+                            else
+                            {
+                                using (var cmd = new SqlCommand("INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, @config, @itemvalue)", conn))
+                                {
+                                    cmd.Transaction = tran;
+                                    cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
+                                    cmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
+                                    cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                                    cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
+                                    cmd.Parameters.Add(new SqlParameter("@itemvalue", protectedContent));
+                                    await cmd.ExecuteNonQueryAsync();
+                                }
                             }
 
                             tran.Commit();
@@ -367,33 +431,13 @@ namespace Certify.Datastore.SQLServer
                             throw;
                         }
                     }
-                    else
-                    {
-                        try
-                        {
-                            using (var cmd = new SqlCommand("INSERT INTO credential(id,instanceid,config,protectedvalue) VALUES(@id,@instanceid,@config,@protectedvalue);", conn))
-                            {
-                                cmd.Transaction = tran;
-                                cmd.Parameters.Add(new SqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
-                                cmd.Parameters.Add(new SqlParameter("@config", JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings)));
-                                cmd.Parameters.Add(new SqlParameter("@protectedvalue", protectedContent));
 
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            tran.Commit();
-                        }
-                        catch (SqlException exp)
-                        {
-                            tran.Rollback();
-                            _log?.Error(exp.ToString());
-                            throw;
-                        }
-                    }
+                    conn.Close();
                 }
-
-                conn.Close();
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
 
             return credentialInfo;

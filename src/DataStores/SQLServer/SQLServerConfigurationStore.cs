@@ -304,7 +304,7 @@ namespace Certify.Datastore.SQLServer
                         await conn.OpenAsync();
 
                         var queryParameters = new List<SqlParameter>();
-                        var sql = "SELECT id, itemtype, config FROM manageditem WHERE instanceid = @instanceid";
+                        var sql = "SELECT id, itemtype, config, itemvalue FROM manageditem WHERE instanceid = @instanceid";
                         queryParameters.Add(new SqlParameter("@instanceid", _instanceId));
 
                         if (!string.IsNullOrEmpty(itemType))
@@ -333,7 +333,8 @@ namespace Certify.Datastore.SQLServer
                                     {
                                         Id = (string)reader["id"],
                                         ItemType = (string)reader["itemtype"],
-                                        Config = (string)reader["config"]
+                                        Config = (string)reader["config"],
+                                        ItemValue = reader["itemvalue"] as string
                                     };
                                     items.Add(configItem);
                                 }
@@ -376,9 +377,9 @@ namespace Certify.Datastore.SQLServer
                                 USING (SELECT @id AS id, @itemtype AS itemtype, @instanceid AS instanceid) AS source
                                 ON target.id = source.id AND target.itemtype = source.itemtype AND target.instanceid = source.instanceid
                                 WHEN MATCHED THEN
-                                    UPDATE SET config = @config
+                                    UPDATE SET config = @config, itemvalue = @itemvalue
                                 WHEN NOT MATCHED THEN
-                                    INSERT (id, itemtype, instanceid, config) VALUES (@id, @itemtype, @instanceid, @config);";
+                                    INSERT (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, @config, @itemvalue);";
 
                             using (var cmd = new SqlCommand(sql, conn))
                             {
@@ -387,6 +388,7 @@ namespace Certify.Datastore.SQLServer
                                 cmd.Parameters.Add(new SqlParameter("@itemtype", item.ItemType));
                                 cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
                                 cmd.Parameters.Add(new SqlParameter("@config", item.Config));
+                                cmd.Parameters.Add(new SqlParameter("@itemvalue", (object)item.ItemValue ?? DBNull.Value));
                                 await cmd.ExecuteNonQueryAsync();
                             }
 

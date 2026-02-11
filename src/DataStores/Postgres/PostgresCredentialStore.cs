@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Certify.Management;
 using Certify.Models;
@@ -19,7 +20,11 @@ namespace Certify.Datastore.Postgres
         private string _connectionString;
         private string _instanceId = "";
 
+        private const string _itemType = "credential";
         private const string PROTECTIONENTROPY = "Certify.Credentials";
+
+        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
+        private const int _semaphoreMaxWaitMS = 10 * 1000;
 
         private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -47,7 +52,7 @@ namespace Certify.Datastore.Postgres
             _log = log;
             _connectionString = connectionString;
             _instanceId = instanceId ?? "";
-            EnsureSchema().Wait();
+            MigrateLegacyCredentialTable().Wait();
             return true;
         }
 
@@ -56,7 +61,10 @@ namespace Certify.Datastore.Postgres
             Init(connectionString, log, instanceId);
         }
 
-        private async Task EnsureSchema()
+        /// <summary>
+        /// Migrate credentials from the legacy 'credential' table into the 'manageditem' table
+        /// </summary>
+        private async Task MigrateLegacyCredentialTable()
         {
             if (string.IsNullOrEmpty(_connectionString))
             {
@@ -69,31 +77,103 @@ namespace Certify.Datastore.Postgres
                 {
                     await conn.OpenAsync();
 
-                    var hasInstanceId = false;
-                    using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.columns WHERE table_name = 'credential' AND column_name = 'instanceid'", conn))
+                    // Check if legacy credential table exists
+                    bool hasLegacyTable;
+                    using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.tables WHERE table_name = 'credential'", conn))
                     {
                         var result = await cmd.ExecuteScalarAsync();
-                        hasInstanceId = result != null;
+                        hasLegacyTable = result != null;
                     }
 
-                    if (!hasInstanceId)
+                    if (!hasLegacyTable)
                     {
-                        using (var cmd = new NpgsqlCommand("ALTER TABLE credential ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';", conn))
+                        await conn.CloseAsync();
+                        return;
+                    }
+
+                    // Check if there are any rows to migrate
+                    int legacyCount;
+                    using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM credential", conn))
+                    {
+                        legacyCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    }
+
+                    if (legacyCount > 0)
+                    {
+                        _log?.Information($"Postgres: Migrating {legacyCount} credentials from legacy credential table to manageditem table");
+
+                        // Determine which columns exist in legacy table
+                        var hasInstanceId = false;
+                        using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.columns WHERE table_name = 'credential' AND column_name = 'instanceid'", conn))
+                        {
+                            var result = await cmd.ExecuteScalarAsync();
+                            hasInstanceId = result != null;
+                        }
+
+                        var selectSql = hasInstanceId
+                            ? "SELECT id, config, protectedvalue, instanceid FROM credential"
+                            : "SELECT id, config, protectedvalue FROM credential";
+
+                        using (var readCmd = new NpgsqlCommand(selectSql, conn))
+                        {
+                            using (var reader = await readCmd.ExecuteReaderAsync())
+                            {
+                                var rows = new List<(string Id, string Config, string ProtectedValue, string InstanceId)>();
+                                while (await reader.ReadAsync())
+                                {
+                                    var id = (string)reader["id"];
+                                    var config = (string)reader["config"];
+                                    var protectedValue = reader["protectedvalue"] as string;
+                                    var instId = hasInstanceId ? (reader["instanceid"] as string ?? "") : "";
+                                    rows.Add((id, config, protectedValue, instId));
+                                }
+
+                                await reader.CloseAsync();
+
+                                foreach (var row in rows)
+                                {
+                                    // Check if already migrated
+                                    using (var checkCmd = new NpgsqlCommand("SELECT 1 FROM manageditem WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
+                                    {
+                                        checkCmd.Parameters.Add(new NpgsqlParameter("@id", row.Id));
+                                        checkCmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                        checkCmd.Parameters.Add(new NpgsqlParameter("@instanceid", row.InstanceId));
+                                        var exists = await checkCmd.ExecuteScalarAsync();
+                                        if (exists != null)
+                                        {
+                                            continue;
+                                        }
+                                    }
+
+                                    using (var insertCmd = new NpgsqlCommand(
+                                        "INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, CAST(@config AS jsonb), @itemvalue)", conn))
+                                    {
+                                        insertCmd.Parameters.Add(new NpgsqlParameter("@id", row.Id));
+                                        insertCmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                        insertCmd.Parameters.Add(new NpgsqlParameter("@instanceid", row.InstanceId));
+                                        insertCmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = row.Config });
+                                        insertCmd.Parameters.Add(new NpgsqlParameter("@itemvalue", (object)row.ProtectedValue ?? DBNull.Value));
+                                        await insertCmd.ExecuteNonQueryAsync();
+                                    }
+                                }
+                            }
+                        }
+
+                        _log?.Information("Postgres: Credential migration to manageditem table complete");
+
+                        // Rename legacy table so we don't migrate again
+                        using (var cmd = new NpgsqlCommand("ALTER TABLE credential RENAME TO credential_legacy", conn))
                         {
                             await cmd.ExecuteNonQueryAsync();
                         }
 
-                        using (var cmd = new NpgsqlCommand("CREATE INDEX IF NOT EXISTS idx_credential_instanceid ON credential(instanceid);", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
+                        _log?.Information("Postgres: Legacy credential table renamed to credential_legacy");
                     }
-
-                    if (!string.IsNullOrEmpty(_instanceId))
+                    else
                     {
-                        using (var cmd = new NpgsqlCommand("UPDATE credential SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                        // No rows, just rename the empty table
+                        using (var cmd = new NpgsqlCommand("ALTER TABLE credential RENAME TO credential_legacy", conn))
                         {
-                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                             await cmd.ExecuteNonQueryAsync();
                         }
                     }
@@ -103,8 +183,7 @@ namespace Certify.Datastore.Postgres
             }
             catch (Exception ex)
             {
-                _log?.Error(ex, "Failed to ensure credential store schema");
-                throw;
+                _log?.Error(ex, "Failed to migrate legacy credential table");
             }
         }
 
@@ -132,34 +211,40 @@ namespace Certify.Datastore.Postgres
 
             if (!inUse)
             {
-                //delete credential in database
-
                 _log?.Warning("Deleting stored credential ", storageKey);
 
-                using (var conn = new NpgsqlConnection(_connectionString))
+                try
                 {
-                    await conn.OpenAsync();
-                    using (var tran = conn.BeginTransaction())
+                    await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+
+                    using (var conn = new NpgsqlConnection(_connectionString))
                     {
-                        using (var cmd = new NpgsqlCommand("DELETE FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
+                        await conn.OpenAsync();
+                        using (var tran = conn.BeginTransaction())
                         {
-                            cmd.Parameters.Add(new NpgsqlParameter("@id", storageKey));
-                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
-                            await cmd.ExecuteNonQueryAsync();
+                            using (var cmd = new NpgsqlCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
+                            {
+                                cmd.Parameters.Add(new NpgsqlParameter("@id", storageKey));
+                                cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                                await cmd.ExecuteNonQueryAsync();
+                            }
 
-                            tran.Commit();
+                            await tran.CommitAsync();
                         }
+
+                        await conn.CloseAsync();
                     }
-
-                    await conn.CloseAsync();
-
+                }
+                finally
+                {
+                    _dbMutex.Release();
                 }
 
                 return new ActionResult("Credential Deleted", true);
             }
             else
             {
-                //could not delete
                 return new ActionResult("Credential in use, could not delete.", false);
             }
         }
@@ -171,7 +256,6 @@ namespace Certify.Datastore.Postgres
         /// <returns></returns>
         public async Task<List<StoredCredential>> GetCredentials(string type = null, string storageKey = null)
         {
-
             var credentials = new List<StoredCredential>();
 
             using (var db = new NpgsqlConnection(_connectionString))
@@ -179,37 +263,24 @@ namespace Certify.Datastore.Postgres
                 await db.OpenAsync();
 
                 var queryParameters = new List<NpgsqlParameter>();
-                var conditions = new List<string>();
-                var sql = @"SELECT id, config FROM credential ";
+                var sql = @"SELECT id, config FROM manageditem WHERE itemtype = @itemtype AND instanceid = @instanceid";
 
-                conditions.Add("instanceid = @instanceid");
+                queryParameters.Add(new NpgsqlParameter("@itemtype", _itemType));
                 queryParameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                 if (!string.IsNullOrEmpty(storageKey))
                 {
-                    conditions.Add("id = @id");
+                    sql += " AND id = @id";
                     queryParameters.Add(new NpgsqlParameter("@id", storageKey));
                 }
 
                 if (!string.IsNullOrEmpty(type))
                 {
-                    conditions.Add(" config->>'ProviderType' = @providerType");
+                    sql += " AND config->>'ProviderType' = @providerType";
                     queryParameters.Add(new NpgsqlParameter("@providerType", type));
                 }
 
-                if (conditions.Any())
-                {
-                    sql += " WHERE ";
-                    var isFirstCondition = true;
-                    foreach (var c in conditions)
-                    {
-                        sql += (!isFirstCondition ? " AND " + c : c);
-
-                        isFirstCondition = false;
-                    }
-                }
-
-                sql += $" ORDER BY config->>'Title' ";
+                sql += " ORDER BY config->>'Title' ";
 
                 using (var cmd = new NpgsqlCommand(sql, db))
                 {
@@ -229,7 +300,6 @@ namespace Certify.Datastore.Postgres
             }
 
             return credentials;
-
         }
 
         public async Task<StoredCredential> GetCredential(string storageKey)
@@ -249,9 +319,10 @@ namespace Certify.Datastore.Postgres
             var itemExists = false;
 
             using (var db = new NpgsqlConnection(_connectionString))
-            using (var cmd = new NpgsqlCommand("SELECT config, protectedvalue FROM credential WHERE id=@id AND instanceid=@instanceid", db))
+            using (var cmd = new NpgsqlCommand("SELECT config, itemvalue FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", db))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("@id", storageKey));
+                cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
                 cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                 db.Open();
@@ -260,8 +331,7 @@ namespace Certify.Datastore.Postgres
                     if (await reader.ReadAsync())
                     {
                         itemExists = true;
-                        var storedCredential = JsonConvert.DeserializeObject<StoredCredential>((string)reader["config"]);
-                        protectedString = (string)reader["protectedvalue"];
+                        protectedString = reader["itemvalue"] as string;
                     }
                 }
 
@@ -311,48 +381,54 @@ namespace Certify.Datastore.Postgres
 
             credentialInfo.Secret = "protected";
 
-            using (var conn = new NpgsqlConnection(_connectionString))
+            try
             {
-                await conn.OpenAsync();
+                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                ManagedCertificate current = null;
-
-                // get current version from DB
-                using (var tran = conn.BeginTransaction())
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    using (var cmd = new NpgsqlCommand("SELECT config FROM credential WHERE id=@id AND instanceid=@instanceid", conn))
-                    {
-                        cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
-                        cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                    await conn.OpenAsync();
 
-                        using (var reader = await cmd.ExecuteReaderAsync())
+                    using (var tran = conn.BeginTransaction())
+                    {
+                        bool exists = false;
+                        using (var checkCmd = new NpgsqlCommand("SELECT 1 FROM manageditem WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
                         {
-                            if (await reader.ReadAsync())
-                            {
-                                current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-                                current.IsChanged = false;
-                            }
-
-                            await reader.CloseAsync();
+                            checkCmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
+                            checkCmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                            checkCmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                            var result = await checkCmd.ExecuteScalarAsync();
+                            exists = result != null;
                         }
-                    }
-
-                    if (current != null)
-                    {
 
                         try
                         {
-                            using (var cmd = new NpgsqlCommand("UPDATE credential SET config = CAST(@config as jsonb), protectedvalue= @protectedvalue WHERE id=@id AND instanceid=@instanceid;", conn))
+                            if (exists)
                             {
-                                cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
-                                cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
-                                cmd.Parameters.Add(new NpgsqlParameter("@protectedvalue", protectedContent));
-
-                                await cmd.ExecuteNonQueryAsync();
+                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config AS jsonb), itemvalue = @itemvalue WHERE id=@id AND itemtype=@itemtype AND instanceid=@instanceid", conn))
+                                {
+                                    cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
+                                    cmd.Parameters.Add(new NpgsqlParameter("@itemvalue", protectedContent));
+                                    await cmd.ExecuteNonQueryAsync();
+                                }
+                            }
+                            else
+                            {
+                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, CAST(@config AS jsonb), @itemvalue)", conn))
+                                {
+                                    cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                                    cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
+                                    cmd.Parameters.Add(new NpgsqlParameter("@itemvalue", protectedContent));
+                                    await cmd.ExecuteNonQueryAsync();
+                                }
                             }
 
-                            tran.Commit();
+                            await tran.CommitAsync();
                         }
                         catch (NpgsqlException exp)
                         {
@@ -361,32 +437,13 @@ namespace Certify.Datastore.Postgres
                             throw;
                         }
                     }
-                    else
-                    {
-                        try
-                        {
-                            using (var cmd = new NpgsqlCommand("INSERT INTO credential(id,instanceid,config,protectedvalue) VALUES(@id,@instanceid,@config,@protectedvalue);", conn))
-                            {
-                                cmd.Parameters.Add(new NpgsqlParameter("@id", credentialInfo.StorageKey));
-                                cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
-                                cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = JsonConvert.SerializeObject(credentialInfo, _jsonSerializerSettings) });
-                                cmd.Parameters.Add(new NpgsqlParameter("@protectedvalue", protectedContent));
 
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            tran.Commit();
-                        }
-                        catch (NpgsqlException exp)
-                        {
-                            await tran.RollbackAsync();
-                            _log?.Error(exp.ToString());
-                            throw;
-                        }
-                    }
+                    await conn.CloseAsync();
                 }
-
-                await conn.CloseAsync();
+            }
+            finally
+            {
+                _dbMutex.Release();
             }
 
             return credentialInfo;

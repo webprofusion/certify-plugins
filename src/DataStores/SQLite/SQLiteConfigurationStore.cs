@@ -241,7 +241,7 @@ namespace Certify.Datastore.SQLite
 
                     var queryParameters = new List<SqliteParameter>();
                     var conditions = new List<string>();
-                    var sql = "SELECT id, itemtype, config FROM manageditem";
+                    var sql = "SELECT id, itemtype, config, itemvalue FROM manageditem";
 
                     if (!string.IsNullOrEmpty(itemType))
                     {
@@ -269,7 +269,8 @@ namespace Certify.Datastore.SQLite
                                 {
                                     Id = (string)reader["id"],
                                     ItemType = (string)reader["itemtype"],
-                                    Config = (string)reader["config"]
+                                    Config = (string)reader["config"],
+                                    ItemValue = reader["itemvalue"] as string
                                 };
                                 items.Add(configItem);
                             }
@@ -330,13 +331,14 @@ namespace Certify.Datastore.SQLite
 #endif
 
                         using (var cmd = new SqliteCommand(
-                                   "INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)",
+                                   "INSERT OR REPLACE INTO manageditem (id, itemtype, config, itemvalue) VALUES (@id, @itemtype, @config, @itemvalue)",
                                    db))
                         {
                             cmd.Transaction = tran;
                             cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
                             cmd.Parameters.Add(new SqliteParameter("@itemtype", item.ItemType));
                             cmd.Parameters.Add(new SqliteParameter("@config", item.Config));
+                            cmd.Parameters.Add(new SqliteParameter("@itemvalue", (object)item.ItemValue ?? DBNull.Value));
 
                             await cmd.ExecuteNonQueryAsync();
                         }

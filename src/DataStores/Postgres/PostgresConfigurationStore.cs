@@ -299,7 +299,7 @@ namespace Certify.Datastore.Postgres
                         await conn.OpenAsync();
 
                         var queryParameters = new List<NpgsqlParameter>();
-                        var sql = "SELECT id, itemtype, config FROM manageditem WHERE instanceid = @instanceid";
+                        var sql = "SELECT id, itemtype, config, itemvalue FROM manageditem WHERE instanceid = @instanceid";
                         queryParameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
 
                         if (!string.IsNullOrEmpty(itemType))
@@ -328,7 +328,8 @@ namespace Certify.Datastore.Postgres
                                     {
                                         Id = (string)reader["id"],
                                         ItemType = (string)reader["itemtype"],
-                                        Config = (string)reader["config"]
+                                        Config = (string)reader["config"],
+                                        ItemValue = reader["itemvalue"] as string
                                     };
                                     items.Add(configItem);
                                 }
@@ -378,23 +379,25 @@ namespace Certify.Datastore.Postgres
 
                             if (exists)
                             {
-                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config AS jsonb) WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
+                                using (var cmd = new NpgsqlCommand("UPDATE manageditem SET config = CAST(@config AS jsonb), itemvalue = @itemvalue WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
                                 {
                                     cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                                     cmd.Parameters.Add(new NpgsqlParameter("@itemtype", item.ItemType));
                                     cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                     cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = item.Config });
+                                    cmd.Parameters.Add(new NpgsqlParameter("@itemvalue", (object)item.ItemValue ?? DBNull.Value));
                                     await cmd.ExecuteNonQueryAsync();
                                 }
                             }
                             else
                             {
-                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem (id, itemtype, instanceid, config) VALUES (@id, @itemtype, @instanceid, CAST(@config AS jsonb))", conn))
+                                using (var cmd = new NpgsqlCommand("INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, CAST(@config AS jsonb), @itemvalue)", conn))
                                 {
                                     cmd.Parameters.Add(new NpgsqlParameter("@id", item.Id));
                                     cmd.Parameters.Add(new NpgsqlParameter("@itemtype", item.ItemType));
                                     cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
                                     cmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = item.Config });
+                                    cmd.Parameters.Add(new NpgsqlParameter("@itemvalue", (object)item.ItemValue ?? DBNull.Value));
                                     await cmd.ExecuteNonQueryAsync();
                                 }
                             }

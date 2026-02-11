@@ -51,17 +51,23 @@ END $$;
 -- Step 7: Create index on instanceid for query performance
 CREATE INDEX IF NOT EXISTS idx_manageditem_instanceid ON manageditem(instanceid);
 
--- Step 8: Add instanceid column for credential table if it doesn't exist
+-- Step 8: Migrate credentials from legacy credential table to manageditem table (if legacy table exists)
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'credential' AND column_name = 'instanceid') THEN
-        ALTER TABLE credential ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';
-        RAISE NOTICE 'Added instanceid column to credential table';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'credential') THEN
+        -- Migrate rows that don't already exist in manageditem
+        INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue)
+        SELECT c.id, 'credential', COALESCE(c.instanceid, ''), c.config, c.protectedvalue
+        FROM credential c
+        WHERE NOT EXISTS (
+            SELECT 1 FROM manageditem m WHERE m.id = c.id AND m.itemtype = 'credential'
+        );
+
+        -- Rename legacy table
+        ALTER TABLE credential RENAME TO credential_legacy;
+        RAISE NOTICE 'Migrated credentials from credential table to manageditem table and renamed legacy table';
     END IF;
 END $$;
-
--- Step 9: Create index on credential.instanceid for query performance
-CREATE INDEX IF NOT EXISTS idx_credential_instanceid ON credential(instanceid);
 
 -- Verify the upgrade
 SELECT column_name, data_type, is_nullable 
