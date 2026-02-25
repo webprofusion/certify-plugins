@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <AssemblyName>Plugin.CertificateManagers.Core</AssemblyName>
         <RootNamespace>Certify.Plugin.CertificateManagers</RootNamespace>
         <LangVersion>latest</LangVersion>
