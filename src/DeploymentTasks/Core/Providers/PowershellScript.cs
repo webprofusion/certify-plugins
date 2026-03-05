@@ -144,7 +144,10 @@ namespace Certify.Providers.DeploymentTasks
         /// <returns></returns>
         private string RestoreEscapedCharacters(string value)
         {
-            if (value == null) return value;
+            if (value == null)
+            {
+                return value;
+            }
 
             // restore escaped semicolons
             value = value.Replace("🏠", ";");
@@ -179,6 +182,7 @@ namespace Certify.Providers.DeploymentTasks
             }
 
             var timeoutMinutes = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "timeout")?.Value;
+
             if (!string.IsNullOrEmpty(timeoutMinutes))
             {
                 if (!int.TryParse(timeoutMinutes, out var timeout))
@@ -191,6 +195,7 @@ namespace Certify.Providers.DeploymentTasks
                     results.Add(new ActionResult("Timeout (Minutes) value is out of range (1-120).", false));
                 }
             }
+
             return await Task.FromResult(results);
         }
     }
