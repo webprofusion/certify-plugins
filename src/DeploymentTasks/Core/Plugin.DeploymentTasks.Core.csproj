@@ -21,18 +21,18 @@
   <ItemGroup>
     <EmbeddedResource Include="Providers\Assets\ADFS.ps1" />
     <EmbeddedResource Include="Providers\Assets\Exchange.ps1" />
-    <EmbeddedResource Include="Providers\Assets\RDPGatewayServices.ps1"/>
-    <EmbeddedResource Include="Providers\Assets\RDPListenerService.ps1"/>
+    <EmbeddedResource Include="Providers\Assets\RDPGatewayServices.ps1" />
+    <EmbeddedResource Include="Providers\Assets\RDPListenerService.ps1" />
     <EmbeddedResource Include="Providers\Assets\RemoteAccess.ps1" />
-    <EmbeddedResource Include="Providers\Assets\UpdatePortBinding.ps1"/>
-    <EmbeddedResource Include="Providers\Assets\WebManagementService.ps1"/>
+    <EmbeddedResource Include="Providers\Assets\UpdatePortBinding.ps1" />
+    <EmbeddedResource Include="Providers\Assets\WebManagementService.ps1" />
     
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="SimpleImpersonation" Version="4.2.0" />
     <PackageReference Include="SSH.NET" Version="2025.0.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.5" />
   </ItemGroup>
 
   <ItemGroup>
