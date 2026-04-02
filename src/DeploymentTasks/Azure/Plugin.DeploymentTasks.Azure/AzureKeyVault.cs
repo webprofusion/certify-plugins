@@ -19,7 +19,7 @@ namespace Plugin.DeploymentTasks.Azure
         public static DeploymentProviderDefinition Definition { get; }
         public DeploymentProviderDefinition GetDefinition(DeploymentProviderDefinition currentDefinition = null) => (currentDefinition ?? Definition);
 
-        private readonly IdnMapping _idnMapping = new IdnMapping();
+        private readonly IdnMapping _idnMapping = new();
 
         static AzureKeyVault()
         {
@@ -34,9 +34,10 @@ namespace Plugin.DeploymentTasks.Azure
                 Description = "Store a certificate in a Microsoft Azure Key Vault",
                 ProviderParameters = new List<ProviderParameter>
                 {
-                    new ProviderParameter{ Key="vault_uri", Name="Azure Vault Uri", IsRequired=true, IsCredential=false,  Description="e.g. https://<vault-name>.vault.azure.net/", Type= OptionType.String },
-                    new ProviderParameter{ Key="cert_name", Name="Certificate Name", IsRequired=false, IsCredential=false,  Description="(optional, alphanumeric characters 0-9a-Z or -)", Type= OptionType.String },
-                    new ProviderParameter{ Key="azure_service",Name="Azure Service", IsRequired=true, IsPassword=false, IsCredential=false, Value="global", OptionsList="global=Azure Cloud; china=Azure China; germany=Azure Germany; usgov=Azure US Government" },
+                    new() { Key="vault_uri", Name="Azure Vault Uri", IsRequired=true, IsCredential=false,  Description="e.g. https://<vault-name>.vault.azure.net/", Type= OptionType.String },
+                    new() { Key="cert_name", Name="Certificate Name", IsRequired=false, IsCredential=false,  Description="(optional, alphanumeric characters 0-9a-Z or -)", Type= OptionType.String },
+                    new() { Key="friendly_name", Name="PFX Friendly Name", IsRequired=false, IsCredential=false, Description="(optional) custom friendly name for the certificate in the PFX", Type= OptionType.String },
+                    new() { Key="azure_service",Name="Azure Service", IsRequired=true, IsPassword=false, IsCredential=false, Value="global", OptionsList="global=Azure Cloud; china=Azure China; germany=Azure Germany; usgov=Azure US Government" },
                 }
             };
         }
@@ -85,8 +86,6 @@ namespace Plugin.DeploymentTasks.Azure
 
             var certName = GetStringAsKeyVaultName(customName ?? managedCert.Name);
 
-            var importOptions = new ImportCertificateOptions(certName, pfxData);
-
             var certPwd = "";
 
             // get PFX password if in use
@@ -97,7 +96,20 @@ namespace Plugin.DeploymentTasks.Azure
                 {
                     certPwd = pwdCred["password"];
                 }
+            }
 
+            // optionally set a custom friendly name on the PFX before import
+            var friendlyName = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "friendly_name")?.Value;
+
+            if (!string.IsNullOrWhiteSpace(friendlyName))
+            {
+                pfxData = Certify.Management.CertificateManager.GetPfxDataWithNewFriendlyName(friendlyName, pfxData, certPwd);
+            }
+
+            var importOptions = new ImportCertificateOptions(certName, pfxData);
+
+            if (!string.IsNullOrWhiteSpace(certPwd))
+            {
                 importOptions.Password = certPwd;
             }
 
@@ -131,7 +143,10 @@ namespace Plugin.DeploymentTasks.Azure
         /// <returns></returns>
         private string GetStringAsKeyVaultName(string name)
         {
-            if (name == null) return null;
+            if (name == null)
+            {
+                return null;
+            }
 
             var ascii = _idnMapping.GetAscii(name);
 
@@ -159,6 +174,7 @@ namespace Plugin.DeploymentTasks.Azure
                     results.Add(new ActionResult("Certificate name can only be alphanumeric.", false));
                 }
             }
+
             return await Task.FromResult(results);
         }
     }
