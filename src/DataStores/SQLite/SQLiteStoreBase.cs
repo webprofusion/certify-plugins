@@ -316,6 +316,11 @@ namespace Certify.Datastore.SQLite
 
                     // perform any further schema checks and upgrades..
 
+                    if (!cols.Contains("itemtype"))
+                    {
+                        EnsurePermanentBackupBeforeItemTypeMigration(db);
+                    }
+
                     if (cols.Contains("json"))
                     {
                         using (var cmd = new SqliteCommand("ALTER TABLE manageditem RENAME COLUMN json TO config;", db))
@@ -393,6 +398,34 @@ namespace Certify.Datastore.SQLite
             }
 
             return true;
+        }
+
+        private void EnsurePermanentBackupBeforeItemTypeMigration(SqliteConnection db)
+        {
+            var permanentBackupFile = $"{_dbPath}.old";
+
+            if (File.Exists(permanentBackupFile))
+            {
+                _log?.Information($"Permanent pre-itemtype schema backup already exists at {permanentBackupFile}.");
+                return;
+            }
+
+            try
+            {
+                var escapedBackupFile = permanentBackupFile.Replace("'", "''");
+
+                using (var cmd = new SqliteCommand($"VACUUM INTO '{escapedBackupFile}'", db))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                _log?.Warning($"Created permanent pre-itemtype schema backup at {permanentBackupFile} before applying schema migration.");
+            }
+            catch (Exception exp)
+            {
+                _log?.Error(exp, "Failed to create permanent pre-itemtype schema backup at {backupFile}", permanentBackupFile);
+                throw;
+            }
         }
 
         protected async Task CreateManagedItemsSchema()
