@@ -59,11 +59,23 @@ namespace Certify.Providers.DeploymentTasks
 
         public Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams, string specificPath = null, string specificType = null)
         {
-            var settings = execParams.Settings;
-
             var results = new List<ActionResult> { };
 
-            var destPath = specificPath?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
+            var settings = execParams?.Settings;
+
+            if (settings == null)
+            {
+                results.Add(new ActionResult { IsSuccess = false, Message = "Deployment settings are missing." });
+                return Task.FromResult(results);
+            }
+
+            var destPath = specificPath?.Trim() ?? settings.Parameters?.FirstOrDefault(c => c?.Key == "path")?.Value?.Trim();
+
+            if (string.IsNullOrWhiteSpace(destPath))
+            {
+                results.Add(new ActionResult { IsSuccess = false, Message = "A destination file path is required for certificate export." });
+                return Task.FromResult(results);
+            }
 
             if (settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER)
             {
@@ -129,11 +141,11 @@ namespace Certify.Providers.DeploymentTasks
 
                 // prepare list of files to copy
 
-                var destPath = specificPath?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value.Trim();
+                var destPath = specificPath?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value?.Trim();
 
                 if (string.IsNullOrEmpty(destPath))
                 {
-                    return new List<ActionResult> { new ActionResult("Empty path provided. Skipping export", false) };
+                    return new List<ActionResult> { new ActionResult("Empty export file path provided. Cannot perform export", false) };
                 }
 
                 var exportType = specificType?.Trim() ?? settings.Parameters.FirstOrDefault(c => c.Key == "type")?.Value.Trim();
