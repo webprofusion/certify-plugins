@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models;
@@ -314,6 +315,8 @@ namespace Certify.Datastore.SQLite
                         }
                     }
 
+                    var originalRowCount = cols.Any() ? await GetManagedItemRowCount(db) : 0;
+
                     // perform any further schema checks and upgrades..
 
                     if (!cols.Contains("itemtype"))
@@ -385,6 +388,18 @@ namespace Certify.Datastore.SQLite
                     {
                         await cmd.ExecuteNonQueryAsync();
                     }
+
+                    var migratedRowCount = cols.Any() ? await GetManagedItemRowCount(db) : 0;
+                    if (migratedRowCount < originalRowCount)
+                    {
+                        var message = $"SQLite schema migration row count mismatch for {_dbPath}. Original rows: {originalRowCount}, migrated rows: {migratedRowCount}. Migration halted to avoid data loss.";
+                        _log?.Error(message);
+                        throw new InvalidOperationException(message);
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    throw;
                 }
 
                 catch (Exception exp)
@@ -398,6 +413,15 @@ namespace Certify.Datastore.SQLite
             }
 
             return true;
+        }
+
+        private static async Task<long> GetManagedItemRowCount(SqliteConnection db)
+        {
+            using (var cmd = new SqliteCommand("SELECT COUNT(1) FROM manageditem;", db))
+            {
+                var result = await cmd.ExecuteScalarAsync();
+                return Convert.ToInt64(result);
+            }
         }
 
         private void EnsurePermanentBackupBeforeItemTypeMigration(SqliteConnection db)
