@@ -6,9 +6,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.Core" Version="1.53.0" />
+        <PackageReference Include="Azure.Core" Version="1.54.0" />
         <PackageReference Include="Azure.Identity" Version="1.21.0" />
-        <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
         <PackageReference Include="Polly" Version="8.6.6" />
     </ItemGroup>
 
