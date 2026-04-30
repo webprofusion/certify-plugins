@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Certify.Management;
@@ -85,7 +85,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     if (!string.IsNullOrEmpty(o))
                     {
-                        var keyValuePair = o.Split('=');
+                        var keyValuePair = o.Split(new[] { '=' }, 2);
 
                         if (keyValuePair.Length == 1)
                         {
