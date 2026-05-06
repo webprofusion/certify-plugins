@@ -187,9 +187,9 @@ namespace Certify.Management.Servers
             return sites.FirstOrDefault(s => s.Id == siteId);
         }
 
-        public Task<bool> IsAvailable()
+        public async Task<bool> IsAvailable()
         {
-            return Task.FromResult(true);
+            return await _nginxManager.HasParseableConfig();
         }
 
         public Task<bool> IsSiteRunning(string id)

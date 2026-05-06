@@ -16,7 +16,7 @@ namespace Certify.Plugins.Server.Nginx
         public int EndLine { get; set; }
         public string BlockKey { get; set; }
         public List<KeyValuePair<string, string>> Properties { get; set; } = new List<KeyValuePair<string, string>>();
-        public Dictionary<String, ConfigBlock> ChildBlocks { get; set; } = new Dictionary<string, ConfigBlock>();
+        public List<ConfigBlock> ChildBlocks { get; set; } = new List<ConfigBlock>();
     }
 
     public class NginxManager
@@ -45,20 +45,27 @@ namespace Certify.Plugins.Server.Nginx
         {
             if (string.IsNullOrEmpty(_configPath))
             {
-                if (_isWindows)
+                foreach (var configPath in GetDefaultConfigPaths())
                 {
-                    if (Directory.Exists("C:\\nginx\\conf"))
+                    if (Directory.Exists(configPath))
                     {
-                        _configPath = "C:\\nginx\\conf";
+                        _configPath = configPath;
+                        break;
                     }
                 }
-                else
-                {
-                    if (Directory.Exists("/etc/nginx"))
-                    {
-                        _configPath = "/etc/nginx";
-                    }
-                }
+            }
+        }
+
+        private IEnumerable<string> GetDefaultConfigPaths()
+        {
+            if (_isWindows)
+            {
+                yield return "C:\\nginx\\conf";
+            }
+            else
+            {
+                yield return "/etc/nginx";
+                yield return "/usr/local/etc/nginx";
             }
         }
 
@@ -71,6 +78,7 @@ namespace Certify.Plugins.Server.Nginx
         /// Perform non-validating recursive config parsing for the given text stream.
         /// </summary>
         /// <param name="sr"></param>
+        /// <param name="lineIndex"></param>
         /// <returns></returns>
         public async Task<ConfigBlock> ParseBlock(StreamReader sr, int lineIndex)
         {
@@ -87,12 +95,25 @@ namespace Certify.Plugins.Server.Nginx
                 var line = l.ToString();
 
                 // discard comments from line e.g. http { # this is the http block
-                if (line.IndexOf("#") > -1) line = line.Remove(line.IndexOf("#"));
+                if (line.IndexOf('#') > -1)
+                {
+                    line = line.Remove(line.IndexOf('#'));
+                }
 
                 line = line.Trim(" \t\r".ToCharArray());
 
                 // if opening bracket, parse and add new child block
-                if (line.EndsWith("{"))
+                if (line.Contains('{') && line.EndsWith('}'))
+                {
+                    var blockKey = line.Substring(0, line.IndexOf('{')).Trim(" \t\r".ToCharArray());
+                    block.ChildBlocks.Add(new ConfigBlock
+                    {
+                        BlockKey = blockKey,
+                        StartLine = lineIndex,
+                        EndLine = lineIndex
+                    });
+                }
+                else if (line.EndsWith('{'))
                 {
                     var childBlock = await ParseBlock(sr, lineIndex);
                     if (childBlock != null)
@@ -101,10 +122,10 @@ namespace Certify.Plugins.Server.Nginx
 
                         childBlock.BlockKey = blockKey;
 
-                        block.ChildBlocks.Add(blockKey, childBlock);
+                        block.ChildBlocks.Add(childBlock);
                     }
                 }
-                else if (line.EndsWith("}"))
+                else if (line.EndsWith('}'))
                 {
                     // reached end of block
                     break;
@@ -114,8 +135,8 @@ namespace Certify.Plugins.Server.Nginx
                     // property and optional values e.g. server_name example.com www.example.com;
                     // properties with same key can appear multiple times in same block
 
-                    var lineitems = line.Split(' ')
-                        .Select(s => s.Replace(";", ""))
+                    var lineitems = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim().TrimEnd(';'))
                         .ToArray();
 
                     if (lineitems.Length > 0)
@@ -133,40 +154,15 @@ namespace Certify.Plugins.Server.Nginx
                         // if line item is an include, attempt to follow and parse
                         if (key == "include")
                         {
-                            var includePath = values;
-                            var pattern = "*";
-
-                            if (includePath.EndsWith("*.conf"))
-                            {
-                                pattern = " *.conf";
-                                includePath = includePath.Replace("*.conf", "");
-                            }
-
-                            if (includePath.EndsWith("*"))
-                            {
-                                pattern = "*";
-                                includePath = includePath.Replace("*", "");
-                            }
-
-                            if (!Path.IsPathRooted(includePath))
-                            {
-                                includePath = Path.Combine(_configPath, includePath);
-                            }
-
                             try
                             {
-
-                                var files = Directory.GetFiles(includePath, pattern);
-                                if (files.Any())
+                                var files = ResolveIncludeFiles(values);
+                                foreach (var file in files)
                                 {
-                                    foreach (var file in files)
-                                    {
-                                        // note: malicious user could encouraged app to follow a path nginx is not normally allowed to read here, could check that path is a subfolder of our main config?
-                                        var includeBlock = await ParseConfig(file, "include");
+                                    // note: malicious user could encouraged app to follow a path nginx is not normally allowed to read here, could check that path is a subfolder of our main config?
+                                    var includeBlock = await ParseConfig(file, "include");
 
-                                        block.ChildBlocks.Add(file, includeBlock);
-
-                                    }
+                                    block.ChildBlocks.Add(includeBlock);
                                 }
                             }
                             catch (Exception ex)
@@ -184,10 +180,58 @@ namespace Certify.Plugins.Server.Nginx
             return block;
         }
 
+        private IEnumerable<string> ResolveIncludeFiles(string includeValue)
+        {
+            var includePath = includeValue.Trim().Trim('"', '\'');
+
+            if (Path.IsPathRooted(includePath))
+            {
+                var includePathRelativeToConfigRoot = includePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var etcNginxPrefix = $"etc{Path.AltDirectorySeparatorChar}nginx{Path.AltDirectorySeparatorChar}";
+                if (includePathRelativeToConfigRoot.StartsWith(etcNginxPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    includePathRelativeToConfigRoot = includePathRelativeToConfigRoot.Substring(etcNginxPrefix.Length);
+                }
+
+                var rootedUnderConfigPath = Path.Combine(_configPath, includePathRelativeToConfigRoot);
+                if (Directory.Exists(Path.GetDirectoryName(rootedUnderConfigPath) ?? _configPath))
+                {
+                    includePath = rootedUnderConfigPath;
+                }
+            }
+            else
+            {
+                includePath = Path.Combine(_configPath, includePath);
+            }
+
+            includePath = NormalizePath(includePath);
+
+            var directory = Path.GetDirectoryName(includePath);
+            var pattern = Path.GetFileName(includePath);
+
+            if (string.IsNullOrEmpty(directory))
+            {
+                directory = _configPath;
+            }
+
+            if (string.IsNullOrEmpty(pattern))
+            {
+                pattern = "*";
+            }
+
+            if (!Directory.Exists(directory))
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            return Directory.GetFiles(directory, pattern).OrderBy(f => f);
+        }
+
         /// <summary>
         /// Perform non-validating parsing for a given nginx .conf file
         /// </summary>
         /// <param name="configPath"></param>
+        /// <param name="blockKey">optional block key to set on main config block</param>
         /// <returns></returns>
         public async Task<ConfigBlock> ParseConfig(string configPath, string blockKey = "main")
         {
@@ -202,18 +246,42 @@ namespace Certify.Plugins.Server.Nginx
             }
         }
 
+        public async Task<bool> HasParseableConfig()
+        {
+            if (string.IsNullOrEmpty(_configPath))
+            {
+                return false;
+            }
+
+            var primaryConfigPath = NormalizePath(Path.Combine(_configPath, _primaryConfigFile));
+            if (!File.Exists(primaryConfigPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                var config = await ParseConfig(primaryConfigPath);
+                return config != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private List<ConfigBlock> FindServerBlocks(ConfigBlock config)
         {
             var serverBlocks = new List<ConfigBlock>();
             foreach (var block in config.ChildBlocks)
             {
-                if (block.Key == "server")
+                if (block.BlockKey == "server")
                 {
-                    serverBlocks.Add(block.Value);
+                    serverBlocks.Add(block);
 
                 }
 
-                var childServerBlocks = FindServerBlocks(block.Value);
+                var childServerBlocks = FindServerBlocks(block);
                 if (childServerBlocks.Any())
                 {
                     serverBlocks.AddRange(childServerBlocks);
@@ -253,11 +321,11 @@ namespace Certify.Plugins.Server.Nginx
 
                     var server_name = locationBlock.Properties.FirstOrDefault(p => p.Key == "server_name");
 
-                    bool isHttps = props.Any(p => p.Key == "ssl_certificate") && props.Any(p => p.Key == "ssl_certificate_key");
+                    var isHttps = props.Any(p => p.Key == "ssl_certificate") && props.Any(p => p.Key == "ssl_certificate_key");
 
                     // attempt to parse IP listening ip:ports
-                    var ipV4Listen = props.FirstOrDefault(p => p.Key == "listen" && !p.Value.Trim().StartsWith("["));
-                    var ipV6Listen = props.FirstOrDefault(p => p.Key == "listen" && p.Value.Trim().StartsWith("["));
+                    var ipV4Listen = props.FirstOrDefault(p => p.Key == "listen" && !p.Value.Trim().StartsWith('['));
+                    var ipV6Listen = props.FirstOrDefault(p => p.Key == "listen" && p.Value.Trim().StartsWith('['));
 
                     var ipV4Port = ipV4Listen.Value != null ? ipV4Listen.Value.Trim().Split(' ').FirstOrDefault().Split(':').FirstOrDefault() : null; // TODO: check if this should default to 80
                     var ipV6Port = ipV6Listen.Value != null ? ipV6Listen.Value.Trim().Split(' ').FirstOrDefault()?.LastIndexOf("]:") : null;
@@ -295,10 +363,32 @@ namespace Certify.Plugins.Server.Nginx
 
         private IEnumerable<string> GetServerNames(string servernames)
         {
-            // TODO: filter special values like _ and regex
-
-            var names = servernames.Split(' ').Where(d => !string.IsNullOrWhiteSpace(d));
+            var names = servernames.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(NormalizeServerName)
+                .Where(d => !string.IsNullOrWhiteSpace(d));
             return names;
+        }
+
+        private string NormalizeServerName(string serverName)
+        {
+            var name = serverName.Trim().TrimEnd(';').Trim('.').ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(name) || name == "_" || name.StartsWith('~') || name.Contains("$"))
+            {
+                return null;
+            }
+
+            if (name.StartsWith("*."))
+            {
+                name = name.Substring(2);
+            }
+
+            if (!name.Contains(".") || name.Any(c => !(char.IsLetterOrDigit(c) || c == '-' || c == '.')))
+            {
+                return null;
+            }
+
+            return name;
         }
 
         private string GetSiteIdFromServerNames(string servernames)

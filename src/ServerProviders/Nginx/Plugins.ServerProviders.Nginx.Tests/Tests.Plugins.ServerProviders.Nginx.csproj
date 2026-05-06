@@ -40,6 +40,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\..\..\..\certify\src\Certify.Core\Certify.Core.csproj" />
         <ProjectReference Include="..\Plugins.ServerProviders.Nginx\Plugin.ServerProviders.Nginx.csproj" />
     </ItemGroup>
 
