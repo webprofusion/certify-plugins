@@ -63,7 +63,15 @@ namespace Certify.Providers.DeploymentTasks
                 { "appid", string.IsNullOrWhiteSpace(appid) ? null : appid }
             };
 
-            var scriptResult = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials);
+            var scriptResult = await PowerShellManager.RunScript(new PowerShellScriptSettings
+            {
+                PowerShellExecutionPolicy = execParams.Context.PowershellExecutionPolicy,
+                Result = certRequest,
+                Parameters = parameters,
+                ScriptContent = script,
+                Credentials = execParams.Credentials,
+                ExecutionMode = PowerShellExecutionMode.CompatibilityMode
+            });
 
             return new List<ActionResult> { scriptResult };
         }
@@ -91,6 +99,5 @@ namespace Certify.Providers.DeploymentTasks
 
             return await Task.FromResult(results);
         }
-
     }
 }

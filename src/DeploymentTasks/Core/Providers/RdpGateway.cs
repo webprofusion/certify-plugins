@@ -53,7 +53,16 @@ namespace Certify.Providers.DeploymentTasks
 
             var parameters = new Dictionary<string, object>();
 
-            var scriptResult = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, certRequest, parameters: parameters, scriptContent: script, credentials: execParams.Credentials, logonType: logonType);
+            var scriptResult = await PowerShellManager.RunScript(new PowerShellScriptSettings
+            {
+                PowerShellExecutionPolicy = execParams.Context.PowershellExecutionPolicy,
+                Result = certRequest,
+                Parameters = parameters,
+                ScriptContent = script,
+                Credentials = execParams.Credentials,
+                LogonType = logonType,
+                ExecutionMode = PowerShellExecutionMode.CompatibilityMode
+            });
 
             return [scriptResult];
 
