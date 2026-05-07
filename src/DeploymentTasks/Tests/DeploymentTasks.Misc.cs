@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -12,6 +13,7 @@ using Certify.Datastore.SQLite;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
+using Certify.Providers;
 using Certify.Shared;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
@@ -157,6 +159,22 @@ namespace Certify.Tests.DeploymentTaskTests
         }
 
         [TestMethod, TestCategory("Misc")]
+        public async Task TestSelectedDeploymentTaskExecutionIgnoresLastFailedPrimaryRequestStatus()
+        {
+            var task = CreateMockTask("Success Only", TaskTriggerType.ON_SUCCESS);
+            var managedCert = GetMockManagedCertificate("DeploymentTaskManualRunTest", "123", PrimaryTestDomain, PrimaryIISRoot);
+            managedCert.LastRenewalStatus = RequestState.Error;
+            managedCert.PostRequestTasks = new ObservableCollection<DeploymentTaskConfig>();
+            managedCert.PostRequestTasks.Add(task);
+
+            var manager = CreateTestManager(managedCert);
+
+            var steps = await manager.PerformDeploymentTask(_log, managedCert.Id, task.Id, isPreviewOnly: false, skipDeferredTasks: false, forceTaskExecution: false);
+
+            AssertTaskCompleted(steps, "Success Only");
+        }
+
+        [TestMethod, TestCategory("Misc")]
         public async Task TestForceDeploymentTaskExecutionOverridesTriggerStatus()
         {
             var steps = await PerformMockTaskList(
@@ -197,12 +215,7 @@ namespace Certify.Tests.DeploymentTaskTests
 
         private async Task<List<ActionStep>> PerformMockTaskList(bool primaryRequestSucceeded, bool skipDeferredTasks, bool forceTaskExecution, params DeploymentTaskConfig[] taskConfigs)
         {
-            var manager = new CertifyManager();
-            var pluginManagerField = typeof(CertifyManager).GetField("_pluginManager", BindingFlags.Instance | BindingFlags.NonPublic);
-            pluginManagerField.SetValue(manager, _pluginManager);
-
-            var serverConfigField = typeof(CertifyManager).GetField("_serverConfig", BindingFlags.Instance | BindingFlags.NonPublic);
-            serverConfigField.SetValue(manager, new ServiceConfig());
+            var manager = CreateTestManager();
 
             var managedCert = GetMockManagedCertificate("DeploymentTaskTriggerTest", "123", PrimaryTestDomain, PrimaryIISRoot);
             var requestResult = new CertificateRequestResult(managedCert, primaryRequestSucceeded, string.Empty);
@@ -219,6 +232,26 @@ namespace Certify.Tests.DeploymentTaskTests
             });
 
             return await (Task<List<ActionStep>>)result;
+        }
+
+        private CertifyManager CreateTestManager(ManagedCertificate managedCertificate = null)
+        {
+            var manager = new CertifyManager();
+
+            var pluginManagerField = typeof(CertifyManager).GetField("_pluginManager", BindingFlags.Instance | BindingFlags.NonPublic);
+            pluginManagerField.SetValue(manager, _pluginManager);
+
+            var serverConfigField = typeof(CertifyManager).GetField("_serverConfig", BindingFlags.Instance | BindingFlags.NonPublic);
+            serverConfigField.SetValue(manager, new ServiceConfig());
+
+            if (managedCertificate != null)
+            {
+                var itemManager = new InMemoryManagedItemStore(managedCertificate);
+                var itemManagerField = typeof(CertifyManager).GetField("_itemManager", BindingFlags.Instance | BindingFlags.NonPublic);
+                itemManagerField.SetValue(manager, itemManager);
+            }
+
+            return manager;
         }
 
         private static DeploymentTaskConfig CreateMockTask(string name, TaskTriggerType trigger, bool runIfLastStepFailed = false, string message = "OK")
@@ -266,6 +299,42 @@ namespace Certify.Tests.DeploymentTaskTests
             Assert.IsFalse(step.HasError, $"Skipped task '{taskName}' should not be marked as failed.");
             Assert.IsTrue(step.HasWarning, $"Task '{taskName}' should have been skipped.");
             StringAssert.Contains(step.Description, expectedReason);
+        }
+
+        private class InMemoryManagedItemStore : IManagedItemStore
+        {
+            private ManagedCertificate _managedCertificate;
+
+            public InMemoryManagedItemStore(ManagedCertificate managedCertificate)
+            {
+                _managedCertificate = managedCertificate;
+            }
+
+            public bool Init(string connectionString, Certify.Models.Providers.ILog log, string instanceId = null) => true;
+
+            public Task DeleteAll() => Task.CompletedTask;
+
+            public Task StoreAll(IEnumerable<ManagedCertificate> list) => Task.CompletedTask;
+
+            public Task Delete(ManagedCertificate site) => Task.CompletedTask;
+
+            public Task DeleteByName(string nameStartsWith) => Task.CompletedTask;
+
+            public Task<ManagedCertificate> GetById(string siteId) => Task.FromResult(_managedCertificate?.Id == siteId ? _managedCertificate : null);
+
+            public Task<List<ManagedCertificate>> Find(ManagedCertificateFilter filter) => Task.FromResult(new List<ManagedCertificate> { _managedCertificate });
+
+            public Task<long> CountAll(ManagedCertificateFilter filter) => Task.FromResult(1L);
+
+            public Task<ManagedCertificate> Update(ManagedCertificate managedCertificate)
+            {
+                _managedCertificate = managedCertificate;
+                return Task.FromResult(_managedCertificate);
+            }
+
+            public Task PerformMaintenance() => Task.CompletedTask;
+
+            public Task<bool> IsInitialised() => Task.FromResult(true);
         }
     }
 }
