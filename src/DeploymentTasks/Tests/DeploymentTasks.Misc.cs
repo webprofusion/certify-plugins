@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Certify.Core.Management.DeploymentTasks;
 using Certify.Config;
+using Certify.Management;
+using Certify.Core.Management.DeploymentTasks;
 using Certify.Datastore.SQLite;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.DeploymentTasks;
+using Certify.Shared;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
@@ -89,9 +93,9 @@ namespace Certify.Tests.DeploymentTaskTests
                 ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
                 Parameters = new List<ProviderParameterSetting>
                 {
-                    new ProviderParameterSetting("scriptpath", "does-not-matter.ps1"),
-                    new ProviderParameterSetting("args", @"token=abc=123"),
-                    new ProviderParameterSetting("timeout", "5")
+                    new("scriptpath", Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets","Powershell","Simple.ps1")),
+                    new("args", @"token=abc=123;name=fred"),
+                    new("timeout", "5")
                 }
             };
 
@@ -107,8 +111,161 @@ namespace Certify.Tests.DeploymentTaskTests
                 cancellationToken: CancellationToken.None));
 
             Assert.AreEqual(1, result.Count);
-            Assert.IsFalse(result[0].IsSuccess);
-            Assert.IsFalse(result[0].Message.Contains("An item with the same key has already been added"));
+            Assert.IsTrue(result[0].IsSuccess);
+        }
+
+        [TestMethod, TestCategory("Misc")]
+        public async Task TestDeploymentTaskTriggersRespectPrimaryRequestStatus()
+        {
+            var successSteps = await PerformMockTaskList(
+                primaryRequestSucceeded: true,
+                skipDeferredTasks: true,
+                forceTaskExecution: false,
+                CreateMockTask("Success Only", TaskTriggerType.ON_SUCCESS),
+                CreateMockTask("Error Only", TaskTriggerType.ON_ERROR),
+                CreateMockTask("Any Status", TaskTriggerType.ANY_STATUS),
+                CreateMockTask("Disabled", TaskTriggerType.NOT_ENABLED));
+
+            AssertTaskCompleted(successSteps, "Success Only");
+            AssertTaskSkipped(successSteps, "Error Only", "primary request was successful");
+            AssertTaskCompleted(successSteps, "Any Status");
+            AssertTaskSkipped(successSteps, "Disabled", "not enabled");
+
+            var failedSteps = await PerformMockTaskList(
+                primaryRequestSucceeded: false,
+                skipDeferredTasks: true,
+                forceTaskExecution: false,
+                CreateMockTask("Success Only", TaskTriggerType.ON_SUCCESS),
+                CreateMockTask("Error Only", TaskTriggerType.ON_ERROR),
+                CreateMockTask("Any Status", TaskTriggerType.ANY_STATUS));
+
+            AssertTaskSkipped(failedSteps, "Success Only", "primary request unsuccessful");
+            AssertTaskCompleted(failedSteps, "Error Only");
+            AssertTaskCompleted(failedSteps, "Any Status");
+        }
+
+        [TestMethod, TestCategory("Misc")]
+        public async Task TestManualDeploymentTaskCanRunAfterPrimaryRequestFailed()
+        {
+            var steps = await PerformMockTaskList(
+                primaryRequestSucceeded: false,
+                skipDeferredTasks: false,
+                forceTaskExecution: false,
+                CreateMockTask("Manual Task", TaskTriggerType.MANUAL));
+
+            AssertTaskCompleted(steps, "Manual Task");
+        }
+
+        [TestMethod, TestCategory("Misc")]
+        public async Task TestForceDeploymentTaskExecutionOverridesTriggerStatus()
+        {
+            var steps = await PerformMockTaskList(
+                primaryRequestSucceeded: false,
+                skipDeferredTasks: true,
+                forceTaskExecution: true,
+                CreateMockTask("Success Only", TaskTriggerType.ON_SUCCESS));
+
+            AssertTaskCompleted(steps, "Success Only");
+            Assert.IsTrue(steps.Single(s => s.Title == "Success Only").Substeps.Any(s => s.Description.Contains("MockTaskWorkCompleted")));
+        }
+
+        [TestMethod, TestCategory("Misc")]
+        public async Task TestDeploymentTaskFailureControlsLaterTaskExecution()
+        {
+            var defaultSteps = await PerformMockTaskList(
+                primaryRequestSucceeded: true,
+                skipDeferredTasks: true,
+                forceTaskExecution: false,
+                CreateMockTask("Failing Task", TaskTriggerType.ANY_STATUS, message: null),
+                CreateMockTask("Blocked Task", TaskTriggerType.ON_SUCCESS));
+
+            AssertTaskFailed(defaultSteps, "Failing Task", "message not supplied");
+            AssertTaskSkipped(defaultSteps, "Blocked Task", "previous task failed");
+
+            var continueSteps = await PerformMockTaskList(
+                primaryRequestSucceeded: true,
+                skipDeferredTasks: true,
+                forceTaskExecution: false,
+                CreateMockTask("Failing Task", TaskTriggerType.ANY_STATUS, message: null),
+                CreateMockTask("Recovery Task", TaskTriggerType.ON_TASK_ERROR, runIfLastStepFailed: true),
+                CreateMockTask("Success Task", TaskTriggerType.ON_SUCCESS, runIfLastStepFailed: true));
+
+            AssertTaskFailed(continueSteps, "Failing Task", "message not supplied");
+            AssertTaskCompleted(continueSteps, "Recovery Task");
+            AssertTaskCompleted(continueSteps, "Success Task");
+        }
+
+        private async Task<List<ActionStep>> PerformMockTaskList(bool primaryRequestSucceeded, bool skipDeferredTasks, bool forceTaskExecution, params DeploymentTaskConfig[] taskConfigs)
+        {
+            var manager = new CertifyManager();
+            var pluginManagerField = typeof(CertifyManager).GetField("_pluginManager", BindingFlags.Instance | BindingFlags.NonPublic);
+            pluginManagerField.SetValue(manager, _pluginManager);
+
+            var serverConfigField = typeof(CertifyManager).GetField("_serverConfig", BindingFlags.Instance | BindingFlags.NonPublic);
+            serverConfigField.SetValue(manager, new ServiceConfig());
+
+            var managedCert = GetMockManagedCertificate("DeploymentTaskTriggerTest", "123", PrimaryTestDomain, PrimaryIISRoot);
+            var requestResult = new CertificateRequestResult(managedCert, primaryRequestSucceeded, string.Empty);
+            var method = typeof(CertifyManager).GetMethod("PerformTaskList", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            var result = method.Invoke(manager, new object[]
+            {
+                _log,
+                false,
+                skipDeferredTasks,
+                requestResult,
+                taskConfigs,
+                forceTaskExecution
+            });
+
+            return await (Task<List<ActionStep>>)result;
+        }
+
+        private static DeploymentTaskConfig CreateMockTask(string name, TaskTriggerType trigger, bool runIfLastStepFailed = false, string message = "OK")
+        {
+            var parameters = new List<ProviderParameterSetting>
+            {
+                new("throw", "false")
+            };
+
+            if (message != null)
+            {
+                parameters.Add(new("message", message));
+            }
+
+            return new DeploymentTaskConfig
+            {
+                Id = Guid.NewGuid().ToString(),
+                TaskTypeId = Certify.Providers.DeploymentTasks.Core.MockTask.Definition.Id,
+                TaskName = name,
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+                TaskTrigger = trigger,
+                RunIfLastStepFailed = runIfLastStepFailed,
+                Parameters = parameters
+            };
+        }
+
+        private static void AssertTaskCompleted(List<ActionStep> steps, string taskName)
+        {
+            var step = steps.Single(s => s.Title == taskName);
+            Assert.IsFalse(step.HasError, $"Task '{taskName}' should not have failed.");
+            Assert.IsFalse(step.HasWarning, $"Task '{taskName}' should have executed, not skipped.");
+            Assert.AreEqual("Task Completed OK", step.Description);
+        }
+
+        private static void AssertTaskFailed(List<ActionStep> steps, string taskName, string expectedMessage)
+        {
+            var step = steps.Single(s => s.Title == taskName);
+            Assert.IsTrue(step.HasError, $"Task '{taskName}' should have failed.");
+            StringAssert.Contains(step.Description, expectedMessage);
+        }
+
+        private static void AssertTaskSkipped(List<ActionStep> steps, string taskName, string expectedReason)
+        {
+            var step = steps.Single(s => s.Title == taskName);
+            Assert.IsFalse(step.HasError, $"Skipped task '{taskName}' should not be marked as failed.");
+            Assert.IsTrue(step.HasWarning, $"Task '{taskName}' should have been skipped.");
+            StringAssert.Contains(step.Description, expectedReason);
         }
     }
 }
