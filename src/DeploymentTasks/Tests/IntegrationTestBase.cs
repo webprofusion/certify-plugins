@@ -35,7 +35,17 @@ namespace Certify.Tests.DeploymentTaskTests
              System.IO.File.WriteAllText("C:\\temp\\TestConfigSettings.json", JsonConvert.SerializeObject(ConfigSettings));
              */
 
-            ConfigSettings = JsonConvert.DeserializeObject<Dictionary<string, string>>(System.IO.File.ReadAllText("C:\\temp\\Certify\\TestConfigSettings.json"));
+            var cfgFile = "C:\\temp\\Certify\\TestConfigSettings.json";
+
+            if (File.Exists(cfgFile))
+            {
+                var config = System.IO.File.ReadAllText(cfgFile);
+                ConfigSettings = JsonConvert.DeserializeObject<Dictionary<string, string>>(config);
+            }
+            else
+            {
+                ConfigSettings = [];
+            }
 
             _log = new Loggy(LoggerFactory.Create(builder => builder.AddDebug()).CreateLogger<IntegrationTestBase>());
         }
