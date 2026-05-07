@@ -29,6 +29,7 @@ namespace Certify.Providers.DeploymentTasks
                     new ProviderParameter{ Key="scriptpath", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
                     new ProviderParameter{ Key="inputresult", Name="Pass Result as First Arg", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="true"  },
                     new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList=Helpers.LogonTypeOptions  },
+                    new ProviderParameter{ Key="executionmode", Name="Execution Mode", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value=PowerShellExecutionMode.CompatibilityMode.ToString(), OptionsList="CompatibilityMode=Compatibility Mode;ModernMode=Modern Mode;SystemPowerShellProcess=System PowerShell Process" },
                     new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
                     new ProviderParameter{ Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
                     new ProviderParameter{ Key="newprocess", Name="Launch New Process", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false" }
@@ -107,11 +108,28 @@ namespace Certify.Providers.DeploymentTasks
             execParams.Log?.Information("Executing command via PowerShell");
 
             var logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
+            var executionMode = PowerShellExecutionMode.CompatibilityMode;
+
+            var executionModeValue = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "executionmode")?.Value;
+            if (!string.IsNullOrWhiteSpace(executionModeValue) && !System.Enum.TryParse(executionModeValue, ignoreCase: true, out executionMode))
+            {
+                executionMode = PowerShellExecutionMode.CompatibilityMode;
+            }
 
             // if running as local/default service user no credentials are provided for user impersonation
             var credentials = execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL ? null : execParams.Credentials;
 
-            var result = await PowerShellManager.RunScript(execParams.Context.PowershellExecutionPolicy, null, command, parameters, null, credentials: credentials, logonType: logonType, timeoutMinutes: timeout, launchNewProcess: launchNewProcess);
+            var result = await PowerShellManager.RunScript(new PowerShellScriptSettings
+            {
+                PowerShellExecutionPolicy = execParams.Context.PowershellExecutionPolicy,
+                ScriptFile = command,
+                Parameters = parameters,
+                Credentials = credentials,
+                LogonType = logonType,
+                TimeoutMinutes = timeout,
+                LaunchNewProcess = launchNewProcess,
+                ExecutionMode = executionMode
+            });
 
             results.Add(result);
 
@@ -194,6 +212,12 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     results.Add(new ActionResult("Timeout (Minutes) value is out of range (1-120).", false));
                 }
+            }
+
+            var executionModeValue = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "executionmode")?.Value;
+            if (!string.IsNullOrWhiteSpace(executionModeValue) && !System.Enum.TryParse<PowerShellExecutionMode>(executionModeValue, ignoreCase: true, out _))
+            {
+                results.Add(new ActionResult("PowerShell execution mode value is invalid.", false));
             }
 
             return await Task.FromResult(results);
