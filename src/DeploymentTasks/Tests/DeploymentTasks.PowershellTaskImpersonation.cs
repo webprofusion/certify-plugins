@@ -1,9 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Certify.Config;
 using Certify.Management;
 using Certify.Models;
+using Certify.Models.Config;
+using Certify.Providers.DeploymentTasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Tests.Plugin.DeploymentTasks
@@ -57,6 +62,32 @@ namespace Tests.Plugin.DeploymentTasks
                 {
                 }
             }
+        }
+
+        [TestMethod, Description("PowerShell script task validation requires Launch New Process for Full Impersonation")]
+        public async Task TestPowershellScriptTaskFullImpersonationRequiresLaunchNewProcess()
+        {
+            var provider = new PowershellScript();
+            var settings = new DeploymentTaskConfig
+            {
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER,
+                Parameters = new System.Collections.Generic.List<ProviderParameterSetting>
+                {
+                    new ProviderParameterSetting("scriptpath", "C:\\Temp\\test.ps1"),
+                    new ProviderParameterSetting("impersonationmode", PowerShellImpersonationMode.Full.ToString()),
+                    new ProviderParameterSetting("newprocess", "false")
+                }
+            };
+
+            var execParams = new DeploymentTaskExecutionParams(null, null, null, settings, new Dictionary<string, string>
+            {
+                ["username"] = "testuser",
+                ["password"] = "testing123"
+            }, true, null, new DeploymentContext(), default);
+
+            var results = await provider.Validate(execParams);
+
+            Assert.IsTrue(results.Any(r => r.Message.Contains("Launch New Process", StringComparison.OrdinalIgnoreCase)), string.Join("\n", results.Select(r => r.Message)));
         }
     }
 }
