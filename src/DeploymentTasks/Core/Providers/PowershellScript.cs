@@ -53,7 +53,7 @@ namespace Certify.Providers.DeploymentTasks
 
             var certRequest = execParams.Subject as CertificateRequestResult;
 
-            var command = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value;
+            var command = NormalizeScriptPath(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value);
             var args = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "args")?.Value;
 
             var inputResultAsArgument = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "inputresult")?.Value;
@@ -148,6 +148,23 @@ namespace Certify.Providers.DeploymentTasks
             return results;
         }
 
+        private string NormalizeScriptPath(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+
+            value = value.Trim();
+
+            if ((value.StartsWith("\"") && value.EndsWith("\"")) || (value.StartsWith("'") && value.EndsWith("'")))
+            {
+                value = value.Substring(1, value.Length - 2).Trim();
+            }
+
+            return value;
+        }
+
         /// <summary>
         /// Before parsing arguments, allow for escaped characters
         /// </summary>
@@ -195,9 +212,9 @@ namespace Certify.Providers.DeploymentTasks
         {
             var results = new List<ActionResult>();
 
-            var path = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value;
+            var path = NormalizeScriptPath(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "scriptpath")?.Value);
 
-            if (string.IsNullOrEmpty(path))
+            if (string.IsNullOrWhiteSpace(path))
             {
                 results.Add(new ActionResult("A path to a script file is required.", false));
             }

@@ -117,6 +117,36 @@ namespace Certify.Tests.DeploymentTaskTests
         }
 
         [TestMethod, TestCategory("Misc")]
+        public async Task TestPowershellScriptQuotedScriptPathRunsSuccessfully()
+        {
+            var provider = new PowershellScript();
+            var scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Powershell", "Simple.ps1");
+            var taskConfig = new DeploymentTaskConfig
+            {
+                ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+                Parameters = new List<ProviderParameterSetting>
+                {
+                    new("scriptpath", $"\"{scriptPath}\""),
+                    new("timeout", "5")
+                }
+            };
+
+            var result = await provider.Execute(new DeploymentTaskExecutionParams(
+                _log,
+                null,
+                new CertificateRequestResult(new ManagedCertificate()),
+                taskConfig,
+                null,
+                isPreviewOnly: false,
+                definition: provider.GetDefinition(null),
+                context: new DeploymentContext { PowershellExecutionPolicy = "Unrestricted" },
+                cancellationToken: CancellationToken.None));
+
+            Assert.AreEqual(1, result.Count);
+            Assert.IsTrue(result[0].IsSuccess, result[0].Message);
+        }
+
+        [TestMethod, TestCategory("Misc")]
         public async Task TestDeploymentTaskTriggersRespectPrimaryRequestStatus()
         {
             var successSteps = await PerformMockTaskList(
