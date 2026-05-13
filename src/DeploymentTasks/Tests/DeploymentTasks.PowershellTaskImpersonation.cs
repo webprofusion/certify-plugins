@@ -64,8 +64,10 @@ namespace Tests.Plugin.DeploymentTasks
             }
         }
 
-        [TestMethod, Description("PowerShell script task validation requires Launch New Process for Full Impersonation")]
-        public async Task TestPowershellScriptTaskFullImpersonationRequiresLaunchNewProcess()
+        [TestMethod, Description("PowerShell script task validation requires Launch New Process for Full Impersonation modes")]
+        [DataRow(PowerShellImpersonationMode.Full)]
+        [DataRow(PowerShellImpersonationMode.FullWithProfile)]
+        public async Task TestPowershellScriptTaskFullImpersonationRequiresLaunchNewProcess(PowerShellImpersonationMode impersonationMode)
         {
             var provider = new PowershellScript();
             var settings = new DeploymentTaskConfig
@@ -74,7 +76,7 @@ namespace Tests.Plugin.DeploymentTasks
                 Parameters = new System.Collections.Generic.List<ProviderParameterSetting>
                 {
                     new ProviderParameterSetting("scriptpath", "C:\\Temp\\test.ps1"),
-                    new ProviderParameterSetting("impersonationmode", PowerShellImpersonationMode.Full.ToString()),
+                    new ProviderParameterSetting("impersonationmode", impersonationMode.ToString()),
                     new ProviderParameterSetting("newprocess", "false")
                 }
             };
@@ -88,6 +90,18 @@ namespace Tests.Plugin.DeploymentTasks
             var results = await provider.Validate(execParams);
 
             Assert.IsTrue(results.Any(r => r.Message.Contains("Launch New Process", StringComparison.OrdinalIgnoreCase)), string.Join("\n", results.Select(r => r.Message)));
+        }
+
+        [TestMethod, Description("PowerShell script task definition exposes full impersonation with profile and no standalone load profile option")]
+        public void TestPowershellScriptTaskDefinitionUsesFullImpersonationWithProfileMode()
+        {
+            var provider = new PowershellScript();
+            var definition = provider.GetDefinition(null);
+
+            var impersonationModeParameter = definition.ProviderParameters.Single(p => p.Key == "impersonationmode");
+
+            StringAssert.Contains(impersonationModeParameter.OptionsList, "FullWithProfile=Full Impersonation With Profile");
+            Assert.IsFalse(definition.ProviderParameters.Any(p => p.Key == "loaduserprofile"));
         }
     }
 }
