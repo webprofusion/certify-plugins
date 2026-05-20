@@ -1,6 +1,6 @@
 ﻿# - sets the associated service port ssl binding to the new cert using netsh
 
-# For more script info see https://docs.certifytheweb.com/docs/script-hooks.html
+# For more script info see https://docs.certifytheweb.com/docs/script-hooks
 
 param($result, $port, $ip, $appid)
 
