@@ -62,12 +62,12 @@ namespace Certify.Providers.DeploymentTasks
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 SupportsRemoteTarget = false,
                 Description = "Used to stop, start or restart a service affected by certificate updates.",
-                ProviderParameters = new List<ProviderParameter>
-                {
+                ProviderParameters =
+                [
                     new ProviderParameter{ Key="servicename", Name="Service", IsRequired=true, IsCredential=false, Type= OptionType.Select, OptionsList="W3SVC=World Wide Web Publishing Service;"},
                     new ProviderParameter{ Key="action", Name="Action", IsRequired=true, IsCredential=false, Value = "restart", Type= OptionType.Select, OptionsList="restart=Restart Service;stop=Stop Service;start=Start Service;"},
                     new ProviderParameter{ Key="maxwait", Name="Max. Wait Time (secs)", IsRequired=true, IsCredential=false, Value = "20", Type= OptionType.String }
-                }
+                ]
             };
         }
 

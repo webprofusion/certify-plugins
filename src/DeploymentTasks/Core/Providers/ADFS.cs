@@ -52,7 +52,7 @@ namespace Certify.Providers.DeploymentTasks
                 ScriptContent = script,
                 Credentials = execParams.Credentials,
                 LogonType = logonType,
-                ExecutionMode = PowerShellExecutionMode.CompatibilityMode
+                ExecutionMode = PowerShellExecutionMode.Automatic
             });
 
             return new List<ActionResult> { scriptResult };

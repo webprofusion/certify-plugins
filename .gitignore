@@ -350,3 +350,5 @@ MigrationBackup/
 
 
 !dummycert.pfx
+
+src/DeploymentTasks/Tests/reports/

@@ -26,12 +26,12 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to MS Exchange Services",
-                ProviderParameters = new List<ProviderParameter>
-                {
+                ProviderParameters =
+                [
                       new ProviderParameter{ Key="services", Name="Services", IsRequired=true, IsCredential=false, Value="POP,IMAP,SMTP,IIS"},
                       new ProviderParameter{ Key="donotrequiressl", Name="Do Not Require Ssl", IsRequired=false, Type= OptionType.Boolean, IsCredential = false,Value="false" },
                       new ProviderParameter { Key = "logontype", Name = "Impersonation LogonType", IsRequired= false, IsCredential= false, Type= OptionType.Select, Value="interactive", OptionsList=Helpers.LogonTypeOptions },
-                }
+                ]
             };
         }
 
@@ -69,7 +69,7 @@ namespace Certify.Providers.DeploymentTasks
                 ScriptContent = script,
                 Credentials = execParams.Credentials,
                 LogonType = logonType,
-                ExecutionMode = PowerShellExecutionMode.CompatibilityMode
+                ExecutionMode = PowerShellExecutionMode.Automatic
             });
 
             return new List<ActionResult> { scriptResult };

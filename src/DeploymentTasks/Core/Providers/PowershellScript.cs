@@ -26,14 +26,13 @@ namespace Certify.Providers.DeploymentTasks
                 Description = "Run a Powershell script",
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {
-                    new ProviderParameter{ Key="scriptpath", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
-                    new ProviderParameter{ Key="inputresult", Name="Pass Result as First Arg", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="true"  },
-                    new ProviderParameter{ Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList=Helpers.LogonTypeOptions  },
-                    new ProviderParameter{ Key="impersonationmode", Name="Impersonation Mode", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value=PowerShellImpersonationMode.Default.ToString(), OptionsList=Helpers.PowerShellImpersonationModeOptions, Description="Full Impersonation starts PowerShell as the selected Windows user and requires Windows credentials. Full Impersonation With Profile also loads the target user's profile and environment." },
-                    new ProviderParameter{ Key="executionmode", Name="Execution Mode", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value=PowerShellExecutionMode.CompatibilityMode.ToString(), OptionsList="CompatibilityMode=Compatibility Mode;ModernMode=Modern Mode;SystemPowerShellProcess=System PowerShell Process" },
-                    new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
-                    new ProviderParameter{ Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
-                    new ProviderParameter{ Key="newprocess", Name="Launch New Process", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false" }
+                    new() { Key="scriptpath", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
+                    new() { Key="inputresult", Name="Pass Result as First Arg", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="true"  },
+                    new() { Key="logontype", Name="Impersonation LogonType", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value="network", OptionsList=Helpers.LogonTypeOptions  },
+                    new() { Key="impersonationmode", Name="Impersonation Mode", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value=PowerShellImpersonationMode.Default.ToString(), OptionsList=Helpers.PowerShellImpersonationModeOptions, Description="Full Impersonation starts PowerShell as the selected Windows user and requires Windows credentials. Full Impersonation With Profile also loads the target user's profile and environment." },
+                    new() { Key="executionmode", Name="Execution Mode", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value=PowerShellManager.GetDefaultExecutionMode().ToString(), OptionsList=Helpers.PowerShellExecutionModeOptions, Description="Automatic uses in-process PowerShell on Linux/macOS and a system PowerShell process on Windows by default." },
+                    new() { Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
+                    new() { Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  }
                 }
             };
         }
@@ -65,12 +64,6 @@ namespace Certify.Providers.DeploymentTasks
             if (timeout < 1 || timeout > 120)
             {
                 timeout = 5;
-            }
-
-            var launchNewProcess = false;
-            if (bool.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "newprocess")?.Value, out var parsedBool))
-            {
-                launchNewProcess = parsedBool;
             }
 
             var parameters = new Dictionary<string, object>();
@@ -109,12 +102,19 @@ namespace Certify.Providers.DeploymentTasks
             execParams.Log?.Information("Executing command via PowerShell");
 
             var logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
-            var executionMode = PowerShellExecutionMode.CompatibilityMode;
+            var executionMode = PowerShellManager.GetDefaultExecutionMode();
 
             var executionModeValue = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "executionmode")?.Value;
-            if (!string.IsNullOrWhiteSpace(executionModeValue) && !System.Enum.TryParse(executionModeValue, ignoreCase: true, out executionMode))
+            if (!string.IsNullOrWhiteSpace(executionModeValue) && !PowerShellManager.TryParseExecutionMode(executionModeValue, out executionMode))
             {
-                executionMode = PowerShellExecutionMode.CompatibilityMode;
+                executionMode = PowerShellManager.GetDefaultExecutionMode();
+            }
+
+            var launchNewProcess = false;
+            var launchNewProcessValue = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "newprocess")?.Value;
+            if (!string.IsNullOrWhiteSpace(launchNewProcessValue))
+            {
+                bool.TryParse(launchNewProcessValue, out launchNewProcess);
             }
 
             var impersonationMode = PowerShellImpersonationMode.Default;
@@ -244,11 +244,6 @@ namespace Certify.Providers.DeploymentTasks
             }
 
             var executionModeValue = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "executionmode")?.Value;
-            if (!string.IsNullOrWhiteSpace(executionModeValue) && !System.Enum.TryParse<PowerShellExecutionMode>(executionModeValue, ignoreCase: true, out _))
-            {
-                results.Add(new ActionResult("PowerShell execution mode value is invalid.", false));
-            }
-
             var impersonationMode = PowerShellImpersonationMode.Default;
             var impersonationModeValue = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "impersonationmode")?.Value;
             if (!string.IsNullOrWhiteSpace(impersonationModeValue) && !System.Enum.TryParse<PowerShellImpersonationMode>(impersonationModeValue, ignoreCase: true, out impersonationMode))
@@ -266,11 +261,6 @@ namespace Certify.Providers.DeploymentTasks
                 if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || execParams.Credentials == null || !execParams.Credentials.ContainsKey("username") || !execParams.Credentials.ContainsKey("password"))
                 {
                     results.Add(new ActionResult("PowerShell Full Impersonation requires stored Windows credentials.", false));
-                }
-
-                if (!bool.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "newprocess")?.Value, out var launchNewProcess) || !launchNewProcess)
-                {
-                    results.Add(new ActionResult("PowerShell Full Impersonation requires Launch New Process to be enabled.", false));
                 }
             }
 

@@ -70,7 +70,7 @@ namespace Certify.Providers.DeploymentTasks
                 Parameters = parameters,
                 ScriptContent = script,
                 Credentials = execParams.Credentials,
-                ExecutionMode = PowerShellExecutionMode.CompatibilityMode
+                ExecutionMode = PowerShellExecutionMode.Automatic
             });
 
             return new List<ActionResult> { scriptResult };

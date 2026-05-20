@@ -25,7 +25,7 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to RDP Listener Service using Powershell",
-                ProviderParameters = new System.Collections.Generic.List<ProviderParameter>()
+                ProviderParameters = []
             };
         }
 
@@ -54,7 +54,7 @@ namespace Certify.Providers.DeploymentTasks
                 Parameters = parameters,
                 ScriptContent = script,
                 Credentials = execParams.Credentials,
-                ExecutionMode = PowerShellExecutionMode.CompatibilityMode
+                ExecutionMode = PowerShellExecutionMode.Automatic
             });
 
             return new List<ActionResult> { scriptResult };

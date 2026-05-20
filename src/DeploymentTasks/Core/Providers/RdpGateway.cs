@@ -25,11 +25,11 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to RDP Gateway Service using Powershell",
-                ProviderParameters = new List<ProviderParameter>
-                {
-                    new ProviderParameter { Key = "restartServices", Name = "Include Service Restart?", Type= OptionType.Boolean, IsCredential = false, Value="false" },
-                    new ProviderParameter { Key = "logontype", Name = "Impersonation LogonType", IsRequired= false, IsCredential= false, Type= OptionType.Select, Value="interactive", OptionsList=Helpers.LogonTypeOptions },
-                }
+                ProviderParameters =
+                [
+                    new() { Key = "restartServices", Name = "Include Service Restart?", Type= OptionType.Boolean, IsCredential = false, Value="false" },
+                    new() { Key = "logontype", Name = "Impersonation LogonType", IsRequired= false, IsCredential= false, Type= OptionType.Select, Value="interactive", OptionsList=Helpers.LogonTypeOptions },
+                ]
             };
         }
 
@@ -61,7 +61,7 @@ namespace Certify.Providers.DeploymentTasks
                 ScriptContent = script,
                 Credentials = execParams.Credentials,
                 LogonType = logonType,
-                ExecutionMode = PowerShellExecutionMode.CompatibilityMode
+                ExecutionMode = PowerShellExecutionMode.Automatic
             });
 
             return [scriptResult];
