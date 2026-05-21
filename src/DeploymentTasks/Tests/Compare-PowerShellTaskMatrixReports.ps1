@@ -147,6 +147,78 @@ function Get-CellValue {
     return $Scenario.$PropertyName
 }
 
+function Get-BehaviorDifferences {
+    param(
+        [AllowNull()]$LeftScenario,
+        [AllowNull()]$RightScenario,
+        [string]$LeftName,
+        [string]$RightName
+    )
+
+    $differences = @()
+
+    if ($null -eq $LeftScenario -and $null -eq $RightScenario) {
+        return @('Scenario was missing from both reports.')
+    }
+
+    if ($null -eq $LeftScenario) {
+        return @("Scenario only exists in $RightName.")
+    }
+
+    if ($null -eq $RightScenario) {
+        return @("Scenario only exists in $LeftName.")
+    }
+
+    if ([string]$LeftScenario.Outcome -ne [string]$RightScenario.Outcome) {
+        $differences += "$LeftName outcome was $($LeftScenario.Outcome) while $RightName outcome was $($RightScenario.Outcome)."
+    }
+
+    if ([string]$LeftScenario.ActualExecutionResult -ne [string]$RightScenario.ActualExecutionResult) {
+        $differences += "$LeftName execution result was $($LeftScenario.ActualExecutionResult) while $RightName execution result was $($RightScenario.ActualExecutionResult)."
+    }
+
+    if ([string]$LeftScenario.ActualValidationResult -ne [string]$RightScenario.ActualValidationResult) {
+        $differences += "$LeftName validation result was $($LeftScenario.ActualValidationResult) while $RightName validation result was $($RightScenario.ActualValidationResult)."
+    }
+
+    if ([string]$LeftScenario.ActualResolvedExecutionMode -ne [string]$RightScenario.ActualResolvedExecutionMode) {
+        $differences += "$LeftName resolved mode was '$($LeftScenario.ActualResolvedExecutionMode)' while $RightName resolved mode was '$($RightScenario.ActualResolvedExecutionMode)'."
+    }
+
+    if ([string]$LeftScenario.ThrownException -ne [string]$RightScenario.ThrownException) {
+        $differences += "$LeftName exception flag was $($LeftScenario.ThrownException) while $RightName exception flag was $($RightScenario.ThrownException)."
+    }
+
+    if ([string]$LeftScenario.ValidationAttempted -ne [string]$RightScenario.ValidationAttempted) {
+        $differences += "$LeftName validation attempted was $($LeftScenario.ValidationAttempted) while $RightName validation attempted was $($RightScenario.ValidationAttempted)."
+    }
+
+    if ([string]$LeftScenario.ExecutionAttempted -ne [string]$RightScenario.ExecutionAttempted) {
+        $differences += "$LeftName execution attempted was $($LeftScenario.ExecutionAttempted) while $RightName execution attempted was $($RightScenario.ExecutionAttempted)."
+    }
+
+    $leftIssues = Join-Issues $LeftScenario.Issues
+    $rightIssues = Join-Issues $RightScenario.Issues
+
+    if ($leftIssues -ne $rightIssues) {
+        if ([string]::IsNullOrWhiteSpace($leftIssues)) {
+            $differences += "$RightName reported issues that $LeftName did not."
+        }
+        elseif ([string]::IsNullOrWhiteSpace($rightIssues)) {
+            $differences += "$LeftName reported issues that $RightName did not."
+        }
+        else {
+            $differences += "$LeftName and $RightName reported different issue details."
+        }
+    }
+
+    if (-not $differences) {
+        $differences += 'No simple behavioral difference detected in the compared summary fields.'
+    }
+
+    return $differences
+}
+
 $leftPath = Resolve-ExistingFilePath $LeftReport
 $rightPath = Resolve-ExistingFilePath $RightReport
 $outputPath = Resolve-OutputFilePath $OutputHtml
@@ -246,6 +318,48 @@ $comparisonRows = foreach ($scenarioName in $scenarioNames) {
             </div>
         </div>
     </td>
+</tr>
+"@
+}
+
+$differenceRows = foreach ($scenarioName in $scenarioNames) {
+    $leftScenario = $leftMap[$scenarioName]
+    $rightScenario = $rightMap[$scenarioName]
+    $differences = @(Get-BehaviorDifferences -LeftScenario $leftScenario -RightScenario $rightScenario -LeftName $LeftLabel -RightName $RightLabel)
+
+    $isDifferent = $null -eq $leftScenario -or
+        $null -eq $rightScenario -or
+        [string]$leftScenario.Outcome -ne [string]$rightScenario.Outcome -or
+        [string]$leftScenario.ActualExecutionResult -ne [string]$rightScenario.ActualExecutionResult -or
+        [string]$leftScenario.ActualValidationResult -ne [string]$rightScenario.ActualValidationResult -or
+        [string]$leftScenario.ActualResolvedExecutionMode -ne [string]$rightScenario.ActualResolvedExecutionMode -or
+        [string]$leftScenario.ThrownException -ne [string]$rightScenario.ThrownException -or
+        [string]$leftScenario.ValidationAttempted -ne [string]$rightScenario.ValidationAttempted -or
+        [string]$leftScenario.ExecutionAttempted -ne [string]$rightScenario.ExecutionAttempted -or
+        (Join-Issues (Get-CellValue $leftScenario 'Issues')) -ne (Join-Issues (Get-CellValue $rightScenario 'Issues'))
+
+    if (-not $isDifferent) {
+        continue
+    }
+
+    $differenceList = ($differences | ForEach-Object { "<li>$(HtmlEncode $_)</li>" }) -join [Environment]::NewLine
+
+    @"
+<tr>
+    <td class='scenario-name'>$(HtmlEncode $scenarioName)</td>
+    <td>
+        <ul class='difference-list'>
+            $differenceList
+        </ul>
+    </td>
+</tr>
+"@
+}
+
+if (-not $differenceRows) {
+    $differenceRows = @"
+<tr>
+    <td colspan='2'><span class='muted'>No simple behavioral differences were detected between the two reports.</span></td>
 </tr>
 "@
 }
@@ -356,6 +470,10 @@ $html = @"
             padding: 16px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.08);
         }
+        .difference-list {
+            margin: 0;
+            padding-left: 18px;
+        }
     </style>
 </head>
 <body>
@@ -382,6 +500,19 @@ $html = @"
         </thead>
         <tbody>
             $($summaryRows -join [Environment]::NewLine)
+        </tbody>
+    </table>
+
+    <h2>Simple Behavior Differences</h2>
+    <table class='meta'>
+        <thead>
+            <tr>
+                <th>Scenario</th>
+                <th>Behavior Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            $($differenceRows -join [Environment]::NewLine)
         </tbody>
     </table>
 
