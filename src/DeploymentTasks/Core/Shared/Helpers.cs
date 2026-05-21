@@ -9,7 +9,7 @@ namespace Plugin.DeploymentTasks.Shared
     public class Helpers
     {
         public static string LogonTypeOptions = "network=Network;newcredentials=New Credentials;service=Service;interactive=Interactive;batch=Batch";
-        public static string PowerShellImpersonationModeOptions = "Default=Default;Limited=Limited;Full=Full Impersonation;FullWithProfile=Full Impersonation With Profile";
+        public static string PowerShellImpersonationModeOptions = "Default=Default;Full=Full Impersonation;FullWithProfile=Full Impersonation With Profile";
         public static string PowerShellExecutionModeOptions = "Automatic=Automatic;InProcess=In-Process;SystemProcess=System Process";
         /// <summary>
         /// Fetch embedded resource text file
