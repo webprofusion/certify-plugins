@@ -28,15 +28,15 @@ namespace Certify.Providers.DeploymentTasks
                 Description = "Enable read access for the stored certificate private key for a specific account",
                 ProviderParameters = new List<ProviderParameter>
                 {
-                      new ProviderParameter{ Key="account", Name="Account To Allow", IsRequired=true, IsCredential=false, Value="NT AUTHORITY\\LOCAL SERVICE"},
-                      new ProviderParameter{ Key="permission", Name="Permission To Grant", IsRequired=false, IsCredential=false, Value="read", OptionsList="read=Read;fullcontrol=Full Control;" },
+                      new() { Key="account", Name="Account To Allow", IsRequired=true, IsCredential=false, Value="NT AUTHORITY\\LOCAL SERVICE"},
+                      new() { Key="permission", Name="Permission To Grant", IsRequired=false, IsCredential=false, Value="read", OptionsList="read=Read;fullcontrol=Full Control;" },
                 }
             };
         }
 
         private List<ActionResult> PrepareErrorResult(string message)
         {
-            return new List<ActionResult> { new ActionResult { IsSuccess = false, Message = message } };
+            return new List<ActionResult> { new() { IsSuccess = false, Message = message } };
         }
 
         public async Task<List<ActionResult>> Execute(DeploymentTaskExecutionParams execParams)
@@ -60,7 +60,7 @@ namespace Certify.Providers.DeploymentTasks
 
             if (string.IsNullOrEmpty(managedCert.CertificatePath) || !File.Exists(managedCert.CertificatePath))
             {
-                return new List<ActionResult> { new ActionResult($"Certificate file not found: {managedCert.CertificatePath}", false) };
+                return new List<ActionResult> { new($"Certificate file not found: {managedCert.CertificatePath}", false) };
             }
 
             try
@@ -104,7 +104,7 @@ namespace Certify.Providers.DeploymentTasks
 
                 if (CertificateManager.GrantUserAccessToCertificatePrivateKey(cert, account, fileSystemRights: permission, execParams.Log))
                 {
-                    return new List<ActionResult> { new ActionResult($"Certificate private key ({certKeyPath}) permissions updated for account {account}", true) };
+                    return new List<ActionResult> { new($"Certificate private key ({certKeyPath}) permissions updated for account {account}", true) };
                 }
                 else
                 {

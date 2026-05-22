@@ -21,7 +21,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 Id = "Certify.Providers.DeploymentTasks.RDPListener",
                 Title = "Deploy to RDP Listener Service (Terminal Services)",
-                IsExperimental = true,
+                IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to RDP Listener Service using Powershell",

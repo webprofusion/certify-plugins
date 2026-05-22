@@ -21,7 +21,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 Id = "Certify.Providers.DeploymentTasks.RDPGateway",
                 Title = "Deploy to RDP Gateway Service",
-                IsExperimental = true,
+                IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
                 Description = "Deploy latest certificate to RDP Gateway Service using Powershell",
