@@ -111,7 +111,6 @@ namespace Certify.Providers.Deployment.Core.Shared
                         results.Add(new ActionResult(dirErrorMsg, false));
                         break;
                     }
-
                 }
                 catch (Exception exp)
                 {
