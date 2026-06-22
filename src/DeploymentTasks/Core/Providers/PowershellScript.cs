@@ -67,7 +67,7 @@ namespace Certify.Providers.DeploymentTasks
             }
 
             var parameters = new Dictionary<string, object>();
-            if (inputResultAsArgument?.Trim().ToLower() == "true")
+            if (inputResultAsArgument?.Trim()?.ToLower() == "true")
             {
                 parameters.Add("result", certRequest);
             }

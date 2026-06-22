@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Principal;
 using System.Text;
@@ -23,7 +24,7 @@ namespace Certify.Providers.DeploymentTasks
 
         static Script()
         {
-            Definition = new DeploymentProviderDefinition
+            Definition = new()
             {
                 Id = "Certify.Providers.DeploymentTasks.ShellExecute",
                 Title = "Run...",
@@ -32,12 +33,15 @@ namespace Certify.Providers.DeploymentTasks
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
                 SupportsRemoteTarget = true,
                 Description = "Run a program, batch file or custom script",
-                ProviderParameters = new List<ProviderParameter>
+                ProviderParameters = new()
                 {
-                    new ProviderParameter{ Key="path", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path"  },
-                    new ProviderParameter{ Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false  },
-                    new ProviderParameter{ Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
-                    new ProviderParameter{ Key="newprocess", Name="Launch New Process", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false" }
+                    new() { Key="path", Name="Program/Script", IsRequired=true, IsCredential=false, Description="Command to run, may require a full path. On Linux, this must be an executable script (e.g. with shebang)."  },
+                    new() { Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false  },
+                    new() { Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
+                    new() { Key="newprocess", Name="Launch New Process", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false" },
+#if DEBUG
+                    new() { Key="iscommand", Name="Is Command", IsRequired=false, Type= OptionType.Boolean, IsCredential = false, Value="false", Description="Enable to run as a command instead of a script file path" }
+#endif
                 }
             };
         }
@@ -87,46 +91,58 @@ namespace Certify.Providers.DeploymentTasks
             }
             else if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
             {
-                UserCredentials windowsCredentials = null;
-                if (execParams.Credentials != null && execParams.Credentials.Count > 0)
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
-                    try
-                    {
-                        windowsCredentials = Helpers.GetWindowsCredentials(execParams.Credentials);
-                    }
-                    catch
-                    {
-                        var err = "Task with Windows Credentials requires username and password.";
-                        execParams.Log.Error(err);
-
-                        return new List<ActionResult>{
-                            new ActionResult { IsSuccess = false, Message = err }
-                        };
-                    }
-                }
-
-                if (launchNewProcess)
-                {
-                    // start process as new user
-                    var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, true);
-                    results.Add(result);
+                    var err = "Running scripts as another user (alternative credentials) is not currently supported on Linux.";
+                    execParams.Log.Error(err);
+                    return new() {
+                        new() { IsSuccess = false, Message = err }
+                    };
                 }
                 else
                 {
-                    // default is to wrap in an impersonation context
-                    var _defaultLogonType = LogonType.Interactive;
-
-                    using (var userHandle = windowsCredentials.LogonUser(_defaultLogonType))
+                    // Windows: use SimpleImpersonation or launch new process
+                    UserCredentials windowsCredentials = null;
+                    if (execParams.Credentials != null && execParams.Credentials.Count > 0)
                     {
-                        WindowsIdentity.RunImpersonated(userHandle, () =>
+                        try
                         {
-                            var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, false);
-                            results.Add(result);
-                        });
+                            windowsCredentials = Helpers.GetWindowsCredentials(execParams.Credentials);
+                        }
+                        catch
+                        {
+                            var err = "Task with Windows Credentials requires username and password.";
+                            execParams.Log.Error(err);
+
+                            return new() {
+                                new() { IsSuccess = false, Message = err }
+                            };
+                        }
                     }
 
+                    if (launchNewProcess)
+                    {
+                        // start process as new user
+                        var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, launchAsUser: true);
+                        results.Add(result);
+                    }
+                    else
+                    {
+                        // default is to wrap in an impersonation context
+                        var _defaultLogonType = LogonType.Interactive;
+
+                        using (var userHandle = windowsCredentials.LogonUser(_defaultLogonType))
+                        {
+                            WindowsIdentity.RunImpersonated(userHandle, () =>
+                            {
+                                var result = RunLocalScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout, launchAsUser: false);
+                                results.Add(result);
+                            });
+                        }
+                    }
                 }
             }
+
             return results;
         }
 
@@ -148,14 +164,14 @@ namespace Certify.Providers.DeploymentTasks
             if (scriptResults.Any(r => r.IsError))
             {
                 var firstError = scriptResults.First(c => c.IsError);
-                return new List<ActionResult> {
-                    new ActionResult { IsSuccess = false, Message = $"One or more commands failed: {firstError.Command} :: {firstError.Result}" }
+                return new() {
+                    new() { IsSuccess = false, Message = $"One or more commands failed: {firstError.Command} :: {firstError.Result}" }
                 };
             }
             else
             {
-                return new List<ActionResult> {
-                    new ActionResult { IsSuccess = true, Message = "Command Completed" }
+                return new() {
+                    new() { IsSuccess = true, Message = "Command Completed" }
                 };
             }
         }
@@ -167,15 +183,26 @@ namespace Certify.Providers.DeploymentTasks
             // validate
             var path = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "path")?.Value;
 
+            var isCommand = false;
+            if (bool.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "iscommand")?.Value, out var parsedBool))
+            {
+                isCommand = parsedBool;
+            }
+
             if (string.IsNullOrEmpty(path))
             {
-                results.Add(new ActionResult("A path to a script is required.", false));
+                results.Add(new("A path to a script is required.", false));
             }
-            else
+            else if (!isCommand)
             {
-                if ((execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER) && !System.IO.File.Exists(path))
+                // Only check for local file existence if not using SSH (remote scripts cannot be validated locally)
+                if (execParams.Settings.ChallengeProvider != StandardAuthTypes.STANDARD_AUTH_SSH &&
+                    (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER))
                 {
-                    results.Add(new ActionResult("There is no local script file present at the given path: " + path, false));
+                    if (!System.IO.File.Exists(path))
+                    {
+                        results.Add(new($"There is no local script file present at the given path or the process user {System.Environment.UserName} does not have read permission: " + path, false));
+                    }
                 }
             }
 
@@ -184,19 +211,28 @@ namespace Certify.Providers.DeploymentTasks
             {
                 if (!int.TryParse(timeoutMinutes, out var timeout))
                 {
-                    results.Add(new ActionResult("Timeout (Minutes) value is invalid", false));
+                    results.Add(new("Timeout (Minutes) value is invalid", false));
                 }
 
                 if (timeout < 1 || timeout > 120)
                 {
-                    results.Add(new ActionResult("Timeout (Minutes) value is out of range (1-120).", false));
+                    results.Add(new("Timeout (Minutes) value is out of range (1-120).", false));
+                }
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER ||
+                    execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
+                {
+                    results.Add(new("Running scripts as another user (alternative credentials) is not supported on Linux.", false));
                 }
             }
 
             return await Task.FromResult(results);
         }
 
-        private static ActionResult RunLocalScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials, int timeoutMins, bool launchNewProcess = false)
+        private static ActionResult RunLocalScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials, int timeoutMins, bool launchAsUser = false)
         {
             var _log = new StringBuilder();
 
@@ -211,14 +247,12 @@ namespace Certify.Providers.DeploymentTasks
                 CreateNoWindow = true
             };
 
-            if (launchNewProcess)
+            if (launchAsUser && credentials != null && credentials.TryGetValue("username", out var username) && !string.IsNullOrEmpty(username))
             {
-                // launch process with user credentials set
-                if (credentials != null && credentials.ContainsKey("username") && credentials.ContainsKey("password"))
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    var username = credentials["username"];
-                    var pwd = credentials["password"];
-
+                    // Launch process with Windows user credentials
+                    credentials.TryGetValue("password", out var pwd);
                     credentials.TryGetValue("domain", out var domain);
 
                     if (domain == null && !username.Contains(".\\") && !username.Contains("@"))
@@ -229,16 +263,24 @@ namespace Certify.Providers.DeploymentTasks
                     scriptProcessInfo.UserName = username;
                     scriptProcessInfo.Domain = domain;
 
-                    var sPwd = new SecureString();
-                    foreach (var c in pwd)
+                    if (!string.IsNullOrEmpty(pwd))
                     {
-                        sPwd.AppendChar(c);
-                    }
-                    sPwd.MakeReadOnly();
+                        var sPwd = new SecureString();
+                        foreach (var c in pwd)
+                        {
+                            sPwd.AppendChar(c);
+                        }
 
-                    scriptProcessInfo.Password = sPwd;
+                        sPwd.MakeReadOnly();
+                        scriptProcessInfo.Password = sPwd;
+                    }
 
                     _log.AppendLine($"Launching Process as User: {domain}\\{username}");
+                }
+                else
+                {
+                    _log.AppendLine("Error: Running scripts as another user is not supported on this platform.");
+                    return new() { IsSuccess = false, Message = _log.ToString() };
                 }
             }
 
@@ -246,9 +288,9 @@ namespace Certify.Providers.DeploymentTasks
             {
                 scriptProcessInfo.Arguments = args;
             }
-            else
+            else if (string.IsNullOrEmpty(scriptProcessInfo.Arguments))
             {
-                _log.AppendLine($"{Definition.Title}: Running script [{command} {args}]");
+                _log.AppendLine($"{Definition.Title}: Running script [{command}]");
             }
 
             try
@@ -297,24 +339,22 @@ namespace Certify.Providers.DeploymentTasks
                     process.CloseMainWindow();
 
                     _log.AppendLine("Warning: Script ran but took too long to exit and was closed.");
-                    return new ActionResult { IsSuccess = false, Message = _log.ToString() };
+                    return new() { IsSuccess = false, Message = _log.ToString() };
                 }
                 else if (process.ExitCode != 0)
                 {
                     _log.AppendLine("Warning: Script exited with the following ExitCode: " + process.ExitCode);
-                    return new ActionResult { IsSuccess = false, Message = _log.ToString() };
+                    return new() { IsSuccess = false, Message = _log.ToString() };
                 }
 
-                return new ActionResult { IsSuccess = true, Message = _log.ToString() };
+                return new() { IsSuccess = true, Message = _log.ToString() };
 
             }
             catch (Exception exp)
             {
                 _log.AppendLine("Error: " + exp.ToString());
-                return new ActionResult { IsSuccess = false, Message = _log.ToString() };
+                return new() { IsSuccess = false, Message = _log.ToString() };
             }
         }
     }
-
-
 }

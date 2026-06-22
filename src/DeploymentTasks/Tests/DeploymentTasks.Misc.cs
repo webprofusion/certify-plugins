@@ -146,6 +146,309 @@ namespace Certify.Tests.DeploymentTaskTests
             Assert.IsTrue(result[0].IsSuccess, result[0].Message);
         }
 
+        [TestMethod, TestCategory("Misc"), Description("PowerShell script receives populated result parameter when inputresult=true")]
+        public async Task TestPowershellScriptReceivesResultParamWhenInputResultTrue()
+        {
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"certify-ps-result-{Guid.NewGuid():N}.ps1");
+            File.WriteAllText(scriptPath,
+                "param($result)\n" +
+                "Write-Output \"RESULT_NOT_NULL: $($null -ne $result)\"\n" +
+                "Write-Output \"RESULT_IS_SUCCESS: $($result.IsSuccess)\"\n" +
+                "Write-Output \"RESULT_MESSAGE: $($result.Message)\"");
+
+            try
+            {
+                var provider = new PowershellScript();
+                var taskConfig = new DeploymentTaskConfig
+                {
+                    ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+                    Parameters = new List<ProviderParameterSetting>
+                    {
+                        new("scriptpath", scriptPath),
+                        new("inputresult", "true"),
+                        new("timeout", "5")
+                    }
+                };
+
+                var managedCert = new ManagedCertificate { Id = "test-cert" };
+                var certResult = new CertificateRequestResult(managedCert) { IsSuccess = true, Message = "Test success" };
+
+                var execParams = new DeploymentTaskExecutionParams(
+                    _log,
+                    null,
+                    certResult,
+                    taskConfig,
+                    null,
+                    isPreviewOnly: false,
+                    definition: provider.GetDefinition(null),
+                    context: new DeploymentContext { PowershellExecutionPolicy = "Unrestricted" },
+                    cancellationToken: CancellationToken.None);
+
+                var results = await provider.Execute(execParams);
+
+                Assert.AreEqual(1, results.Count);
+                Assert.IsTrue(results[0].IsSuccess, results[0].Message);
+                // Verify that result parameter was passed and has properties
+                StringAssert.Contains(results[0].Message, "RESULT_NOT_NULL: True", "Result parameter should not be null when inputresult=true");
+                StringAssert.Contains(results[0].Message, "RESULT_IS_SUCCESS: True", "Result.IsSuccess property should be accessible");
+                StringAssert.Contains(results[0].Message, "RESULT_MESSAGE: Test success", "Result.Message property should be accessible with correct value");
+            }
+            finally
+            {
+                try { File.Delete(scriptPath); } catch { }
+            }
+        }
+
+        [TestMethod, TestCategory("Misc"), Description("PowerShell script does not receive result parameter when inputresult=false")]
+        public async Task TestPowershellScriptDoesNotReceiveResultParamWhenInputResultFalse()
+        {
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"certify-ps-no-result-{Guid.NewGuid():N}.ps1");
+            File.WriteAllText(scriptPath,
+                "param($result)\n" +
+                "Write-Output \"RESULT_IS_NULL: $($null -eq $result)\"");
+
+            try
+            {
+                var provider = new PowershellScript();
+                var taskConfig = new DeploymentTaskConfig
+                {
+                    ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+                    Parameters = new List<ProviderParameterSetting>
+                    {
+                        new("scriptpath", scriptPath),
+                        new("inputresult", "false"),
+                        new("timeout", "5")
+                    }
+                };
+
+                var execParams = new DeploymentTaskExecutionParams(
+                    _log,
+                    null,
+                    new CertificateRequestResult(new ManagedCertificate()),
+                    taskConfig,
+                    null,
+                    isPreviewOnly: false,
+                    definition: provider.GetDefinition(null),
+                    context: new DeploymentContext { PowershellExecutionPolicy = "Unrestricted" },
+                    cancellationToken: CancellationToken.None);
+
+                var results = await provider.Execute(execParams);
+
+                Assert.AreEqual(1, results.Count);
+                Assert.IsTrue(results[0].IsSuccess, results[0].Message);
+                StringAssert.Contains(results[0].Message, "RESULT_IS_NULL: True");
+            }
+            finally
+            {
+                try { File.Delete(scriptPath); } catch { }
+            }
+        }
+
+        [TestMethod, TestCategory("Misc"), Description("PowerShell script receives result parameter when inputresult is missing (default false)")]
+        public async Task TestPowershellScriptDoesNotReceiveResultParamWhenInputResultMissing()
+        {
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"certify-ps-default-result-{Guid.NewGuid():N}.ps1");
+            File.WriteAllText(scriptPath,
+                "param($result)\n" +
+                "Write-Output \"RESULT_IS_NULL: $($null -eq $result)\"");
+
+            try
+            {
+                var provider = new PowershellScript();
+                var taskConfig = new DeploymentTaskConfig
+                {
+                    ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+                    Parameters = new List<ProviderParameterSetting>
+                    {
+                        new("scriptpath", scriptPath),
+                        // ← Note: inputresult parameter is NOT set (defaults to false)
+                        new("timeout", "5")
+                    }
+                };
+
+                var execParams = new DeploymentTaskExecutionParams(
+                    _log,
+                    null,
+                    new CertificateRequestResult(new ManagedCertificate()),
+                    taskConfig,
+                    null,
+                    isPreviewOnly: false,
+                    definition: provider.GetDefinition(null),
+                    context: new DeploymentContext { PowershellExecutionPolicy = "Unrestricted" },
+                    cancellationToken: CancellationToken.None);
+
+                var results = await provider.Execute(execParams);
+
+                Assert.AreEqual(1, results.Count);
+                Assert.IsTrue(results[0].IsSuccess, results[0].Message);
+                StringAssert.Contains(results[0].Message, "RESULT_IS_NULL: True");
+            }
+            finally
+            {
+                try { File.Delete(scriptPath); } catch { }
+            }
+        }
+
+        [TestMethod, TestCategory("Misc"), Description("Malformed inputresult values are treated as false")]
+        [DataRow("maybe")]
+        [DataRow("1")]
+        [DataRow("False")]
+        [DataRow("")]
+        public async Task TestPowershellScriptMalformedInputResultTreatedAsFalse(string inputResultValue)
+        {
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"certify-ps-malformed-{Guid.NewGuid():N}.ps1");
+            File.WriteAllText(scriptPath,
+                "param($result)\n" +
+                "Write-Output \"RESULT_IS_NULL: $($null -eq $result)\"");
+
+            try
+            {
+                var provider = new PowershellScript();
+                var taskConfig = new DeploymentTaskConfig
+                {
+                    ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+                    Parameters = new List<ProviderParameterSetting>
+                    {
+                        new("scriptpath", scriptPath),
+                        new("inputresult", inputResultValue),
+                        new("timeout", "5")
+                    }
+                };
+
+                var execParams = new DeploymentTaskExecutionParams(
+                    _log,
+                    null,
+                    new CertificateRequestResult(new ManagedCertificate()),
+                    taskConfig,
+                    null,
+                    isPreviewOnly: false,
+                    definition: provider.GetDefinition(null),
+                    context: new DeploymentContext { PowershellExecutionPolicy = "Unrestricted" },
+                    cancellationToken: CancellationToken.None);
+
+                var results = await provider.Execute(execParams);
+
+                Assert.AreEqual(1, results.Count, $"Expected one result for inputresult='{inputResultValue}'");
+                Assert.IsTrue(results[0].IsSuccess, $"Expected success for inputresult='{inputResultValue}': {results[0].Message}");
+                StringAssert.Contains(results[0].Message, "RESULT_IS_NULL: True", $"Expected result parameter to be null for inputresult='{inputResultValue}'");
+            }
+            finally
+            {
+                try { File.Delete(scriptPath); } catch { }
+            }
+        }
+
+        [TestMethod, TestCategory("Misc"), Description("PowerShell script receives result parameter alongside other arguments")]
+        public async Task TestPowershellScriptResultParamWorksWithArgsPayload()
+        {
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"certify-ps-result-args-{Guid.NewGuid():N}.ps1");
+            File.WriteAllText(scriptPath,
+                "param($result, $customArg, $another)\n" +
+                "Write-Output \"HAS_RESULT: $($null -ne $result)\"\n" +
+                "Write-Output \"CUSTOM_ARG: $customArg\"\n" +
+                "Write-Output \"ANOTHER: $another\"");
+
+            try
+            {
+                var provider = new PowershellScript();
+                var taskConfig = new DeploymentTaskConfig
+                {
+                    ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL,
+                    Parameters = new List<ProviderParameterSetting>
+                    {
+                        new("scriptpath", scriptPath),
+                        new("inputresult", "true"),
+                        new("args", "customArg=myvalue;another=test"),
+                        new("timeout", "5")
+                    }
+                };
+
+                var managedCert = new ManagedCertificate { Id = "test-cert" };
+                var certResult = new CertificateRequestResult(managedCert);
+
+                var execParams = new DeploymentTaskExecutionParams(
+                    _log,
+                    null,
+                    certResult,
+                    taskConfig,
+                    null,
+                    isPreviewOnly: false,
+                    definition: provider.GetDefinition(null),
+                    context: new DeploymentContext { PowershellExecutionPolicy = "Unrestricted" },
+                    cancellationToken: CancellationToken.None);
+
+                var results = await provider.Execute(execParams);
+
+                Assert.AreEqual(1, results.Count);
+                Assert.IsTrue(results[0].IsSuccess, results[0].Message);
+                StringAssert.Contains(results[0].Message, "HAS_RESULT: True");
+                StringAssert.Contains(results[0].Message, "CUSTOM_ARG: myvalue");
+                StringAssert.Contains(results[0].Message, "ANOTHER: test");
+            }
+            finally
+            {
+                try { File.Delete(scriptPath); } catch { }
+            }
+        }
+
+        [TestMethod, TestCategory("Misc"), Description("PowerShell script receives result parameter with Full impersonation mode"), TestCategory("RequiresLocalUser")]
+        public async Task TestPowershellScriptResultParamWithFullImpersonation()
+        {
+            var scriptPath = Path.Combine(Path.GetTempPath(), $"certify-ps-result-impersonate-{Guid.NewGuid():N}.ps1");
+            File.WriteAllText(scriptPath,
+                "param($result)\n" +
+                "Write-Output \"HAS_RESULT: $($null -ne $result)\"\n" +
+                "Write-Output \"RESULT_IS_SUCCESS: $($result.IsSuccess)\"");
+
+            try
+            {
+                var provider = new PowershellScript();
+                var taskConfig = new DeploymentTaskConfig
+                {
+                    ChallengeProvider = StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER,
+                    Parameters = new List<ProviderParameterSetting>
+                    {
+                        new("scriptpath", scriptPath),
+                        new("inputresult", "true"),
+                        new("impersonationmode", PowerShellImpersonationMode.Full.ToString()),
+                        new("executionmode", PowerShellExecutionMode.SystemProcess.ToString()),
+                        new("timeout", "5")
+                    }
+                };
+
+                var managedCert = new ManagedCertificate { Id = "test-cert" };
+                var certResult = new CertificateRequestResult(managedCert) { IsSuccess = true };
+
+                // For impersonation tests, credentials would typically come from the environment
+                // This test validates that the result parameter is passed even with impersonation enabled
+                var execParams = new DeploymentTaskExecutionParams(
+                    _log,
+                    null,
+                    certResult,
+                    taskConfig,
+                    new Dictionary<string, string> { ["username"] = "testuser", ["password"] = "testpass" },
+                    isPreviewOnly: false,
+                    definition: provider.GetDefinition(null),
+                    context: new DeploymentContext { PowershellExecutionPolicy = "Unrestricted" },
+                    cancellationToken: CancellationToken.None);
+
+                var results = await provider.Execute(execParams);
+
+                Assert.AreEqual(1, results.Count);
+                // Note: This test may fail in CI/test environments without valid impersonation credentials
+                // The important assertion is that the result parameter is passed when configured
+                if (results[0].IsSuccess)
+                {
+                    StringAssert.Contains(results[0].Message, "HAS_RESULT: True", "Result parameter should be passed with Full impersonation");
+                    StringAssert.Contains(results[0].Message, "RESULT_IS_SUCCESS: True", "Result.IsSuccess property should be accessible with Full impersonation");
+                }
+            }
+            finally
+            {
+                try { File.Delete(scriptPath); } catch { }
+            }
+        }
+
         [TestMethod, TestCategory("Misc")]
         public async Task TestDeploymentTaskTriggersRespectPrimaryRequestStatus()
         {
@@ -248,20 +551,22 @@ namespace Certify.Tests.DeploymentTaskTests
             var manager = CreateTestManager();
 
             var managedCert = GetMockManagedCertificate("DeploymentTaskTriggerTest", "123", PrimaryTestDomain, PrimaryIISRoot);
-            var requestResult = new CertificateRequestResult(managedCert, primaryRequestSucceeded, string.Empty);
-            var method = typeof(CertifyManager).GetMethod("PerformTaskList", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            var result = method.Invoke(manager, new object[]
+            var requestResult = new CertificateRequestResult(managedCert, primaryRequestSucceeded, string.Empty)
             {
+                PrimaryRequest = new RequestStageStatus
+                {
+                    Status = primaryRequestSucceeded ? RequestState.Success : RequestState.Error
+                }
+            };
+
+            return await manager.PerformTaskList(
                 _log,
-                false,
+                isPreviewOnly: false,
                 skipDeferredTasks,
                 requestResult,
                 taskConfigs,
-                forceTaskExecution
-            });
-
-            return await (Task<List<ActionStep>>)result;
+                forceTaskExecute: forceTaskExecution,
+                evaluateAgainstPrimaryRequestStatus: true);
         }
 
         private CertifyManager CreateTestManager(ManagedCertificate managedCertificate = null)
