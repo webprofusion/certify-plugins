@@ -224,21 +224,17 @@ namespace Certify.Datastore.SQLite
                                 File.Delete(backupFile);
                             }
 
-                            // create new backup
-                            using (var backupDB = new SqliteConnection($"Data Source ={backupFile}"))
+                            // create new backup using VACUUM INTO (Microsoft.Data.Sqlite has no BackupDatabase method).
+                            // VACUUM INTO creates and writes the destination file itself and requires that it does not
+                            // already exist (or is empty), so we must not open a separate connection to it - doing so
+                            // can cause the backup to fail with a 'database is locked' error.
+                            var escapedBackupFile = backupFile.Replace("'", "''");
+                            using (var cmd = new SqliteCommand($"VACUUM INTO '{escapedBackupFile}'", db))
                             {
-                                backupDB.Open();
-
-                                // Microsoft.Data.Sqlite doesn't have BackupDatabase method, so we'll use SQL VACUUM INTO
-                                using (var cmd = new SqliteCommand($"VACUUM INTO '{backupFile}'", db))
-                                {
-                                    cmd.ExecuteNonQuery();
-                                }
-
-                                backupDB.Close();
-
-                                _log?.Information($"Performed db backup to {backupFile}. To switch to the backup, rename the old manageditems.db file and rename the .bak file as manageditems.db, then restart service to recover. ");
+                                cmd.ExecuteNonQuery();
                             }
+
+                            _log?.Information($"Performed db backup to {backupFile}. To switch to the backup, rename the old manageditems.db file and rename the .bak file as manageditems.db, then restart service to recover. ");
                         }
                         catch (Exception exp)
                         {
