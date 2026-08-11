@@ -88,17 +88,56 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                         SourceName = Definition.Title
                     };
 
+                    Dictionary<string, Dictionary<string, string>>? renewalConfig = null;
+
                     try
                     {
-                        var renewalConfig = IniFileParser.Parse(File.ReadAllText(config.FullName), _logger);
-                        managedCert.SourceName = $"certbot-{renewalConfig["_global"]["version"]}";
+                        renewalConfig = IniFileParser.Parse(File.ReadAllText(config.FullName), _logger);
+
+                        if (renewalConfig.TryGetValue("_global", out var globalConfig)
+                            && globalConfig.TryGetValue("version", out var certbotVersion)
+                            && !string.IsNullOrWhiteSpace(certbotVersion))
+                        {
+                            managedCert.SourceName = $"certbot-{certbotVersion}";
+                        }
                     }
                     catch (Exception exp)
                     {
                         _logger.LogError($"Failed to parse config: [{config.FullName}] {exp}");
                     }
 
-                    var certFile = new FileInfo(Path.Combine(_settingsPath, LiveFolder, id, CertFileName));
+                    var certFilePath = Path.Combine(_settingsPath, LiveFolder, id, CertFileName);
+                    string? configuredPath = null;
+
+                    if (renewalConfig?.TryGetValue("_global", out var configItems) == true)
+                    {
+                        if (configItems.TryGetValue("cert", out var configuredCertPath) && !string.IsNullOrWhiteSpace(configuredCertPath))
+                        {
+                            configuredPath = configuredCertPath;
+                        }
+                        else if (configItems.TryGetValue("fullchain", out var configuredFullChainPath) && !string.IsNullOrWhiteSpace(configuredFullChainPath))
+                        {
+                            configuredPath = configuredFullChainPath;
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(configuredPath))
+                    {
+                        var resolvedConfiguredPath = Path.IsPathRooted(configuredPath)
+                            ? configuredPath
+                            : Path.Combine(_settingsPath, configuredPath);
+
+                        if (File.Exists(resolvedConfiguredPath))
+                        {
+                            certFilePath = resolvedConfiguredPath;
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"Certbot configured cert path not found: {resolvedConfiguredPath}. Falling back to default live path for {id}.");
+                        }
+                    }
+
+                    var certFile = new FileInfo(certFilePath);
 
                     if (certFile.Exists)
                     {

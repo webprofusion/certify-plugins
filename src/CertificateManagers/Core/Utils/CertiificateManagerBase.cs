@@ -89,6 +89,13 @@ namespace Certify.Plugin.CertificateManagers.Utils
             try
             {
                 var cert = Certify.Management.CertificateManager.ReadCertificateFromPem(certFile.FullName);
+
+                if (cert == null)
+                {
+                    log.LogWarning($"Failed to parse/read cert: {certFile.FullName} - service may not have read permission");
+                    return;
+                }
+
                 var parsedCert = X509CertificateLoader.LoadCertificate(cert.GetEncoded());
 
                 managedCert.DateStart = new DateTimeOffset(cert.NotBefore);

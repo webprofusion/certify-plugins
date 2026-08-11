@@ -97,6 +97,76 @@ namespace Tests.Plugin.CertificateManagers
         }
 
         [TestMethod]
+        public async Task CertbotUsesRenewalConfigCertPath()
+        {
+            var logger = new NullLogger<Certbot>();
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var assetsDirectory = Path.Combine(currentDirectory, "Assets", "certbot");
+            var sourceSettingsDirectory = Path.Combine(assetsDirectory, "test-config");
+            var sourceLogDirectory = Path.Combine(assetsDirectory, "test-logs");
+            var tempRoot = Path.Combine(Path.GetTempPath(), $"certbot-test-{System.Guid.NewGuid():N}");
+            var settingsDirectory = Path.Combine(tempRoot, "test-config");
+            var logDirectory = Path.Combine(tempRoot, "test-logs");
+
+            try
+            {
+                foreach (var sourceFile in Directory.GetFiles(sourceSettingsDirectory, "*", SearchOption.AllDirectories))
+                {
+                    var relativePath = Path.GetRelativePath(sourceSettingsDirectory, sourceFile);
+                    var destinationFile = Path.Combine(settingsDirectory, relativePath);
+                    var destinationDirectory = Path.GetDirectoryName(destinationFile)!;
+                    Directory.CreateDirectory(destinationDirectory);
+
+                    File.Copy(sourceFile, destinationFile, true);
+                }
+
+                foreach (var sourceFile in Directory.GetFiles(sourceLogDirectory, "*", SearchOption.AllDirectories))
+                {
+                    var relativePath = Path.GetRelativePath(sourceLogDirectory, sourceFile);
+                    var destinationFile = Path.Combine(logDirectory, relativePath);
+                    var destinationDirectory = Path.GetDirectoryName(destinationFile)!;
+                    Directory.CreateDirectory(destinationDirectory);
+
+                    File.Copy(sourceFile, destinationFile, true);
+                }
+
+                var renewalFile = Path.Combine(settingsDirectory, "renewal", "wsl.projectbids.co.uk.conf");
+                var renamedRenewalFile = Path.Combine(settingsDirectory, "renewal", "custom-cert-name.conf");
+                File.Move(renewalFile, renamedRenewalFile);
+
+                var localCertPath = Path.Combine(settingsDirectory, "live", "wsl.projectbids.co.uk", "cert.pem");
+                var localFullChainPath = Path.Combine(settingsDirectory, "live", "wsl.projectbids.co.uk", "fullchain.pem");
+                var renewalFileContent = File.ReadAllText(renamedRenewalFile)
+                    .Replace("cert = /etc/letsencrypt/live/wsl.projectbids.co.uk/cert.pem", $"cert = {localCertPath}")
+                    .Replace("fullchain = /etc/letsencrypt/live/wsl.projectbids.co.uk/fullchain.pem", $"fullchain = {localFullChainPath}");
+                File.WriteAllText(renamedRenewalFile, renewalFileContent);
+
+                var prefs = new CertificateManagerPreference
+                {
+                    ConfigPath = settingsDirectory,
+                    LogPath = logDirectory
+                };
+
+                var manager = new Certbot();
+                manager.Init(logger, prefs);
+
+                var certs = await manager.GetManagedCertificates();
+                var cert = certs.Find(c => c.Name == "custom-cert-name");
+
+                Assert.IsNotNull(cert, "Expected cert from renamed renewal file");
+                Assert.IsNotNull(cert.DateExpiry, "Expected cert metadata using renewal config cert path");
+                Assert.IsFalse(string.IsNullOrWhiteSpace(cert.CertificateThumbprintHash), "Expected certificate thumbprint");
+            }
+            finally
+            {
+                if (Directory.Exists(tempRoot))
+                {
+                    Directory.Delete(tempRoot, true);
+                }
+            }
+        }
+
+        [TestMethod]
         public async Task AcmeSh()
         {
             var logger = new NullLogger<AcmeSh>();
