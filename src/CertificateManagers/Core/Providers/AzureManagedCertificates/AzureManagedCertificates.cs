@@ -161,7 +161,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.AzureManagedCertificates
 
                                 var managedCert = new ManagedCertificate
                                 {
-                                    Id = $"ext-azure-mc-{Certify.Management.Util.ToUrlSafeBase64String(cert.Data.Id.ToString())}",
+                                    Id = $"{ManagedCertificate.ExternalItemIdPrefix}azure-mc-{Certify.Management.Util.ToUrlSafeBase64String(cert.Data.Id.ToString())}",
                                     Name = cert.Data.Name,
                                     ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                                     SourceId = Definition.Id,

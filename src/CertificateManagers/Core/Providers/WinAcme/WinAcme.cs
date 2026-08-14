@@ -87,7 +87,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
 
                     var managedCert = new ManagedCertificate
                     {
-                        Id = $"ext-{IdPrefix}-{cfg.Id}",
+                        Id = $"{ManagedCertificate.ExternalItemIdPrefix}{IdPrefix}-{cfg.Id}",
                         Name = cfg.LastFriendlyName,
                         ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                         SourceId = ProviderId,

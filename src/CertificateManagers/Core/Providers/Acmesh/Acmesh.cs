@@ -109,7 +109,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 
                         var managedCert = new ManagedCertificate
                         {
-                            Id = $"ext-acme.sh-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
+                            Id = $"{ManagedCertificate.ExternalItemIdPrefix}acme.sh-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
                             Name = id,
                             ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                             SourceId = Definition.Id,

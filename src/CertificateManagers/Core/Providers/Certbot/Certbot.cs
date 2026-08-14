@@ -81,7 +81,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                     var id = config.Name.Replace(".conf", string.Empty);
                     var managedCert = new ManagedCertificate
                     {
-                        Id = $"ext-certbot-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
+                        Id = $"{ManagedCertificate.ExternalItemIdPrefix}certbot-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
                         Name = id,
                         ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                         SourceId = Definition.Id,

@@ -73,7 +73,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
 
                     var managedCert = new ManagedCertificate
                     {
-                        Id = $"ext-posh-acme-{Certify.Management.Util.ToUrlSafeBase64String(cfg.Id)}",
+                        Id = $"{ManagedCertificate.ExternalItemIdPrefix}posh-acme-{Certify.Management.Util.ToUrlSafeBase64String(cfg.Id)}",
                         Name = cfg.FriendlyName,
                         ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                         SourceId = Definition.Id,
