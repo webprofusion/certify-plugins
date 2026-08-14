@@ -82,6 +82,10 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                 }
             }
 
+            // items whose certificate file could not be read, so that a successful log entry does not replace the
+            // reason the certificate itself is unavailable
+            var certReadFailures = new HashSet<string>();
+
             // attempt to read config files
             try
             {
@@ -125,7 +129,8 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                         }
                         else
                         {
-                            _logger.LogWarning("Failed to access cert file {file}", certFile);
+                            SetCertificateUnreadable(_logger, managedCert, certFile.FullName);
+                            certReadFailures.Add(managedCert.Id!);
                         }
 
                         managedCertificates.Add(managedCert);
@@ -149,6 +154,13 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                     {
                         if (logItem.Status == "Success")
                         {
+                            // a successful renewal in the log does not help the user if we still cannot read the
+                            // resulting certificate, so leave that problem reported against the item
+                            if (certReadFailures.Contains(item.Id!))
+                            {
+                                continue;
+                            }
+
                             item.LastRenewalStatus = RequestState.Success;
                         }
                         else
@@ -168,6 +180,21 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
             }
 
             return managedCertificates;
+        }
+
+        /// <inheritdoc />
+        public override async Task<string> ResolveLogPath()
+        {
+            if (string.IsNullOrWhiteSpace(_logPath))
+            {
+                // acme.sh writes acme.sh.log into its own home directory, so use that when no log path is configured
+                if (await IsPresent())
+                {
+                    _logPath = _settingsPath;
+                }
+            }
+
+            return _logPath;
         }
 
         /// <inheritdoc />
@@ -218,7 +245,11 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
         /// </summary>
         private List<StatusLogResult> ParseLatestLogs(DateTimeOffset searchStart, List<string> searchIds)
         {
-            var logPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? WinLogPath : NixLogPath;
+            // use the configured log path if set, otherwise the default acme.sh home for this machine
+            var logPath = !string.IsNullOrWhiteSpace(_logPath)
+                ? _logPath
+                : RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? WinLogPath : NixLogPath;
+
             var results = new List<StatusLogResult>();
 
             var logDirectory = new DirectoryInfo(logPath);
@@ -230,15 +261,15 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 
             try
             {
-                var logFiles = logDirectory.GetFiles("*.log.*", SearchOption.AllDirectories)
-                    .OrderByDescending(f => f.LastWriteTime);
+                // includes the current acme.sh.log as well as any rotated copies
+                var logFiles = logDirectory.GetFiles("*.log*", SearchOption.AllDirectories)
+                    .OrderByDescending(f => f.LastWriteTime)
+                    .Take(MaxLogFilesScanned);
 
                 foreach (var log in logFiles)
                 {
                     var logContent = File.ReadAllText(log.FullName);
                     var logLines = logContent.Split('\n');
-
-                    logLines.Reverse();
 
                     var logResult = new StatusLogResult();
 

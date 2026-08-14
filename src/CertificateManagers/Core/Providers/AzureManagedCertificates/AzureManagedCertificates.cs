@@ -40,6 +40,12 @@ namespace Certify.Plugin.CertificateManagers.Providers.AzureManagedCertificates
         /// <inheritdoc />
         public override ProviderDefinition GetProviderDefinition() => Definition;
 
+        /// <summary>
+        /// Azure manages these certificates in the cloud, so there are no local log files to read
+        /// </summary>
+        public override Task<Certify.Models.Hub.LogItem[]> GetItemLog(ManagedCertificate item, int limit) =>
+            Task.FromResult(LogFetchMessage($"{Definition.Title} are issued and renewed by Azure, so there is no local renewal log for this certificate. Check the App Service certificate status in the Azure portal.", "INF"));
+
         /// <inheritdoc />
         public override void Init(ILogger logger, CertificateManagerPreference prefs)
         {

@@ -46,6 +46,12 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
         /// <inheritdoc />
         public override ProviderDefinition GetProviderDefinition() => Definition;
 
+        /// <summary>
+        /// Posh-ACME is a PowerShell module which reports to the host rather than to a log file of its own, so
+        /// entries are only available if the user has configured a path where their scripts write output
+        /// </summary>
+        public override Task<string> ResolveLogPath() => Task.FromResult(_logPath);
+
         /// <inheritdoc />
         public override async Task<List<ManagedCertificate>> GetManagedCertificates(ManagedCertificateFilter? filter = null)
         {
@@ -123,6 +129,10 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
                     if (certFile.Exists)
                     {
                         PopulateManagedCertificateFromFile(_logger, managedCert, certFile);
+                    }
+                    else
+                    {
+                        SetCertificateUnreadable(_logger, managedCert, certFile.FullName);
                     }
 
                     managedCertificates.Add(managedCert);

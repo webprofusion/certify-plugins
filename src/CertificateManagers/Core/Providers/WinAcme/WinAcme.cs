@@ -164,5 +164,35 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
 
             return false;
         }
+
+        /// <summary>
+        /// Log files are written using a rolling date suffix, e.g. log-20250626.txt
+        /// </summary>
+        protected override string[] LogFilePatterns => new[] { "log-*.txt", "*.log", "*.log.*" };
+
+        /// <inheritdoc />
+        public override async Task<string> ResolveLogPath()
+        {
+            if (string.IsNullOrWhiteSpace(_logPath) && await IsPresent())
+            {
+                // logs are kept in a Log folder below the config path, which is per base uri (e.g. %programdata%\win-acme\acme-v02.api.letsencrypt.org\Log)
+                try
+                {
+                    var logDirectory = new DirectoryInfo(_settingsPath)
+                        .GetDirectories("Log", SearchOption.AllDirectories)
+                        .OrderByDescending(d => d.LastWriteTimeUtc)
+                        .FirstOrDefault();
+
+                    _logPath = logDirectory?.FullName ?? _settingsPath;
+                }
+                catch (Exception exp)
+                {
+                    _logger?.LogWarning($"{ProviderTitle}: Failed to locate log folder under {_settingsPath}: {exp.Message}");
+                    _logPath = _settingsPath;
+                }
+            }
+
+            return _logPath;
+        }
     }
 }

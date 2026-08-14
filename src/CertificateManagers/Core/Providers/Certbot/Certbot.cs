@@ -72,6 +72,10 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
 
             var managedCertificates = new List<ManagedCertificate>();
 
+            // items whose certificate file could not be read, so that a successful log entry does not replace the
+            // reason the certificate itself is unavailable
+            var certReadFailures = new HashSet<string>();
+
             var configFiles = renewalDir.GetFiles(ConfigFilePattern, SearchOption.AllDirectories);
 
             foreach (var config in configFiles)
@@ -144,6 +148,19 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                         try
                         {
                             var cert = Certify.Management.CertificateManager.ReadCertificateFromPem(certFile.FullName);
+
+                            if (cert == null)
+                            {
+                                // the file could not be opened or did not contain a certificate we could read, so
+                                // record the item with the reason and move on to the next renewal config
+                                SetCertificateUnreadable(_logger, managedCert, certFile.FullName);
+                                certReadFailures.Add(managedCert.Id!);
+
+                                managedCert.IsChanged = false;
+                                managedCertificates.Add(managedCert);
+                                continue;
+                            }
+
                             var certFileTimeUtc = certFile.LastWriteTimeUtc;
                             var parsedCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(cert.GetEncoded());
 
@@ -191,12 +208,14 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                         }
                         catch (Exception exp)
                         {
-                            _logger.LogWarning($"Failed to parse cert: {exp}");
+                            SetCertificateUnreadable(_logger, managedCert, certFile.FullName, exp);
+                            certReadFailures.Add(managedCert.Id!);
                         }
                     }
                     else
                     {
-                        _logger.LogWarning($"Failed to access cert file {certFile.FullName}");
+                        SetCertificateUnreadable(_logger, managedCert, certFile.FullName);
+                        certReadFailures.Add(managedCert.Id!);
                     }
 
                     managedCert.IsChanged = false;
@@ -222,6 +241,13 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                     {
                         if (logItem.Status == "Success")
                         {
+                            // a successful renewal in the log does not help the user if we still cannot read the
+                            // resulting certificate, so leave that problem reported against the item
+                            if (certReadFailures.Contains(item.Id!))
+                            {
+                                continue;
+                            }
+
                             item.LastRenewalStatus = RequestState.Success;
                         }
                         else
@@ -243,50 +269,72 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
         }
 
         /// <inheritdoc />
-        public override async Task<bool> IsPresent()
+        public override Task<bool> IsPresent()
         {
-            if (!string.IsNullOrWhiteSpace(_settingsPath) && Directory.Exists(_settingsPath))
+            ResolveDefaultPaths();
+
+            return Task.FromResult(!string.IsNullOrWhiteSpace(_settingsPath) && Directory.Exists(_settingsPath));
+        }
+
+        /// <inheritdoc />
+        public override async Task<string> ResolveLogPath()
+        {
+            if (string.IsNullOrWhiteSpace(_logPath))
             {
-                return true;
+                // the log path is not configured, so use the default certbot log location for this machine
+                await IsPresent();
             }
 
-            string settingsPath;
+            return _logPath;
+        }
+
+        /// <summary>
+        /// Populate the config and log paths from the default certbot locations for this machine, for whichever
+        /// of them has not been configured. The config and log paths are resolved independently because either
+        /// one can be configured on its own
+        /// </summary>
+        private void ResolveDefaultPaths()
+        {
+            var settingsPathIsUsable = !string.IsNullOrWhiteSpace(_settingsPath) && Directory.Exists(_settingsPath);
+
+            if (settingsPathIsUsable && !string.IsNullOrWhiteSpace(_logPath))
+            {
+                return;
+            }
+
+            var candidates = new List<(string SettingsPath, string LogPath)>();
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                settingsPath = WinSettingsPath;
+                candidates.Add((WinSettingsPath, WinLogPath));
 
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    _logPath = WinLogPath;
-                    return true;
-                }
-
-                // Try app data
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-                settingsPath = Path.Combine(appDataPath, "certbot");
-
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    _logPath = Path.Combine(settingsPath, "log");
-                    return true;
-                }
+                var appDataSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "certbot");
+                candidates.Add((appDataSettingsPath, Path.Combine(appDataSettingsPath, "log")));
             }
             else
             {
-                settingsPath = NixSettingsPath;
-
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    _logPath = NixLogPath;
-                    return true;
-                }
+                candidates.Add((NixSettingsPath, NixLogPath));
             }
 
-            return false;
+            foreach (var candidate in candidates)
+            {
+                if (!Directory.Exists(candidate.SettingsPath))
+                {
+                    continue;
+                }
+
+                if (!settingsPathIsUsable)
+                {
+                    _settingsPath = candidate.SettingsPath;
+                }
+
+                if (string.IsNullOrWhiteSpace(_logPath))
+                {
+                    _logPath = candidate.LogPath;
+                }
+
+                return;
+            }
         }
 
         /// <summary>
@@ -312,15 +360,17 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
 
             try
             {
-                var logFiles = logDirectory.GetFiles("*.log.*", SearchOption.AllDirectories)
-                    .OrderByDescending(f => f.LastWriteTime);
+                // includes the current letsencrypt.log as well as the rotated letsencrypt.log.N files, and only
+                // the most recent files are read as certbot retains up to 1000 of them by default
+                var logFiles = logDirectory.GetFiles("*.log*", SearchOption.AllDirectories)
+                    .OrderByDescending(f => f.LastWriteTime)
+                    .Take(MaxLogFilesScanned);
 
                 foreach (var log in logFiles)
                 {
                     var logContent = File.ReadAllText(log.FullName);
 
                     var logLines = logContent.Split('\n');
-                    logLines.Reverse();
 
                     var logResult = new StatusLogResult();
 
