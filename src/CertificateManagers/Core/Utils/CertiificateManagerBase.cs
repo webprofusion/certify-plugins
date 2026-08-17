@@ -37,12 +37,35 @@ namespace Certify.Plugin.CertificateManagers.Utils
         /// </summary>
         protected virtual string[] LogFilePatterns => new[] { "*.log", "*.log.*" };
 
+        /// <summary>
+        /// A sortable timestamp at the start of a line, optionally with fractional seconds and a time zone offset,
+        /// e.g. certbot "2025-06-26 09:00:38,880:DEBUG:" or win-acme "2025-06-26 17:07:25.840 +08:00 [DBG]"
+        /// </summary>
         private static readonly Regex _logLineDatePattern = new Regex(
             @"^\s*\[?(?<date>\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:\s*(?:Z|[+-]\d{2}:?\d{2}))?)",
             RegexOptions.Compiled);
 
+        /// <summary>
+        /// The output of the unix date command in brackets at the start of a line, as used by acme.sh,
+        /// e.g. "[Mon Sep  9 04:50:59 AWST 2024]". The day and month names are whatever the locale of the machine
+        /// running the tool produced, so they are matched loosely and resolved when the date is parsed
+        /// </summary>
+        private static readonly Regex _logLineUnixDatePattern = new Regex(
+            @"^\s*\[[^\s\]]{2,12}\s+(?<month>[^\s\]]{3,12})\s+(?<day>\d{1,2})\s+(?<time>\d{1,2}:\d{2}:\d{2})(?:\s+(?<zone>[A-Za-z]{2,5}))?\s+(?<year>\d{4})\]",
+            RegexOptions.Compiled);
+
+        /// <summary>
+        /// Month name formats accepted in a unix date stamp, abbreviated or in full
+        /// </summary>
+        private static readonly string[] _unixDateFormats = { "MMM d yyyy H:mm:ss", "MMMM d yyyy H:mm:ss" };
+
+        /// <summary>
+        /// Time zone abbreviations which can be resolved without knowing where the log was written
+        /// </summary>
+        private static readonly HashSet<string> _universalZoneNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "UTC", "GMT", "UT", "Z" };
+
         private static readonly Regex _logLineLevelPattern = new Regex(
-            @"\b(?<level>TRACE|VERBOSE|DEBUG|DBG|INFORMATION|INFO|INF|WARNING|WARN|WRN|ERROR|ERR|FATAL|CRITICAL|CRIT)\b",
+            @"\b(?<level>TRACE|VERBOSE|VRB|DEBUG|DBG|INFORMATION|INFO|INF|WARNING|WARN|WRN|ERROR|ERR|FATAL|FTL|CRITICAL|CRIT)\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
@@ -194,20 +217,16 @@ namespace Certify.Plugin.CertificateManagers.Utils
                 };
             }
 
-            DateTime? lastKnownDate = null;
+            var lineList = lines as IList<string> ?? lines.ToList();
+            var entries = lineList.Select(ParseProviderLogLine).ToList();
 
-            foreach (var line in lines)
+            PopulateMissingEventDates(entries, file.LastWriteTimeUtc);
+
+            for (var i = 0; i < entries.Count; i++)
             {
-                var entry = ParseProviderLogLine(line, lastKnownDate);
-
-                if (entry.EventDate != null)
+                if (string.IsNullOrWhiteSpace(itemName) || lineList[i].Contains(itemName, StringComparison.OrdinalIgnoreCase))
                 {
-                    lastKnownDate = entry.EventDate;
-                }
-
-                if (string.IsNullOrWhiteSpace(itemName) || line.Contains(itemName, StringComparison.OrdinalIgnoreCase))
-                {
-                    results.Add(entry);
+                    results.Add(entries[i]);
 
                     if (results.Count >= maxMatches)
                     {
@@ -220,31 +239,125 @@ namespace Certify.Plugin.CertificateManagers.Utils
         }
 
         /// <summary>
-        /// Present a line from this tool's log file as a log item, inferring the event date and log level where
-        /// the line uses a recognisable format. Lines which continue a previous entry (a stack trace, for example)
-        /// have no date of their own so they inherit the date of the entry they follow
+        /// Give an event date to the entries which did not carry one of their own, so that log output does not
+        /// show a run of undated entries.
+        /// A line which continues the entry above it (a stack trace, or a tool which only stamps the first line of
+        /// each entry) takes the date of the entry it follows. Lines at the start of the range have nothing above
+        /// them, because the read starts partway into the file, so they take the date of the first entry which does
+        /// carry one. If no line in the range carries a date at all, the time the log file was last written is used
+        /// as an approximation, which is accurate for the end of the file and progressively earlier before that
         /// </summary>
-        protected virtual LogItem ParseProviderLogLine(string line, DateTime? lastKnownDate)
+        /// <param name="entries">parsed entries, in the order they appear in the file</param>
+        /// <param name="fileLastWriteTimeUtc">when the log file was last written</param>
+        protected static void PopulateMissingEventDates(IList<LogItem> entries, DateTime fileLastWriteTimeUtc)
         {
-            var message = line?.Trim() ?? string.Empty;
-            var eventDate = lastKnownDate;
+            var anyDated = false;
+            DateTime? lastKnownDate = null;
 
-            var dateMatch = _logLineDatePattern.Match(message);
-
-            if (dateMatch.Success
-                && DateTimeOffset.TryParse(dateMatch.Groups["date"].Value.Replace(',', '.'), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsedDate))
+            foreach (var entry in entries)
             {
-                eventDate = parsedDate.UtcDateTime;
+                if (entry.EventDate != null)
+                {
+                    lastKnownDate = entry.EventDate;
+                    anyDated = true;
+                }
+                else
+                {
+                    entry.EventDate = lastKnownDate;
+                }
             }
 
+            if (!anyDated)
+            {
+                foreach (var entry in entries)
+                {
+                    entry.EventDate = fileLastWriteTimeUtc;
+                }
+
+                return;
+            }
+
+            DateTime? nextKnownDate = null;
+
+            for (var i = entries.Count - 1; i >= 0; i--)
+            {
+                if (entries[i].EventDate != null)
+                {
+                    nextKnownDate = entries[i].EventDate;
+                }
+                else
+                {
+                    entries[i].EventDate = nextKnownDate;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Present a line from this tool's log file as a log item, reading the event date and log level from the
+        /// line where it uses a recognisable format. A line which carries neither is returned without a date, for
+        /// <see cref="PopulateMissingEventDates"/> to resolve from the lines around it
+        /// </summary>
+        protected virtual LogItem ParseProviderLogLine(string line)
+        {
+            var message = line?.Trim() ?? string.Empty;
             var levelMatch = _logLineLevelPattern.Match(message);
 
             return new LogItem
             {
                 LogLevel = levelMatch.Success ? MapLogLevel(levelMatch.Groups["level"].Value) : "INF",
-                EventDate = eventDate,
+                EventDate = ParseLogLineDate(message),
                 Message = message
             };
+        }
+
+        /// <summary>
+        /// Read the timestamp from the start of a log line, in the formats used by the tools we read logs from:
+        /// a sortable date optionally carrying a time zone offset (certbot, win-acme, simple-acme), or the output
+        /// of the unix date command in brackets (acme.sh)
+        /// </summary>
+        /// <param name="message">the log line</param>
+        /// <returns>the event date in UTC, or null if the line does not start with a timestamp</returns>
+        protected static DateTime? ParseLogLineDate(string message)
+        {
+            var dateMatch = _logLineDatePattern.Match(message);
+
+            if (dateMatch.Success)
+            {
+                // certbot separates the fractional seconds with a comma, which is not a recognised date separator
+                var value = dateMatch.Groups["date"].Value.Replace(',', '.');
+
+                // a line which carries no offset is assumed to be local time, as these tools log in the time zone
+                // of the machine they run on
+                if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsedDate))
+                {
+                    return parsedDate.UtcDateTime;
+                }
+            }
+
+            var unixDateMatch = _logLineUnixDatePattern.Match(message);
+
+            if (unixDateMatch.Success)
+            {
+                // the month name comes from the locale of the machine which wrote the log, so try this machine's
+                // culture as well as the invariant one, and allow the trailing period some locales use
+                var month = unixDateMatch.Groups["month"].Value.TrimEnd('.');
+                var composedDate = $"{month} {unixDateMatch.Groups["day"].Value} {unixDateMatch.Groups["year"].Value} {unixDateMatch.Groups["time"].Value}";
+
+                foreach (var culture in new[] { CultureInfo.InvariantCulture, CultureInfo.CurrentCulture })
+                {
+                    if (DateTime.TryParseExact(composedDate, _unixDateFormats, culture, DateTimeStyles.None, out var parsedUnixDate))
+                    {
+                        // the zone is an abbreviation such as AWST which cannot be resolved, so only an explicitly
+                        // universal zone is treated as such and anything else is taken as local time
+                        return _universalZoneNames.Contains(unixDateMatch.Groups["zone"].Value)
+                            ? DateTime.SpecifyKind(parsedUnixDate, DateTimeKind.Utc)
+                            : DateTime.SpecifyKind(parsedUnixDate, DateTimeKind.Local).ToUniversalTime();
+                    }
+                }
+            }
+
+            // the line carries no timestamp we can read, so its date is resolved from the lines around it
+            return null;
         }
 
         private static string MapLogLevel(string level)
@@ -258,6 +371,7 @@ namespace Certify.Plugin.CertificateManagers.Utils
                 case "ERROR":
                 case "ERR":
                 case "FATAL":
+                case "FTL":
                 case "CRITICAL":
                 case "CRIT":
                     return "ERR";

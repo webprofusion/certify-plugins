@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -330,6 +331,171 @@ namespace Tests.Plugin.CertificateManagers
             var log = await manager.GetItemLog(new ManagedCertificate { Name = "wsl.projectbids.co.uk" }, 100);
 
             Assert.IsTrue(log.Length > 0, "A log request should always return either log entries or the reason there are none");
+        }
+
+        [TestMethod]
+        public async Task AcmeShItemLogReadsUnixStyleEntryDates()
+        {
+            // acme.sh stamps each line with the output of the unix date command, e.g. [Mon Sep  9 04:50:59 AWST 2024]
+            var configDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Assets", "acme.sh");
+
+            var manager = new AcmeSh();
+            manager.Init(new NullLogger<AcmeSh>(), new CertificateManagerPreference { ConfigPath = configDirectory, LogPath = configDirectory });
+
+            var log = await manager.GetItemLog(new ManagedCertificate { Name = "wsl5.projectbids.co.uk" }, 500);
+
+            Assert.IsTrue(log.Length > 0, "Log entries should be returned for the item");
+            Assert.IsTrue(log.All(l => l.EventDate != null), "Every entry should have an event date");
+
+            // every acme.sh line carries its own stamp, so each entry date should be the time on its own line. The
+            // zone is an abbreviation which cannot be resolved, so the time is read as local
+            var stampedEntries = log.Where(l => l.Message.StartsWith("[")).ToList();
+
+            Assert.IsTrue(stampedEntries.Count > 0, "Expected stamped entries from the test log");
+
+            foreach (var entry in stampedEntries)
+            {
+                var stamp = entry.Message.Substring(1, entry.Message.IndexOf(']') - 1);
+                var parts = stamp.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var eventDate = entry.EventDate!.Value.ToLocalTime();
+
+                Assert.AreEqual(parts[3], eventDate.ToString("HH:mm:ss"), $"Time of day should match the log line: {entry.Message}");
+                Assert.AreEqual(parts[5], eventDate.Year.ToString(), $"Year should match the log line: {entry.Message}");
+            }
+        }
+
+        [TestMethod]
+        public async Task AcmeShItemLogReadsUniversalUnixEntryDateExactly()
+        {
+            var logDirectory = Path.Combine(Path.GetTempPath(), $"acme-sh-log-{Guid.NewGuid():N}");
+
+            Directory.CreateDirectory(logDirectory);
+
+            try
+            {
+                File.WriteAllLines(Path.Combine(logDirectory, "acme.sh.log"),
+                [
+                    "[Mon Sep  9 04:50:59 UTC 2024] Renewing: 'test.example.com'",
+                    "[Mon Sep  9 04:51:07 UTC 2024] Your cert is in: /home/chris/.acme.sh/test.example.com/test.example.com.cer"
+                ]);
+
+                var manager = new AcmeSh();
+                manager.Init(new NullLogger<AcmeSh>(), new CertificateManagerPreference { ConfigPath = logDirectory, LogPath = logDirectory });
+
+                var log = await manager.GetItemLog(new ManagedCertificate { Name = "test.example.com" }, 100);
+
+                Assert.AreEqual(2, log.Length, "Both lines mentioning the item should be returned");
+                Assert.AreEqual(new DateTime(2024, 9, 9, 4, 50, 59, DateTimeKind.Utc), log[0].EventDate, "A line stamped in UTC should be read as that exact time");
+                Assert.AreEqual(new DateTime(2024, 9, 9, 4, 51, 7, DateTimeKind.Utc), log[1].EventDate);
+            }
+            finally
+            {
+                Directory.Delete(logDirectory, true);
+            }
+        }
+
+        [TestMethod]
+        public async Task WinAcmeItemLogReadsEntryDatesFromDefaultLogFolder()
+        {
+            // no log path is configured, so the Log folder below the config path should be found, and win-acme
+            // stamps each line with an offset which fixes the entry date regardless of this machine's time zone
+            var configDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Assets", "win-acme");
+
+            var manager = new WinAcme();
+            manager.Init(new NullLogger<WinAcme>(), new CertificateManagerPreference { ConfigPath = configDirectory, LogPath = string.Empty });
+
+            var resolvedLogPath = await manager.ResolveLogPath();
+
+            Assert.IsTrue(resolvedLogPath.EndsWith("Log"), $"The default win-acme log folder should be found, got '{resolvedLogPath}'");
+
+            var log = await manager.GetItemLog(new ManagedCertificate { Name = "[IIS] test.projectbids.co.uk" }, 500);
+
+            Assert.IsTrue(log.Length > 0, "Log entries should be returned");
+            Assert.IsTrue(log.All(l => l.EventDate != null), "Every entry should have an event date");
+
+            // win-acme stamps an offset on every line, so each entry date should be that instant regardless of the
+            // time zone of the machine reading the log
+            var verified = 0;
+
+            foreach (var entry in log.Where(l => l.Message.Contains('[')))
+            {
+                var stamp = entry.Message.Substring(0, entry.Message.IndexOf('['));
+
+                if (DateTimeOffset.TryParse(stamp, CultureInfo.InvariantCulture, DateTimeStyles.None, out var expectedDate))
+                {
+                    Assert.AreEqual(expectedDate.UtcDateTime, entry.EventDate, $"Entry date should be the offset time on its own line: {entry.Message}");
+                    verified++;
+                }
+            }
+
+            Assert.IsTrue(verified > 0, "Expected stamped entries from the test log");
+            Assert.IsTrue(
+                log.Where(l => l.Message.Contains("[DBG]") || l.Message.Contains("[VRB]")).All(l => l.LogLevel == "INF"),
+                "Debug and verbose lines should not be reported as warnings or errors");
+        }
+
+        [TestMethod]
+        public async Task LogEntriesWithNoDateOfTheirOwnTakeTheDateAroundThem()
+        {
+            var logDirectory = Path.Combine(Path.GetTempPath(), $"certbot-log-dates-{Guid.NewGuid():N}");
+
+            Directory.CreateDirectory(logDirectory);
+
+            try
+            {
+                // the read starts partway into a file, so the leading lines have no dated line above them
+                File.WriteAllLines(Path.Combine(logDirectory, "letsencrypt.log"),
+                [
+                    "  continuation of an entry from earlier in the file, for test.example.com",
+                    "2025-06-26 09:00:39,100:ERROR:certbot._internal.renewal:Failed to renew certificate test.example.com",
+                    "  detail continues on this line for test.example.com"
+                ]);
+
+                var manager = new Certbot();
+                manager.Init(new NullLogger<Certbot>(), new CertificateManagerPreference { ConfigPath = logDirectory, LogPath = logDirectory });
+
+                var log = await manager.GetItemLog(new ManagedCertificate { Name = "test.example.com" }, 100);
+
+                Assert.AreEqual(3, log.Length);
+                Assert.AreEqual(log[1].EventDate, log[0].EventDate, "A leading line should take the date of the first dated entry which follows it");
+                Assert.AreEqual(log[1].EventDate, log[2].EventDate, "A continuation line should take the date of the entry it follows");
+            }
+            finally
+            {
+                Directory.Delete(logDirectory, true);
+            }
+        }
+
+        [TestMethod]
+        public async Task LogEntriesInAnUndatedFileUseTheFileWriteTime()
+        {
+            var logDirectory = Path.Combine(Path.GetTempPath(), $"certbot-log-undated-{Guid.NewGuid():N}");
+
+            Directory.CreateDirectory(logDirectory);
+
+            try
+            {
+                var logFile = Path.Combine(logDirectory, "letsencrypt.log");
+
+                File.WriteAllLines(logFile,
+                [
+                    "starting renewal for test.example.com",
+                    "finished renewal for test.example.com"
+                ]);
+
+                var manager = new Certbot();
+                manager.Init(new NullLogger<Certbot>(), new CertificateManagerPreference { ConfigPath = logDirectory, LogPath = logDirectory });
+
+                var log = await manager.GetItemLog(new ManagedCertificate { Name = "test.example.com" }, 100);
+                var fileWriteTime = new FileInfo(logFile).LastWriteTimeUtc;
+
+                Assert.AreEqual(2, log.Length);
+                Assert.IsTrue(log.All(l => l.EventDate == fileWriteTime), "Entries in a file with no timestamps should fall back to the time the file was last written");
+            }
+            finally
+            {
+                Directory.Delete(logDirectory, true);
+            }
         }
 
         [TestMethod]

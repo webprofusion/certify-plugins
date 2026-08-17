@@ -277,22 +277,11 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                     {
                         try
                         {
-                            var dateToParse = line.Split(']')[0].Replace("[", "");
-                            var compositeDate = string.Empty;
+                            var logDate = ParseLogLineDate(line);
 
-                            try
+                            if (logDate != null)
                             {
-                                var year = dateToParse.Substring(dateToParse.Length - 4);
-                                compositeDate = $"{dateToParse.Substring(0, 10)} {year} {dateToParse.Substring(11, 8)}";
-                            }
-                            catch
-                            {
-                                // Log line item doesn't start with a date
-                            }
-
-                            if (DateTimeOffset.TryParse(compositeDate, out var logDate))
-                            {
-                                logResult.StatusDate = logDate;
+                                logResult.StatusDate = logDate.Value;
 
                                 if (line.Contains("Your cert is in:"))
                                 {
