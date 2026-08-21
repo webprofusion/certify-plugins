@@ -16,8 +16,10 @@ using Polly.Retry;
 
 namespace Certify.Datastore.Postgres
 {
-    public class PostgresManagedItemStore : IManagedItemStore, IDisposable
+    public class PostgresManagedItemStore : IManagedItemStore, IDataStoreSchemaProvider, IDisposable
     {
+        private DataStoreSchemaCheckResult _schemaState = new DataStoreSchemaCheckResult();
+
         private const string _itemType = "managedcertificate";
 
         private ILog _log;
@@ -73,7 +75,9 @@ namespace Certify.Datastore.Postgres
         }
 
         /// <summary>
-        /// Upgrade the database schema to support itemtype column
+        /// Bring the schema up to date on connection where the connected user has schema modification rights.
+        /// Where it does not, the outstanding migrations are reported instead of failing - schema changes can
+        /// then be applied separately using a data store connection with the required permissions.
         /// </summary>
         private async Task<bool> UpgradeSchema()
         {
@@ -86,119 +90,17 @@ namespace Certify.Datastore.Postgres
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                using (var conn = new NpgsqlConnection(_connectionString))
+                _schemaState = await PostgresSchema.TryAutoMigrate(_connectionString, _log);
+
+                // claim unowned rows whenever the instanceid column is actually there - this needs only data
+                // write rights, and rows left at an empty instanceid are invisible to every query, so it must
+                // not be skipped just because an (optional) migration is still outstanding
+                if (HasInstanceIdColumn(_schemaState))
                 {
-                    await conn.OpenAsync();
-
-                    // Check if itemtype column exists
-                    var cols = new List<string>();
-                    using (var cmd = new NpgsqlCommand(
-                        "SELECT column_name FROM information_schema.columns WHERE table_name = 'manageditem'", conn))
-                    {
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                cols.Add(reader.GetString(0).ToLowerInvariant());
-                            }
-                        }
-                    }
-
-                    // Rename 'json' column to 'config' if it exists (legacy)
-                    if (cols.Contains("json") && !cols.Contains("config"))
-                    {
-                        using (var cmd = new NpgsqlCommand("ALTER TABLE manageditem RENAME COLUMN json TO config;", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        _log?.Information("Postgres: Renamed 'json' column to 'config'");
-                    }
-
-                    // Add itemtype column if it doesn't exist
-                    if (!cols.Contains("itemtype"))
-                    {
-                        using (var cmd = new NpgsqlCommand(
-                            "ALTER TABLE manageditem ADD COLUMN itemtype TEXT NOT NULL DEFAULT 'managedcertificate';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        _log?.Information("Postgres: Added 'itemtype' column");
-                    }
-
-                    // Add itemvalue column if it doesn't exist
-                    if (!cols.Contains("itemvalue"))
-                    {
-                        using (var cmd = new NpgsqlCommand(
-                            "ALTER TABLE manageditem ADD COLUMN itemvalue TEXT NULL;", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        _log?.Information("Postgres: Added 'itemvalue' column");
-                    }
-
-                    // Update existing records to have correct itemtype
-                    using (var cmd = new NpgsqlCommand(
-                        "UPDATE manageditem SET itemtype = 'managedcertificate' WHERE itemtype IS NULL OR itemtype = '';", conn))
-                    {
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    // Create index on itemtype for query performance
-                    try
-                    {
-                        using (var cmd = new NpgsqlCommand(
-                            "CREATE INDEX IF NOT EXISTS idx_manageditem_itemtype ON manageditem(itemtype);", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-                    catch (NpgsqlException)
-                    {
-                        // Index may already exist
-                    }
-
-                    // Add instanceid column if it doesn't exist
-                    if (!cols.Contains("instanceid"))
-                    {
-                        using (var cmd = new NpgsqlCommand(
-                            "ALTER TABLE manageditem ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        try
-                        {
-                            using (var cmd = new NpgsqlCommand(
-                                "CREATE INDEX IF NOT EXISTS idx_manageditem_instanceid ON manageditem(instanceid);", conn))
-                            {
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-                        }
-                        catch (NpgsqlException)
-                        {
-                            // Index may already exist
-                        }
-
-                        _log?.Information("Postgres: Added 'instanceid' column");
-                    }
-
-                    if (!string.IsNullOrEmpty(_instanceId))
-                    {
-                        using (var cmd = new NpgsqlCommand(
-                            "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
-                        {
-                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    await conn.CloseAsync();
+                    await ClaimLegacyInstanceRows();
                 }
 
-                return true;
+                return !_schemaState.IsMigrationRequired;
             }
             catch (Exception ex)
             {
@@ -210,6 +112,64 @@ namespace Certify.Datastore.Postgres
                 _dbMutex.Release();
             }
         }
+
+        /// <summary>
+        /// True once the instanceid column is present, i.e. neither creating the table nor adding the column is
+        /// still outstanding
+        /// </summary>
+        private static bool HasInstanceIdColumn(DataStoreSchemaCheckResult schemaState)
+        {
+            if (schemaState.State == DataStoreSchemaState.Unknown || schemaState.State == DataStoreSchemaState.NotPresent)
+            {
+                return false;
+            }
+
+            return !schemaState.PendingMigrations.Any(m => m.Id == "create-manageditem" || m.Id == "add-instanceid");
+        }
+
+        /// <summary>
+        /// Rows written before the instanceid column existed are not owned by any instance. Claim them for this
+        /// instance so they remain visible. This only needs data write permissions, not schema permissions.
+        /// </summary>
+        private async Task ClaimLegacyInstanceRows()
+        {
+            if (string.IsNullOrEmpty(_instanceId))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    using (var cmd = new NpgsqlCommand(
+                        "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    await conn.CloseAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Warning($"Postgres: Could not claim legacy rows for this instance: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// The schema state observed when this store last connected
+        /// </summary>
+        public DataStoreSchemaCheckResult GetSchemaState() => _schemaState;
+
+        public async Task<DataStoreSchemaCheckResult> CheckSchema(string connectionString, ILog log = null)
+            => await PostgresSchema.CheckSchema(connectionString, log ?? _log);
+
+        public async Task<ActionResult<List<DataStoreSchemaMigration>>> ApplySchemaMigrations(string connectionString, ILog log = null, bool includeOptional = true)
+            => await PostgresSchema.ApplySchemaMigrations(connectionString, log ?? _log, includeOptional);
 
         public async Task Delete(ManagedCertificate item)
         {

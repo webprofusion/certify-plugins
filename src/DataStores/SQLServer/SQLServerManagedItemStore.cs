@@ -17,9 +17,11 @@ using Polly.Retry;
 namespace Certify.Datastore.SQLServer
 {
 
-    public class SQLServerManagedItemStore : IManagedItemStore, IDisposable
+    public class SQLServerManagedItemStore : IManagedItemStore, IDataStoreSchemaProvider, IDisposable
     {
         private const string _itemType = "managedcertificate";
+
+        private DataStoreSchemaCheckResult _schemaState = new DataStoreSchemaCheckResult();
 
         private ILog _log;
         private string _connectionString;
@@ -72,7 +74,9 @@ namespace Certify.Datastore.SQLServer
         }
 
         /// <summary>
-        /// Upgrade the database schema to support itemtype column
+        /// Bring the schema up to date on connection where the connected user has schema modification rights.
+        /// Where it does not, the outstanding migrations are reported instead of failing - schema changes can
+        /// then be applied separately using a data store connection with the required permissions.
         /// </summary>
         private async Task<bool> UpgradeSchema()
         {
@@ -85,125 +89,17 @@ namespace Certify.Datastore.SQLServer
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                using (var conn = new SqlConnection(_connectionString))
+                _schemaState = await SQLServerSchema.TryAutoMigrate(_connectionString, _log);
+
+                // claim unowned rows whenever the instanceid column is actually there - this needs only data
+                // write rights, and rows left at an empty instanceid are invisible to every query, so it must
+                // not be skipped just because an (optional) migration is still outstanding
+                if (HasInstanceIdColumn(_schemaState))
                 {
-                    await conn.OpenAsync();
-
-                    // Check if itemtype column exists
-                    var cols = new List<string>();
-                    using (var cmd = new SqlCommand(
-                        "SELECT c.name FROM sys.columns c WHERE c.object_id = OBJECT_ID('manageditem')", conn))
-                    {
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                cols.Add(reader.GetString(0).ToLowerInvariant());
-                            }
-                        }
-                    }
-
-                    // Rename 'json' column to 'config' if it exists (legacy)
-                    if (cols.Contains("json") && !cols.Contains("config"))
-                    {
-                        using (var cmd = new SqlCommand("EXEC sp_rename 'manageditem.json', 'config', 'COLUMN';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        _log?.Information("SQL Server: Renamed 'json' column to 'config'");
-                    }
-
-                    // Add itemtype column if it doesn't exist
-                    if (!cols.Contains("itemtype"))
-                    {
-                        using (var cmd = new SqlCommand(
-                            "ALTER TABLE manageditem ADD itemtype NVARCHAR(100) NOT NULL DEFAULT 'managedcertificate';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        _log?.Information("SQL Server: Added 'itemtype' column");
-                    }
-
-                    // Add itemvalue column if it doesn't exist
-                    if (!cols.Contains("itemvalue"))
-                    {
-                        using (var cmd = new SqlCommand(
-                            "ALTER TABLE manageditem ADD itemvalue NVARCHAR(MAX) NULL;", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        _log?.Information("SQL Server: Added 'itemvalue' column");
-                    }
-
-                    // Update existing records to have correct itemtype
-                    using (var cmd = new SqlCommand(
-                        "UPDATE manageditem SET itemtype = 'managedcertificate' WHERE itemtype IS NULL OR itemtype = '';", conn))
-                    {
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    // Create index on itemtype for query performance
-                    try
-                    {
-                        using (var cmd = new SqlCommand(@"
-                            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_manageditem_itemtype' AND object_id = OBJECT_ID('manageditem'))
-                            BEGIN
-                                CREATE INDEX idx_manageditem_itemtype ON manageditem(itemtype);
-                            END", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-                    catch (SqlException)
-                    {
-                        // Index may already exist
-                    }
-
-                    // Add instanceid column if it doesn't exist
-                    if (!cols.Contains("instanceid"))
-                    {
-                        using (var cmd = new SqlCommand(
-                            "ALTER TABLE manageditem ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        try
-                        {
-                            using (var cmd = new SqlCommand(@"
-                                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_manageditem_instanceid' AND object_id = OBJECT_ID('manageditem'))
-                                BEGIN
-                                    CREATE INDEX idx_manageditem_instanceid ON manageditem(instanceid);
-                                END", conn))
-                            {
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-                        }
-                        catch (SqlException)
-                        {
-                            // Index may already exist
-                        }
-
-                        _log?.Information("SQL Server: Added 'instanceid' column");
-                    }
-
-                    if (!string.IsNullOrEmpty(_instanceId))
-                    {
-                        using (var cmd = new SqlCommand(
-                            "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
-                        {
-                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    conn.Close();
+                    await ClaimLegacyInstanceRows();
                 }
 
-                return true;
+                return !_schemaState.IsMigrationRequired;
             }
             catch (Exception ex)
             {
@@ -215,6 +111,64 @@ namespace Certify.Datastore.SQLServer
                 _dbMutex.Release();
             }
         }
+
+        /// <summary>
+        /// True once the instanceid column is present, i.e. neither creating the table nor adding the column is
+        /// still outstanding
+        /// </summary>
+        private static bool HasInstanceIdColumn(DataStoreSchemaCheckResult schemaState)
+        {
+            if (schemaState.State == DataStoreSchemaState.Unknown || schemaState.State == DataStoreSchemaState.NotPresent)
+            {
+                return false;
+            }
+
+            return !schemaState.PendingMigrations.Any(m => m.Id == "create-manageditem" || m.Id == "add-instanceid");
+        }
+
+        /// <summary>
+        /// Rows written before the instanceid column existed are not owned by any instance. Claim them for this
+        /// instance so they remain visible. This only needs data write permissions, not schema permissions.
+        /// </summary>
+        private async Task ClaimLegacyInstanceRows()
+        {
+            if (string.IsNullOrEmpty(_instanceId))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    using (var cmd = new SqlCommand(
+                        "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
+                    {
+                        cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    conn.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Warning($"SQL Server: Could not claim legacy rows for this instance: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// The schema state observed when this store last connected
+        /// </summary>
+        public DataStoreSchemaCheckResult GetSchemaState() => _schemaState;
+
+        public async Task<DataStoreSchemaCheckResult> CheckSchema(string connectionString, ILog log = null)
+            => await SQLServerSchema.CheckSchema(connectionString, log ?? _log);
+
+        public async Task<ActionResult<List<DataStoreSchemaMigration>>> ApplySchemaMigrations(string connectionString, ILog log = null, bool includeOptional = true)
+            => await SQLServerSchema.ApplySchemaMigrations(connectionString, log ?? _log, includeOptional);
 
         public async Task Delete(ManagedCertificate item)
         {

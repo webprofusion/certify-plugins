@@ -13,8 +13,10 @@ using Polly.Retry;
 
 namespace Certify.Datastore.SQLServer
 {
-    public class SQLServerConfigurationStore : IConfigurationStore
+    public class SQLServerConfigurationStore : IConfigurationStore, IDataStoreSchemaProvider
     {
+        private DataStoreSchemaCheckResult _schemaState = new DataStoreSchemaCheckResult();
+
         private ILog _log;
         private string _connectionString;
         private string _instanceId = "";
@@ -65,6 +67,10 @@ namespace Certify.Datastore.SQLServer
             Init(connectionString, log, instanceId);
         }
 
+        /// <summary>
+        /// Bring the schema up to date on connection where the connected user has schema modification rights,
+        /// otherwise report the outstanding migrations without failing. See SQLServerSchema for the migration set.
+        /// </summary>
         private async Task EnsureSchema()
         {
             if (string.IsNullOrEmpty(_connectionString))
@@ -72,55 +78,19 @@ namespace Certify.Datastore.SQLServer
                 return;
             }
 
-            try
-            {
-                using (var conn = new SqlConnection(_connectionString))
-                {
-                    await conn.OpenAsync();
-
-                    var hasInstanceId = false;
-                    using (var cmd = new SqlCommand("SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('manageditem') AND name = 'instanceid'", conn))
-                    {
-                        var result = await cmd.ExecuteScalarAsync();
-                        hasInstanceId = result != null;
-                    }
-
-                    if (!hasInstanceId)
-                    {
-                        using (var cmd = new SqlCommand("ALTER TABLE manageditem ADD instanceid NVARCHAR(64) NOT NULL DEFAULT '';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        using (var cmd = new SqlCommand(@"
-                            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_manageditem_instanceid' AND object_id = OBJECT_ID('manageditem'))
-                            BEGIN
-                                CREATE INDEX idx_manageditem_instanceid ON manageditem(instanceid);
-                            END", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(_instanceId))
-                    {
-                        using (var cmd = new SqlCommand(
-                            "UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
-                        {
-                            cmd.Parameters.Add(new SqlParameter("@instanceid", _instanceId));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    conn.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                _log?.Error(ex, "Failed to ensure configuration store schema");
-                throw;
-            }
+            _schemaState = await SQLServerSchema.TryAutoMigrate(_connectionString, _log);
         }
+
+        /// <summary>
+        /// The schema state observed when this store last connected
+        /// </summary>
+        public DataStoreSchemaCheckResult GetSchemaState() => _schemaState;
+
+        public async Task<DataStoreSchemaCheckResult> CheckSchema(string connectionString, ILog log = null)
+            => await SQLServerSchema.CheckSchema(connectionString, log ?? _log);
+
+        public async Task<ActionResult<List<DataStoreSchemaMigration>>> ApplySchemaMigrations(string connectionString, ILog log = null, bool includeOptional = true)
+            => await SQLServerSchema.ApplySchemaMigrations(connectionString, log ?? _log, includeOptional);
 
         public async Task<bool> IsInitialised()
         {
@@ -373,7 +343,7 @@ namespace Certify.Datastore.SQLServer
                         {
                             // Use MERGE for upsert in SQL Server
                             var sql = @"
-                                MERGE INTO manageditem AS target
+                                MERGE INTO manageditem WITH (HOLDLOCK) AS target
                                 USING (SELECT @id AS id, @itemtype AS itemtype, @instanceid AS instanceid) AS source
                                 ON target.id = source.id AND target.itemtype = source.itemtype AND target.instanceid = source.instanceid
                                 WHEN MATCHED THEN

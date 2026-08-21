@@ -14,8 +14,10 @@ using Polly.Retry;
 
 namespace Certify.Datastore.Postgres
 {
-    public class PostgresConfigurationStore : IConfigurationStore
+    public class PostgresConfigurationStore : IConfigurationStore, IDataStoreSchemaProvider
     {
+        private DataStoreSchemaCheckResult _schemaState = new DataStoreSchemaCheckResult();
+
         private ILog _log;
         private string _connectionString;
         private string _instanceId = "";
@@ -66,6 +68,10 @@ namespace Certify.Datastore.Postgres
             Init(connectionString, log, instanceId);
         }
 
+        /// <summary>
+        /// Bring the schema up to date on connection where the connected user has schema modification rights,
+        /// otherwise report the outstanding migrations without failing. See PostgresSchema for the migration set.
+        /// </summary>
         private async Task EnsureSchema()
         {
             if (string.IsNullOrEmpty(_connectionString))
@@ -73,50 +79,19 @@ namespace Certify.Datastore.Postgres
                 return;
             }
 
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    await conn.OpenAsync();
-
-                    var hasInstanceId = false;
-                    using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.columns WHERE table_name = 'manageditem' AND column_name = 'instanceid'", conn))
-                    {
-                        var result = await cmd.ExecuteScalarAsync();
-                        hasInstanceId = result != null;
-                    }
-
-                    if (!hasInstanceId)
-                    {
-                        using (var cmd = new NpgsqlCommand("ALTER TABLE manageditem ADD COLUMN instanceid TEXT NOT NULL DEFAULT '';", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        using (var cmd = new NpgsqlCommand("CREATE INDEX IF NOT EXISTS idx_manageditem_instanceid ON manageditem(instanceid);", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(_instanceId))
-                    {
-                        using (var cmd = new NpgsqlCommand("UPDATE manageditem SET instanceid = @instanceid WHERE instanceid IS NULL OR instanceid = '';", conn))
-                        {
-                            cmd.Parameters.Add(new NpgsqlParameter("@instanceid", _instanceId));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    await conn.CloseAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                _log?.Error(ex, "Failed to ensure configuration store schema");
-                throw;
-            }
+            _schemaState = await PostgresSchema.TryAutoMigrate(_connectionString, _log);
         }
+
+        /// <summary>
+        /// The schema state observed when this store last connected
+        /// </summary>
+        public DataStoreSchemaCheckResult GetSchemaState() => _schemaState;
+
+        public async Task<DataStoreSchemaCheckResult> CheckSchema(string connectionString, ILog log = null)
+            => await PostgresSchema.CheckSchema(connectionString, log ?? _log);
+
+        public async Task<ActionResult<List<DataStoreSchemaMigration>>> ApplySchemaMigrations(string connectionString, ILog log = null, bool includeOptional = true)
+            => await PostgresSchema.ApplySchemaMigrations(connectionString, log ?? _log, includeOptional);
 
         public async Task<bool> IsInitialised()
         {

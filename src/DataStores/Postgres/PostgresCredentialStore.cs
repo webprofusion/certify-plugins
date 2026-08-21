@@ -14,8 +14,10 @@ using Npgsql;
 
 namespace Certify.Datastore.Postgres
 {
-    public class PostgresCredentialStore : ICredentialsManager
+    public class PostgresCredentialStore : ICredentialsManager, IDataStoreSchemaProvider
     {
+        private DataStoreSchemaCheckResult _schemaState = new DataStoreSchemaCheckResult();
+
         private ILog _log;
         private string _connectionString;
         private string _instanceId = "";
@@ -52,7 +54,7 @@ namespace Certify.Datastore.Postgres
             _log = log;
             _connectionString = connectionString;
             _instanceId = instanceId ?? "";
-            MigrateLegacyCredentialTable().Wait();
+            EnsureSchema().Wait();
             return true;
         }
 
@@ -62,130 +64,30 @@ namespace Certify.Datastore.Postgres
         }
 
         /// <summary>
-        /// Migrate credentials from the legacy 'credential' table into the 'manageditem' table
+        /// Bring the schema up to date on connection where the connected user has schema modification rights,
+        /// otherwise report the outstanding migrations without failing. Moving rows out of the legacy
+        /// 'credential' table is part of the shared migration set - see PostgresSchema.
         /// </summary>
-        private async Task MigrateLegacyCredentialTable()
+        private async Task EnsureSchema()
         {
             if (string.IsNullOrEmpty(_connectionString))
             {
                 return;
             }
 
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    await conn.OpenAsync();
-
-                    // Check if legacy credential table exists
-                    bool hasLegacyTable;
-                    using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.tables WHERE table_name = 'credential'", conn))
-                    {
-                        var result = await cmd.ExecuteScalarAsync();
-                        hasLegacyTable = result != null;
-                    }
-
-                    if (!hasLegacyTable)
-                    {
-                        await conn.CloseAsync();
-                        return;
-                    }
-
-                    // Check if there are any rows to migrate
-                    int legacyCount;
-                    using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM credential", conn))
-                    {
-                        legacyCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-                    }
-
-                    if (legacyCount > 0)
-                    {
-                        _log?.Information($"Postgres: Migrating {legacyCount} credentials from legacy credential table to manageditem table");
-
-                        // Determine which columns exist in legacy table
-                        var hasInstanceId = false;
-                        using (var cmd = new NpgsqlCommand("SELECT 1 FROM information_schema.columns WHERE table_name = 'credential' AND column_name = 'instanceid'", conn))
-                        {
-                            var result = await cmd.ExecuteScalarAsync();
-                            hasInstanceId = result != null;
-                        }
-
-                        var selectSql = hasInstanceId
-                            ? "SELECT id, config, protectedvalue, instanceid FROM credential"
-                            : "SELECT id, config, protectedvalue FROM credential";
-
-                        using (var readCmd = new NpgsqlCommand(selectSql, conn))
-                        {
-                            using (var reader = await readCmd.ExecuteReaderAsync())
-                            {
-                                var rows = new List<(string Id, string Config, string ProtectedValue, string InstanceId)>();
-                                while (await reader.ReadAsync())
-                                {
-                                    var id = (string)reader["id"];
-                                    var config = (string)reader["config"];
-                                    var protectedValue = reader["protectedvalue"] as string;
-                                    var instId = hasInstanceId ? (reader["instanceid"] as string ?? "") : "";
-                                    rows.Add((id, config, protectedValue, instId));
-                                }
-
-                                await reader.CloseAsync();
-
-                                foreach (var row in rows)
-                                {
-                                    // Check if already migrated
-                                    using (var checkCmd = new NpgsqlCommand("SELECT 1 FROM manageditem WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
-                                    {
-                                        checkCmd.Parameters.Add(new NpgsqlParameter("@id", row.Id));
-                                        checkCmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
-                                        checkCmd.Parameters.Add(new NpgsqlParameter("@instanceid", row.InstanceId));
-                                        var exists = await checkCmd.ExecuteScalarAsync();
-                                        if (exists != null)
-                                        {
-                                            continue;
-                                        }
-                                    }
-
-                                    using (var insertCmd = new NpgsqlCommand(
-                                        "INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, CAST(@config AS jsonb), @itemvalue)", conn))
-                                    {
-                                        insertCmd.Parameters.Add(new NpgsqlParameter("@id", row.Id));
-                                        insertCmd.Parameters.Add(new NpgsqlParameter("@itemtype", _itemType));
-                                        insertCmd.Parameters.Add(new NpgsqlParameter("@instanceid", row.InstanceId));
-                                        insertCmd.Parameters.Add(new NpgsqlParameter("@config", NpgsqlTypes.NpgsqlDbType.Jsonb) { Value = row.Config });
-                                        insertCmd.Parameters.Add(new NpgsqlParameter("@itemvalue", (object)row.ProtectedValue ?? DBNull.Value));
-                                        await insertCmd.ExecuteNonQueryAsync();
-                                    }
-                                }
-                            }
-                        }
-
-                        _log?.Information("Postgres: Credential migration to manageditem table complete");
-
-                        // Rename legacy table so we don't migrate again
-                        using (var cmd = new NpgsqlCommand("ALTER TABLE credential RENAME TO credential_legacy", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        _log?.Information("Postgres: Legacy credential table renamed to credential_legacy");
-                    }
-                    else
-                    {
-                        // No rows, just rename the empty table
-                        using (var cmd = new NpgsqlCommand("ALTER TABLE credential RENAME TO credential_legacy", conn))
-                        {
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    await conn.CloseAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                _log?.Error(ex, "Failed to migrate legacy credential table");
-            }
+            _schemaState = await PostgresSchema.TryAutoMigrate(_connectionString, _log);
         }
+
+        /// <summary>
+        /// The schema state observed when this store last connected
+        /// </summary>
+        public DataStoreSchemaCheckResult GetSchemaState() => _schemaState;
+
+        public async Task<DataStoreSchemaCheckResult> CheckSchema(string connectionString, ILog log = null)
+            => await PostgresSchema.CheckSchema(connectionString, log ?? _log);
+
+        public async Task<ActionResult<List<DataStoreSchemaMigration>>> ApplySchemaMigrations(string connectionString, ILog log = null, bool includeOptional = true)
+            => await PostgresSchema.ApplySchemaMigrations(connectionString, log ?? _log, includeOptional);
 
         public async Task<bool> IsInitialised()
         {

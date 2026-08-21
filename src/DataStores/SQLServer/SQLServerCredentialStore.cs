@@ -13,8 +13,10 @@ using Newtonsoft.Json;
 
 namespace Certify.Datastore.SQLServer
 {
-    public class SQLServerCredentialStore : ICredentialsManager
+    public class SQLServerCredentialStore : ICredentialsManager, IDataStoreSchemaProvider
     {
+        private DataStoreSchemaCheckResult _schemaState = new DataStoreSchemaCheckResult();
+
         private ILog _log;
         private string _connectionString;
         private string _instanceId = "";
@@ -50,7 +52,7 @@ namespace Certify.Datastore.SQLServer
             _log = log;
             _connectionString = connectionString;
             _instanceId = instanceId ?? "";
-            MigrateLegacyCredentialTable().Wait();
+            EnsureSchema().Wait();
             return true;
         }
 
@@ -68,122 +70,30 @@ namespace Certify.Datastore.SQLServer
         }
 
         /// <summary>
-        /// Migrate credentials from the legacy 'credential' table into the 'manageditem' table
+        /// Bring the schema up to date on connection where the connected user has schema modification rights,
+        /// otherwise report the outstanding migrations without failing. Moving rows out of the legacy
+        /// 'credential' table is part of the shared migration set - see SQLServerSchema.
         /// </summary>
-        private async Task MigrateLegacyCredentialTable()
+        private async Task EnsureSchema()
         {
             if (string.IsNullOrEmpty(_connectionString))
             {
                 return;
             }
 
-            try
-            {
-                using (var conn = new SqlConnection(_connectionString))
-                {
-                    await conn.OpenAsync();
-
-                    // Check if legacy credential table exists
-                    bool hasLegacyTable;
-                    using (var cmd = new SqlCommand("SELECT OBJECT_ID('credential', 'U')", conn))
-                    {
-                        var result = await cmd.ExecuteScalarAsync();
-                        hasLegacyTable = result != null && result != DBNull.Value;
-                    }
-
-                    if (!hasLegacyTable)
-                    {
-                        conn.Close();
-                        return;
-                    }
-
-                    // Check if there are any rows to migrate
-                    int legacyCount;
-                    using (var cmd = new SqlCommand("SELECT COUNT(*) FROM credential", conn))
-                    {
-                        legacyCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-                    }
-
-                    if (legacyCount > 0)
-                    {
-                        _log?.Information($"SQL Server: Migrating {legacyCount} credentials from legacy credential table to manageditem table");
-
-                        // Determine which columns exist in legacy table
-                        var hasInstanceId = false;
-                        using (var cmd = new SqlCommand("SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('credential') AND name = 'instanceid'", conn))
-                        {
-                            var result = await cmd.ExecuteScalarAsync();
-                            hasInstanceId = result != null;
-                        }
-
-                        var selectSql = hasInstanceId
-                            ? "SELECT id, config, protectedvalue, instanceid FROM credential"
-                            : "SELECT id, config, protectedvalue FROM credential";
-
-                        using (var readCmd = new SqlCommand(selectSql, conn))
-                        {
-                            using (var reader = await readCmd.ExecuteReaderAsync())
-                            {
-                                var rows = new List<(string Id, string Config, string ProtectedValue, string InstanceId)>();
-                                while (await reader.ReadAsync())
-                                {
-                                    var id = (string)reader["id"];
-                                    var config = (string)reader["config"];
-                                    var protectedValue = reader["protectedvalue"] as string;
-                                    var instId = hasInstanceId ? (reader["instanceid"] as string ?? "") : "";
-                                    rows.Add((id, config, protectedValue, instId));
-                                }
-
-                                reader.Close();
-
-                                foreach (var row in rows)
-                                {
-                                    // Check if already migrated
-                                    using (var checkCmd = new SqlCommand("SELECT 1 FROM manageditem WHERE id = @id AND itemtype = @itemtype AND instanceid = @instanceid", conn))
-                                    {
-                                        checkCmd.Parameters.Add(new SqlParameter("@id", row.Id));
-                                        checkCmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
-                                        checkCmd.Parameters.Add(new SqlParameter("@instanceid", row.InstanceId));
-                                        var exists = await checkCmd.ExecuteScalarAsync();
-                                        if (exists != null)
-                                        {
-                                            continue;
-                                        }
-                                    }
-
-                                    using (var insertCmd = new SqlCommand(
-                                        "INSERT INTO manageditem (id, itemtype, instanceid, config, itemvalue) VALUES (@id, @itemtype, @instanceid, @config, @itemvalue)", conn))
-                                    {
-                                        insertCmd.Parameters.Add(new SqlParameter("@id", row.Id));
-                                        insertCmd.Parameters.Add(new SqlParameter("@itemtype", _itemType));
-                                        insertCmd.Parameters.Add(new SqlParameter("@instanceid", row.InstanceId));
-                                        insertCmd.Parameters.Add(new SqlParameter("@config", row.Config));
-                                        insertCmd.Parameters.Add(new SqlParameter("@itemvalue", (object)row.ProtectedValue ?? DBNull.Value));
-                                        await insertCmd.ExecuteNonQueryAsync();
-                                    }
-                                }
-                            }
-                        }
-
-                        _log?.Information("SQL Server: Credential migration to manageditem table complete");
-                    }
-
-                    // Rename legacy table so we don't migrate again
-                    using (var cmd = new SqlCommand("EXEC sp_rename 'credential', 'credential_legacy'", conn))
-                    {
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    _log?.Information("SQL Server: Legacy credential table renamed to credential_legacy");
-
-                    conn.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                _log?.Error(ex, "Failed to migrate legacy credential table");
-            }
+            _schemaState = await SQLServerSchema.TryAutoMigrate(_connectionString, _log);
         }
+
+        /// <summary>
+        /// The schema state observed when this store last connected
+        /// </summary>
+        public DataStoreSchemaCheckResult GetSchemaState() => _schemaState;
+
+        public async Task<DataStoreSchemaCheckResult> CheckSchema(string connectionString, ILog log = null)
+            => await SQLServerSchema.CheckSchema(connectionString, log ?? _log);
+
+        public async Task<ActionResult<List<DataStoreSchemaMigration>>> ApplySchemaMigrations(string connectionString, ILog log = null, bool includeOptional = true)
+            => await SQLServerSchema.ApplySchemaMigrations(connectionString, log ?? _log, includeOptional);
 
         public SQLServerCredentialStore(string connectionString, ILog log = null, string instanceId = null)
         {
