@@ -296,9 +296,19 @@ namespace Certify.Datastore.SQLite
 
                 return JsonConvert.DeserializeObject<Dictionary<string, string>>(val);
             }
-            catch (Exception)
+            catch (AggregateException exp)
             {
-                // failed to decrypt or credential inaccessible
+                // the credential exists but this user account cannot decrypt it, which will not resolve on its
+                // own. Callers see the same null as any other unavailable credential, so the reason is logged here
+                _log?.Error(exp, "Stored credential [{storageKey}] could not be decrypted. It was most likely created by a different user account.", storageKey);
+                return null;
+            }
+            catch (Exception exp)
+            {
+                // the credential could not be read at all (e.g. the credential store was briefly unavailable),
+                // which may well be temporary. Separating it in the log matters because the caller cannot tell
+                // the two apart from the null it receives
+                _log?.Error(exp, "Stored credential [{storageKey}] could not be retrieved from the credential store.", storageKey);
                 return null;
             }
         }
