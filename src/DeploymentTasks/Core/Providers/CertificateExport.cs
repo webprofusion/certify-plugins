@@ -29,6 +29,11 @@ namespace Certify.Providers.DeploymentTasks
             {"pfxfull", "PFX (PKCX#12), Full certificate including private key" }
         };
 
+        /// <summary>
+        /// Export types which include the private key, so can be protected by the optional export password
+        /// </summary>
+        static private readonly string[] PrivateKeyExportTypes = ["pfxfull", "pemkey", "pemfull"];
+
         static CertificateExport()
         {
             var optionsList = string.Join(";", ExportTypes.Select(e => e.Key + "=" + e.Value));
@@ -47,7 +52,8 @@ namespace Certify.Providers.DeploymentTasks
                     new List<ProviderParameter> {
                         new ProviderParameter { Key = "path", Name = "Destination File Path", IsRequired = true, IsCredential = false, Description="output file, e.g. C:\\CertifyCerts\\mycert.ext" },
                         new ProviderParameter { Key = "type", Name = "Export As", IsRequired = true, IsCredential = false, Value = "pfxfull", Type=OptionType.Select, OptionsList = optionsList },
-                        new ProviderParameter { Key = "strict", Name = "Strict Export", IsRequired = false, IsCredential = false, Type=OptionType.Boolean, Description="If enabled, only export certificates from the PFX file, do not include certificates from the local certificate store", Value = "false" },
+                        new ProviderParameter { Key = "strict", Name = "Strict Export", IsRequired = false, IsCredential = false, Type=OptionType.Boolean, Description="If enabled, only export intermediate certificates from the built PFX file, do not include certificates resolved from the local certificate store", Value = "false" },
+                        ExportPassword.GetParameter(dependsOnKey: "type", dependsOnValues: PrivateKeyExportTypes),
                         }
             };
         }
@@ -159,38 +165,43 @@ namespace Certify.Providers.DeploymentTasks
 
                 var files = new Dictionary<string, byte[]>();
 
-                var certPwd = "";
+                // optional new password to protect the exported private key, only applies to export types which include the key
+                string exportPwd = null;
 
-                // if credential used for private key, check if we can decrypt that (unless we exporting PFX which is just a file copy)
-                if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId) && exportType != "pfxfull")
+                if (PrivateKeyExportTypes.Contains(exportType))
                 {
-                    var cred = await execParams.CredentialsManager.GetUnlockedCredentialsDictionary(managedCert.CertificatePasswordCredentialId);
-                    if (cred != null)
+                    var newPwd = await ExportPassword.GetNewPassword(execParams);
+                    if (!newPwd.IsSuccess)
                     {
-                        certPwd = cred["password"];
-                    }
-                    else
-                    {
-                        results.Add(new ActionResult($"Export - the credentials for this task could not be unlocked or were not accessible {managedCert.CertificatePasswordCredentialId}.", false));
+                        results.Add(newPwd);
                         return results;
                     }
+
+                    exportPwd = newPwd.Result;
                 }
 
-                // TODO: custom pfx pwd for export
-                /*
-                if (execParams.Credentials != null && execParams.Credentials.Any(c => c.Key == "cert_pwd_key"))
+                var certPwd = "";
+
+                // if credential used for private key, check if we can decrypt that (unless we are exporting PFX as-is, which is just a file copy)
+                if (exportType != "pfxfull" || exportPwd != null)
                 {
-                    var credKey = execParams.Credentials.First(c => c.Key == "cert_pwd_key");
+                    var sourcePwd = await ExportPassword.GetCertificatePassword(execParams, managedCert);
+                    if (!sourcePwd.IsSuccess)
+                    {
+                        results.Add(sourcePwd);
+                        return results;
+                    }
+
+                    certPwd = sourcePwd.Result;
                 }
-                */
 
                 if (exportType == "pfxfull")
                 {
-                    files.Add(destPath, pfxData);
+                    files.Add(destPath, exportPwd != null ? CertUtils.GetPfxWithNewPassword(pfxData, certPwd, exportPwd, execParams.Context?.UseModernPFXAlgs == true) : pfxData);
                 }
                 else if (exportType == "pemkey")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey, strictExport));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey, strictExport, exportPwd));
                 }
                 else if (exportType == "pemchain")
                 {
@@ -210,7 +221,7 @@ namespace Certify.Providers.DeploymentTasks
                 }
                 else if (exportType == "pemfull")
                 {
-                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate, strictExport));
+                    files.Add(destPath, CertUtils.GetCertComponentsAsPEMBytes(pfxData, certPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate | ExportFlags.IntermediateCertificates | ExportFlags.RootCertificate, strictExport, exportPwd));
                 }
                 else if (exportType == "pemfullnokey")
                 {

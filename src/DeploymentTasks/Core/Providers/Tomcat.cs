@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
+using Certify.Providers.Deployment.Core.Shared;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -38,6 +39,7 @@ namespace Certify.Providers.DeploymentTasks
                 ProviderParameters = new System.Collections.Generic.List<ProviderParameter>
                 {
                      new ProviderParameter{ Key="path_pfx", Name="Destination Path", IsRequired=true, IsCredential=false , Description="Local/remote path to copy PFX file to e.g /usr/local/ssl/server.pfx"},
+                     ExportPassword.GetParameter()
                 }
             };
         }

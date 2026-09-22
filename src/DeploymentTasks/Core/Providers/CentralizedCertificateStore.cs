@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Providers.Deployment.Core.Shared;
-using Plugin.DeploymentTasks.Core.Shared.Model;
+using Certify.Shared.Core.Utils.PKI;
 using Plugin.DeploymentTasks.Shared;
 using SimpleImpersonation;
 
@@ -38,6 +38,7 @@ namespace Certify.Providers.DeploymentTasks
                         IsCredential =false,
                         Description="UNC Path or Local Share"
                     },
+                    ExportPassword.GetParameter()
                 }
             };
         }
@@ -74,9 +75,29 @@ namespace Certify.Providers.DeploymentTasks
 
                 var windowsFileClient = new WindowsNetworkFileClient(windowsCredentials);
 
+                var pfxData = File.ReadAllBytes(managedCert.CertificatePath);
+
+                // if the task sets a new password, re-encrypt the PFX with it, otherwise copy the PFX as-is
+                var newPwd = await ExportPassword.GetNewPassword(execParams);
+                if (!newPwd.IsSuccess)
+                {
+                    return new List<ActionResult> { newPwd };
+                }
+
+                if (newPwd.Result != null)
+                {
+                    var certPwd = await ExportPassword.GetCertificatePassword(execParams, managedCert);
+                    if (!certPwd.IsSuccess)
+                    {
+                        return new List<ActionResult> { certPwd };
+                    }
+
+                    pfxData = CertUtils.GetPfxWithNewPassword(pfxData, certPwd.Result, newPwd.Result, execParams.Context?.UseModernPFXAlgs == true);
+                }
+
                 var domains = managedCert.GetCertificateDomains();
 
-                var fileList = new List<FileCopy>();
+                var files = new Dictionary<string, byte[]>();
 
                 var destinationPath = execParams.Settings.Parameters?.FirstOrDefault(d => d.Key == "path")?.Value;
 
@@ -94,11 +115,11 @@ namespace Certify.Providers.DeploymentTasks
 
                         execParams.Log?.Information($"{Definition.Title}: Storing PFX as {filename}");
 
-                        fileList.Add(new FileCopy { SourcePath = managedCert.CertificatePath, DestinationPath = filename });
+                        files[filename] = pfxData;
                     }
                 }
 
-                if (fileList.Count == 0)
+                if (files.Count == 0)
                 {
                     return new List<ActionResult>{
                     new ActionResult { IsSuccess = true, Message = $"{Definition.Title}: Nothing to copy." }
@@ -108,7 +129,7 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     if (!execParams.IsPreviewOnly)
                     {
-                        var results = windowsFileClient.CopyLocalToRemote(execParams.Log, fileList);
+                        var results = windowsFileClient.CopyLocalToRemote(execParams.Log, files);
 
                         if (!results.All(s => s.IsSuccess == true))
                         {
