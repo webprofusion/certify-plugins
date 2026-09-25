@@ -267,31 +267,41 @@ namespace Certify.Datastore.SQLite
             SqliteConnection.ClearAllPools();
         }
 
-        public async Task Delete(string id, string itemType)
+        public Task Delete(string id, string itemType)
+        {
+            return Write(async (db, tran) =>
+            {
+                using (var cmd = new SqliteCommand("DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype", db, tran))
+                {
+                    cmd.Parameters.Add(new SqliteParameter("@id", id));
+                    cmd.Parameters.Add(new SqliteParameter("@itemtype", itemType.ToLowerInvariant()));
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            });
+        }
+
+        /// <summary>
+        /// Run a write as one transaction, serialised with the store's other operations and retried on transient failures.
+        /// </summary>
+        protected async Task Write(Func<SqliteConnection, SqliteTransaction, Task> write)
         {
             try
             {
                 await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
 
-                // delete specific item
-                using (var db = new SqliteConnection(_connectionString))
+                await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    await db.OpenAsync();
-                    using (var tran = db.BeginTransaction())
+                    using (var db = new SqliteConnection(_connectionString))
                     {
-                        using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
+                        await db.OpenAsync();
+
+                        using (var tran = db.BeginTransaction())
                         {
-                            cmd.Transaction = tran;
-                            cmd.Parameters.Add(new SqliteParameter("@id", id));
-                            cmd.Parameters.Add(new SqliteParameter("@itemtype", itemType.ToLowerInvariant()));
-                            await cmd.ExecuteNonQueryAsync();
+                            await write(db, tran);
+                            tran.Commit();
                         }
-
-                        tran.Commit();
                     }
-
-                    db.Close();
-                }
+                });
             }
             finally
             {
@@ -300,26 +310,42 @@ namespace Certify.Datastore.SQLite
         }
 
         /// <summary>
-        /// Refuse to store an item under an id already held by an item of another type.
-        ///
-        /// Every item type shares the one manageditem table, keyed by id alone, and items are written with INSERT OR
-        /// REPLACE. Without this a write under a colliding id silently replaces the other record: a managed certificate
-        /// or stored credential saved with the id of a role, principal or access token would delete it. Reads filter by
-        /// type, so no caller would see the collision coming.
+        /// Store a single item in its own write.
         /// </summary>
-        protected static async Task EnsureIdNotHeldByOtherItemType(SqliteConnection db, SqliteTransaction tran, string id, string itemType)
+        protected Task StoreItem(string id, string itemType, string config, string itemValue = null)
         {
-            using (var cmd = new SqliteCommand("SELECT itemtype FROM manageditem WHERE id = @id AND lower(itemtype) != lower(@itemtype) LIMIT 1", db))
+            return Write((db, tran) => StoreItem(db, tran, id, itemType, config, itemValue));
+        }
+
+        /// <summary>
+        /// Insert an item, or replace the item of the same type already stored under its id.
+        ///
+        /// Every item type shares the one manageditem table, keyed by id alone. An id already held by an item of another
+        /// type is refused rather than replaced: otherwise a managed certificate or stored credential saved with the id of
+        /// a role, principal or access token would silently delete it, and as reads filter by type no caller would see
+        /// the collision coming.
+        /// </summary>
+        protected static async Task StoreItem(SqliteConnection db, SqliteTransaction tran, string id, string itemType, string config, string itemValue = null)
+        {
+            using (var cmd = new SqliteCommand(
+                       @"INSERT INTO manageditem (id, itemtype, config, itemvalue) VALUES (@id, @itemtype, @config, @itemvalue)
+                         ON CONFLICT (id) DO UPDATE SET itemtype = excluded.itemtype, config = excluded.config, itemvalue = excluded.itemvalue
+                         WHERE lower(manageditem.itemtype) = lower(excluded.itemtype)",
+                       db, tran))
             {
-                cmd.Transaction = tran;
                 cmd.Parameters.Add(new SqliteParameter("@id", id));
                 cmd.Parameters.Add(new SqliteParameter("@itemtype", itemType));
+                cmd.Parameters.Add(new SqliteParameter("@config", config));
+                cmd.Parameters.Add(new SqliteParameter("@itemvalue", (object)itemValue ?? DBNull.Value));
 
-                var existingType = await cmd.ExecuteScalarAsync();
-
-                if (existingType != null && existingType != DBNull.Value)
+                if (await cmd.ExecuteNonQueryAsync() == 0)
                 {
-                    throw new ItemIdConflictException(id, itemType, (string)existingType);
+                    // the conflict clause skipped the update, so the id is held by another item type
+                    using (var typeCmd = new SqliteCommand("SELECT itemtype FROM manageditem WHERE id = @id", db, tran))
+                    {
+                        typeCmd.Parameters.Add(new SqliteParameter("@id", id));
+                        throw new ItemIdConflictException(id, itemType, (string)await typeCmd.ExecuteScalarAsync());
+                    }
                 }
             }
         }

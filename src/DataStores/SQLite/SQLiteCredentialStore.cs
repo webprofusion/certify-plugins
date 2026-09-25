@@ -326,39 +326,7 @@ namespace Certify.Datastore.SQLite
 
             credentialInfo.Secret = "protected";
 
-            try
-            {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-                var path = GetDbPath();
-
-                // save new/modified item into credentials database
-                using (var db = new SqliteConnection($"Data Source={path}"))
-                {
-                    await db.OpenAsync();
-                    using (var tran = db.BeginTransaction())
-                    {
-                        await EnsureIdNotHeldByOtherItemType(db, tran, credentialInfo.StorageKey, _itemType);
-
-                        using (var cmd = new SqliteCommand("INSERT OR REPLACE INTO manageditem (id, config, itemtype, itemvalue) VALUES (@id, @config, @itemtype, @itemvalue)", db))
-                        {
-                            cmd.Transaction = tran;
-                            cmd.Parameters.Add(new SqliteParameter("@id", credentialInfo.StorageKey));
-                            cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(credentialInfo)));
-                            cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
-                            cmd.Parameters.Add(new SqliteParameter("@itemvalue", protectedContent));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        tran.Commit();
-                    }
-
-                    db.Close();
-                }
-            }
-            finally
-            {
-                _dbMutex.Release();
-            }
+            await StoreItem(credentialInfo.StorageKey, _itemType, JsonConvert.SerializeObject(credentialInfo), protectedContent);
 
             return credentialInfo;
         }

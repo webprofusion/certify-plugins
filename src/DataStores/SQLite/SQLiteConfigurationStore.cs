@@ -297,44 +297,14 @@ namespace Certify.Datastore.SQLite
         /// <returns></returns>
         private async Task UpdateConfigurationItem(SerializedConfigurationItem item)
         {
-            var path = GetDbPath();
-
             try
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
-                using (var db = new SqliteConnection($"Data Source={path}"))
-                {
-                    await db.OpenAsync();
-                    using (var tran = db.BeginTransaction())
-                    {
-                        await EnsureIdNotHeldByOtherItemType(db, tran, item.Id, item.ItemType);
-
-                        using (var cmd = new SqliteCommand(
-                                   "INSERT OR REPLACE INTO manageditem (id, itemtype, config, itemvalue) VALUES (@id, @itemtype, @config, @itemvalue)",
-                                   db))
-                        {
-                            cmd.Transaction = tran;
-                            cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SqliteParameter("@itemtype", item.ItemType));
-                            cmd.Parameters.Add(new SqliteParameter("@config", item.Config));
-                            cmd.Parameters.Add(new SqliteParameter("@itemvalue", (object)item.ItemValue ?? DBNull.Value));
-
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-
-                        tran.Commit();
-                    }
-                }
+                await StoreItem(item.Id, item.ItemType, item.Config, item.ItemValue);
             }
             catch (Exception ex)
             {
                 _log?.Error(ex, "Failed to update configuration item {Id} of type {ItemType}", item.Id, item.ItemType);
                 throw;
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
     }

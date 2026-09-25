@@ -55,32 +55,13 @@ namespace Certify.Datastore.SQLite
             }
 
             // save all new/modified items into settings database
-
-            using (var db = new SqliteConnection(_connectionString))
+            await Write(async (db, tran) =>
             {
-
-                await db.OpenAsync();
-                using (var tran = db.BeginTransaction())
+                foreach (var item in list)
                 {
-                    foreach (var item in list)
-                    {
-                        await EnsureIdNotHeldByOtherItemType(db, tran, item.Id, _itemType);
-
-                        using (var cmd = new SqliteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
-                        {
-                            cmd.Transaction = tran;
-                            cmd.Parameters.Add(new SqliteParameter("@id", item.Id));
-                            cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
-                            cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(item)));
-                            await cmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    tran.Commit();
+                    await StoreItem(db, tran, item.Id, _itemType, JsonConvert.SerializeObject(item, _jsonSerializerSettings));
                 }
-
-                db.Close();
-            }
+            });
 
             Debug.WriteLine($"StoreSettings[SQLite] took {watch.ElapsedMilliseconds}ms for {list.Count()} records");
         }
@@ -425,85 +406,35 @@ namespace Certify.Datastore.SQLite
                 return null;
             }
 
-            try
+            if (managedCertificate.Id == null)
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                managedCertificate.Id = Guid.NewGuid().ToString();
+            }
 
-                if (managedCertificate.Id == null)
+            await Write(async (db, tran) =>
+            {
+                // get current version from DB, null if the item is new
+                using (var cmd = new SqliteCommand("SELECT coalesce(config ->> 'Version', 0) FROM manageditem WHERE id=@id AND itemtype=@itemtype", db, tran))
                 {
-                    managedCertificate.Id = Guid.NewGuid().ToString();
+                    cmd.Parameters.Add(new SqliteParameter("@id", managedCertificate.Id));
+                    cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
+
+                    var currentVersion = (long?)await cmd.ExecuteScalarAsync();
+
+                    if (currentVersion != null)
+                    {
+                        managedCertificate.Version = currentVersion.Value + 1;
+
+                        if (managedCertificate.Version == long.MaxValue)
+                        {
+                            // rollover version, unlikely but accommodate it anyway
+                            managedCertificate.Version = -1;
+                        }
+                    }
                 }
 
-                await _retryPolicy.ExecuteAsync(async () =>
-                {
-                    using (var db = new SqliteConnection(_connectionString))
-                    {
-                        await db.OpenAsync();
-
-                        ManagedCertificate current = null;
-
-                        // get current version from DB
-                        using (var tran = db.BeginTransaction())
-                        {
-                            using (var cmd = new SqliteCommand("SELECT config FROM manageditem WHERE id=@id AND itemtype=@itemtype", db))
-                            {
-                                cmd.Transaction = tran;
-                                cmd.Parameters.Add(new SqliteParameter("@id", managedCertificate.Id));
-                                cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
-
-                                using (var reader = await cmd.ExecuteReaderAsync())
-                                {
-                                    if (await reader.ReadAsync())
-                                    {
-                                        current = JsonConvert.DeserializeObject<ManagedCertificate>((string)reader["config"]);
-                                        current.IsChanged = false;
-                                    }
-
-                                    reader.Close();
-                                }
-                            }
-
-                            await EnsureIdNotHeldByOtherItemType(db, tran, managedCertificate.Id, _itemType);
-
-                            if (current != null)
-                            {
-                                managedCertificate.Version = current.Version + 1;
-
-                                if (managedCertificate.Version == long.MaxValue)
-                                {
-                                    // rollover version, unlikely but accommodate it anyway
-                                    managedCertificate.Version = -1;
-                                }
-
-                                if (managedCertificate.Version != -1 && current.Version >= managedCertificate.Version)
-                                {
-                                    // version conflict
-                                    _log?.Error("Managed certificate DB version conflict - newer managed certificate version already stored.");
-                                }
-                            }
-
-                            using (var cmd = new SqliteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
-                            {
-                                cmd.Transaction = tran;
-                                cmd.Parameters.Add(new SqliteParameter("@id", managedCertificate.Id));
-                                cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
-                                cmd.Parameters.Add(new SqliteParameter("@config", JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings)));
-
-                                await cmd.ExecuteNonQueryAsync();
-                            }
-
-                            tran.Commit();
-                        }
-
-                        db.Close();
-                    }
-                });
-
-            }
-            finally
-            {
-                _dbMutex.Release();
-            }
+                await StoreItem(db, tran, managedCertificate.Id, _itemType, JsonConvert.SerializeObject(managedCertificate, _jsonSerializerSettings));
+            });
 
             return managedCertificate;
         }
@@ -513,26 +444,17 @@ namespace Certify.Datastore.SQLite
             await Delete(site.Id, _itemType);
         }
 
-        public async Task DeleteByName(string nameStartsWith)
+        public Task DeleteByName(string nameStartsWith)
         {
-            using (var db = new SqliteConnection(_connectionString))
+            return Write(async (db, tran) =>
             {
-                await db.OpenAsync();
-                using (var tran = db.BeginTransaction())
+                using (var cmd = new SqliteCommand("DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db, tran))
                 {
-                    using (var cmd = new SqliteCommand($"DELETE FROM manageditem WHERE itemtype=@itemtype AND config ->>'Name' LIKE @nameStartsWith || '%' ", db))
-                    {
-                        cmd.Transaction = tran;
-                        cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
-                        cmd.Parameters.Add(new SqliteParameter("@nameStartsWith", nameStartsWith));
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    tran.Commit();
+                    cmd.Parameters.Add(new SqliteParameter("@itemtype", _itemType));
+                    cmd.Parameters.Add(new SqliteParameter("@nameStartsWith", nameStartsWith));
+                    await cmd.ExecuteNonQueryAsync();
                 }
-
-                db.Close();
-            }
+            });
         }
 
         public async Task<StatusSummary> GetSummary(ManagedCertificateFilter filter)
