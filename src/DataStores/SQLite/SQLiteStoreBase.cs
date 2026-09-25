@@ -12,6 +12,18 @@ using Polly.Retry;
 
 namespace Certify.Datastore.SQLite
 {
+    /// <summary>
+    /// An item could not be stored because its id is already held by an item of another type. Deliberately not an
+    /// InvalidOperationException, which the store's retry policy retries.
+    /// </summary>
+    public class ItemIdConflictException : Exception
+    {
+        public ItemIdConflictException(string id, string itemType, string existingItemType)
+            : base($"Cannot store {itemType} item {id}: that id is already held by a {existingItemType} item.")
+        {
+        }
+    }
+
     public class SQLiteStoreBase
     {
         public const string ITEMMANAGERCONFIG = "manageditems";
@@ -284,6 +296,31 @@ namespace Certify.Datastore.SQLite
             finally
             {
                 _dbMutex.Release();
+            }
+        }
+
+        /// <summary>
+        /// Refuse to store an item under an id already held by an item of another type.
+        ///
+        /// Every item type shares the one manageditem table, keyed by id alone, and items are written with INSERT OR
+        /// REPLACE. Without this a write under a colliding id silently replaces the other record: a managed certificate
+        /// or stored credential saved with the id of a role, principal or access token would delete it. Reads filter by
+        /// type, so no caller would see the collision coming.
+        /// </summary>
+        protected static async Task EnsureIdNotHeldByOtherItemType(SqliteConnection db, SqliteTransaction tran, string id, string itemType)
+        {
+            using (var cmd = new SqliteCommand("SELECT itemtype FROM manageditem WHERE id = @id AND lower(itemtype) != lower(@itemtype) LIMIT 1", db))
+            {
+                cmd.Transaction = tran;
+                cmd.Parameters.Add(new SqliteParameter("@id", id));
+                cmd.Parameters.Add(new SqliteParameter("@itemtype", itemType));
+
+                var existingType = await cmd.ExecuteScalarAsync();
+
+                if (existingType != null && existingType != DBNull.Value)
+                {
+                    throw new ItemIdConflictException(id, itemType, (string)existingType);
+                }
             }
         }
 

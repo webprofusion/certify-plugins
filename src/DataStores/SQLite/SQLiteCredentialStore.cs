@@ -337,6 +337,8 @@ namespace Certify.Datastore.SQLite
                     await db.OpenAsync();
                     using (var tran = db.BeginTransaction())
                     {
+                        await EnsureIdNotHeldByOtherItemType(db, tran, credentialInfo.StorageKey, _itemType);
+
                         using (var cmd = new SqliteCommand("INSERT OR REPLACE INTO manageditem (id, config, itemtype, itemvalue) VALUES (@id, @config, @itemtype, @itemvalue)", db))
                         {
                             cmd.Transaction = tran;

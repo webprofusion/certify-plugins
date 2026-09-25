@@ -64,6 +64,8 @@ namespace Certify.Datastore.SQLite
                 {
                     foreach (var item in list)
                     {
+                        await EnsureIdNotHeldByOtherItemType(db, tran, item.Id, _itemType);
+
                         using (var cmd = new SqliteCommand($"INSERT OR REPLACE INTO manageditem (id, itemtype, config) VALUES (@id, @itemtype, @config)", db))
                         {
                             cmd.Transaction = tran;
@@ -460,6 +462,8 @@ namespace Certify.Datastore.SQLite
                                     reader.Close();
                                 }
                             }
+
+                            await EnsureIdNotHeldByOtherItemType(db, tran, managedCertificate.Id, _itemType);
 
                             if (current != null)
                             {
