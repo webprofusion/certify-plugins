@@ -10,6 +10,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="..\Shared\DbMutex.cs" Link="DbMutex.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\..\..\..\certify\src\Certify.Shared\Certify.Shared.Core.csproj" />
     </ItemGroup>
 

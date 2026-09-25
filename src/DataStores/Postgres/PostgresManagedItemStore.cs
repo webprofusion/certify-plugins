@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
@@ -28,9 +27,7 @@ namespace Certify.Datastore.Postgres
 
         private AsyncRetryPolicy _retryPolicy;
 
-        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
-
-        private const int _semaphoreMaxWaitMS = 10 * 1000;
+        private static readonly DbMutex _dbMutex = new DbMutex();
 
         private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -88,7 +85,7 @@ namespace Certify.Datastore.Postgres
 
             try
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                using var dbLock = await _dbMutex.Acquire().ConfigureAwait(false);
 
                 _schemaState = await PostgresSchema.TryAutoMigrate(_connectionString, _log);
 
@@ -106,10 +103,6 @@ namespace Certify.Datastore.Postgres
             {
                 _log?.Error($"Postgres: Schema upgrade failed: {ex.Message}");
                 return false;
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
 
@@ -174,10 +167,8 @@ namespace Certify.Datastore.Postgres
         public async Task Delete(ManagedCertificate item)
         {
             _log?.Warning("Deleting managed item", item);
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
@@ -198,20 +189,14 @@ namespace Certify.Datastore.Postgres
 
                 }
             }
-            finally
-            {
-                _dbMutex.Release();
-            }
         }
 
         public async Task DeleteAll()
         {
             _log?.Warning("Deleting all managed items");
 
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
@@ -226,18 +211,12 @@ namespace Certify.Datastore.Postgres
                     await conn.CloseAsync();
                 }
             }
-            finally
-            {
-                _dbMutex.Release();
-            }
         }
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 using (var db = new NpgsqlConnection(_connectionString))
                 {
                     await db.OpenAsync();
@@ -254,10 +233,6 @@ namespace Certify.Datastore.Postgres
                         await tran.CommitAsync();
                     }
                 }
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
 
@@ -400,10 +375,8 @@ namespace Certify.Datastore.Postgres
 
             var (sql, queryParameters) = BuildQuery(filter, countMode: true);
 
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var db = new NpgsqlConnection(_connectionString))
@@ -417,10 +390,6 @@ namespace Certify.Datastore.Postgres
                         await db.CloseAsync();
                     }
                 });
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
 
             Debug.WriteLine($"CountAll [Postgres] took {watch.ElapsedMilliseconds}ms for {count} records");
@@ -572,10 +541,8 @@ namespace Certify.Datastore.Postgres
                 managedCertificate.Id = Guid.NewGuid().ToString();
             }
 
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new NpgsqlConnection(_connectionString))
@@ -671,10 +638,6 @@ namespace Certify.Datastore.Postgres
                     }
                 });
 
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
 
             return managedCertificate;

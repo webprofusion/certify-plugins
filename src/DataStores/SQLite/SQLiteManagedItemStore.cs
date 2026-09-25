@@ -203,10 +203,8 @@ namespace Certify.Datastore.SQLite
             {
                 var (sql, queryParameters) = BuildQuery(filter, countMode: true);
 
-                try
+                using (await _dbMutex.Acquire().ConfigureAwait(false))
                 {
-                    await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                     await _retryPolicy.ExecuteAsync(async () =>
                     {
                         using (var db = new SqliteConnection(_connectionString))
@@ -220,10 +218,6 @@ namespace Certify.Datastore.SQLite
                             db.Close();
                         }
                     });
-                }
-                finally
-                {
-                    _dbMutex.Release();
                 }
             }
 
@@ -251,10 +245,8 @@ namespace Certify.Datastore.SQLite
                     sql += $" LIMIT {filter.MaxResults}";
                 }
 
-                try
+                using (await _dbMutex.Acquire().ConfigureAwait(false))
                 {
-                    await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                     await _retryPolicy.ExecuteAsync(async () =>
                     {
                         using (var db = new SqliteConnection(_connectionString))
@@ -294,10 +286,6 @@ namespace Certify.Datastore.SQLite
                     {
                         site.IsChanged = false;
                     }
-                }
-                finally
-                {
-                    _dbMutex.Release();
                 }
             }
 

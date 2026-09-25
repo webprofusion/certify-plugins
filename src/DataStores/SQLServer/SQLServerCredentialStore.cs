@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Certify.Management;
 using Certify.Models;
@@ -24,8 +23,7 @@ namespace Certify.Datastore.SQLServer
         private const string _itemType = "credential";
         private const string PROTECTIONENTROPY = "Certify.Credentials";
 
-        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
-        private const int _semaphoreMaxWaitMS = 10 * 1000;
+        private static readonly DbMutex _dbMutex = new DbMutex();
 
         private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -113,10 +111,8 @@ namespace Certify.Datastore.SQLServer
             {
                 _log?.Warning("Deleting stored credential ", storageKey);
 
-                try
+                using (await _dbMutex.Acquire().ConfigureAwait(false))
                 {
-                    await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                     using (var conn = new SqlConnection(_connectionString))
                     {
                         await conn.OpenAsync();
@@ -136,10 +132,6 @@ namespace Certify.Datastore.SQLServer
 
                         conn.Close();
                     }
-                }
-                finally
-                {
-                    _dbMutex.Release();
                 }
 
                 return new ActionResult("Credential Deleted", true);
@@ -292,10 +284,8 @@ namespace Certify.Datastore.SQLServer
 
             credentialInfo.Secret = "protected";
 
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
@@ -354,10 +344,6 @@ namespace Certify.Datastore.SQLServer
 
                     conn.Close();
                 }
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
 
             return credentialInfo;

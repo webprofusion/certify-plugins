@@ -233,7 +233,7 @@ namespace Certify.Datastore.SQLite
 
             try
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                using var dbLock = await _dbMutex.Acquire().ConfigureAwait(false);
 
                 using (var db = new SqliteConnection($"Data Source={path}"))
                 {
@@ -281,10 +281,6 @@ namespace Certify.Datastore.SQLite
             catch (Exception ex)
             {
                 _log?.Error(ex, "Failed to get configuration items of type {ItemType}", itemType);
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
 
             return items;

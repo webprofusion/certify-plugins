@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models.Config;
 using Certify.Models.Hub;
@@ -23,8 +22,7 @@ namespace Certify.Datastore.SQLServer
 
         private AsyncRetryPolicy _retryPolicy;
 
-        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
-        private const int _semaphoreMaxWaitMS = 10 * 1000;
+        private static readonly DbMutex _dbMutex = new DbMutex();
 
         private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -112,7 +110,7 @@ namespace Certify.Datastore.SQLServer
         {
             try
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                using var dbLock = await _dbMutex.Acquire().ConfigureAwait(false);
 
                 var normalizedItemType = GetNormalizedItemType<T>(itemType);
 
@@ -142,10 +140,6 @@ namespace Certify.Datastore.SQLServer
             {
                 _log?.Error(ex, "Failed to delete item {ItemType} with ID {Id}", itemType, id);
                 return false;
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
 
@@ -265,7 +259,7 @@ namespace Certify.Datastore.SQLServer
 
             try
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                using var dbLock = await _dbMutex.Acquire().ConfigureAwait(false);
 
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
@@ -319,10 +313,6 @@ namespace Certify.Datastore.SQLServer
             {
                 _log?.Error(ex, "Failed to get configuration items of type {ItemType}", itemType);
             }
-            finally
-            {
-                _dbMutex.Release();
-            }
 
             return items;
         }
@@ -331,7 +321,7 @@ namespace Certify.Datastore.SQLServer
         {
             try
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                using var dbLock = await _dbMutex.Acquire().ConfigureAwait(false);
 
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
@@ -373,10 +363,6 @@ namespace Certify.Datastore.SQLServer
             {
                 _log?.Error(ex, "Failed to update configuration item {Id} of type {ItemType}", item.Id, item.ItemType);
                 throw;
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
     }

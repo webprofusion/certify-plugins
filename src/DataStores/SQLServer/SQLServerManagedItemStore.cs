@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Config;
@@ -28,8 +27,7 @@ namespace Certify.Datastore.SQLServer
         private string _instanceId = "";
         private AsyncRetryPolicy _retryPolicy;
 
-        private static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
-        private const int _semaphoreMaxWaitMS = 10 * 1000;
+        private static readonly DbMutex _dbMutex = new DbMutex();
 
         private JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -87,7 +85,7 @@ namespace Certify.Datastore.SQLServer
 
             try
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
+                using var dbLock = await _dbMutex.Acquire().ConfigureAwait(false);
 
                 _schemaState = await SQLServerSchema.TryAutoMigrate(_connectionString, _log);
 
@@ -105,10 +103,6 @@ namespace Certify.Datastore.SQLServer
             {
                 _log?.Error($"SQL Server: Schema upgrade failed: {ex.Message}");
                 return false;
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
 
@@ -174,10 +168,8 @@ namespace Certify.Datastore.SQLServer
         {
             _log?.Warning("Deleting managed item", item);
 
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_connectionString))
@@ -202,20 +194,14 @@ namespace Certify.Datastore.SQLServer
                     }
                 });
             }
-            finally
-            {
-                _dbMutex.Release();
-            }
         }
 
         public async Task DeleteAll()
         {
             _log?.Warning("Deleting all managed items");
 
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
@@ -230,18 +216,12 @@ namespace Certify.Datastore.SQLServer
                     conn.Close();
                 }
             }
-            finally
-            {
-                _dbMutex.Release();
-            }
         }
 
         public async Task DeleteByName(string nameStartsWith)
         {
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 using (var db = new SqlConnection(_connectionString))
                 {
                     await db.OpenAsync();
@@ -261,10 +241,6 @@ namespace Certify.Datastore.SQLServer
 
                     db.Close();
                 }
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
 
@@ -401,10 +377,8 @@ namespace Certify.Datastore.SQLServer
 
             var (sql, queryParameters) = BuildQuery(filter, countMode: true);
 
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
 
@@ -419,10 +393,6 @@ namespace Certify.Datastore.SQLServer
                         db.Close();
                     }
                 });
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
 
             Debug.WriteLine($"CountAll[SQL Server] took {watch.ElapsedMilliseconds}ms for {count} records");
@@ -566,10 +536,8 @@ namespace Certify.Datastore.SQLServer
 
         public async Task<ManagedCertificate> Update(ManagedCertificate managedCertificate)
         {
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 if (managedCertificate == null)
                 {
                     return null;
@@ -680,10 +648,6 @@ namespace Certify.Datastore.SQLServer
                     }
                 });
                 return managedCertificate;
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
 

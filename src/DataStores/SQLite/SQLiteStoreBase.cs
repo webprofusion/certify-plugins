@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Certify.Models;
 using Certify.Models.Providers;
@@ -27,8 +26,7 @@ namespace Certify.Datastore.SQLite
     public class SQLiteStoreBase
     {
         public const string ITEMMANAGERCONFIG = "manageditems";
-        protected const int _semaphoreMaxWaitMS = 10 * 1000;
-        protected static readonly SemaphoreSlim _dbMutex = new SemaphoreSlim(1);
+        private protected static readonly DbMutex _dbMutex = new DbMutex();
 
         protected string _storageSubFolder = ""; //if specified will be appended to AppData path as subfolder to load/save to
 
@@ -285,10 +283,8 @@ namespace Certify.Datastore.SQLite
         /// </summary>
         protected async Task Write(Func<SqliteConnection, SqliteTransaction, Task> write)
         {
-            try
+            using (await _dbMutex.Acquire().ConfigureAwait(false))
             {
-                await _dbMutex.WaitAsync(_semaphoreMaxWaitMS).ConfigureAwait(false);
-
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var db = new SqliteConnection(_connectionString))
@@ -302,10 +298,6 @@ namespace Certify.Datastore.SQLite
                         }
                     }
                 });
-            }
-            finally
-            {
-                _dbMutex.Release();
             }
         }
 
