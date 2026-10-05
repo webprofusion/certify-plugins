@@ -3,30 +3,27 @@
 
 param($result, $services, [switch] $cleanupPreviousCerts = $false, [switch] $addDoNotRequireSslFlag = $false)
 
-# enable powershell snap-in for Exchange 2010 upwards
+# stop at the first error, so a failure to load the snap-in isn't followed by misleading output
+$ErrorActionPreference = 'Stop'
+
+# enable powershell snap-in for Exchange 2010 upwards (requires Windows PowerShell 5.1)
 Add-PSSnapIn Microsoft.Exchange.Management.PowerShell.E2010
 
 Write-Host "Enabling Certificate for Exchange services.."
-		
 
-
-if ($addDoNotUseSslFlag -eq $true)
-{
-	$args = @{ 
-		Thumbprint = $result.ManagedItem.CertificateThumbprintHash; 
-		Services = $services; 
-		Force = $true;
-		ErrorAction = Stop;
-	}
-
-	$args["DoNotRequireSsl"]= $true
-
-	# use optional args
-	Enable-ExchangeCertificate @args
-} else {
-	# tell Exchange which services to use this certificate for, force accept certificate to avoid command line prompt
-	Enable-ExchangeCertificate -Thumbprint $result.ManagedItem.CertificateThumbprintHash -Services $services -Force -ErrorAction Stop
+# tell Exchange which services to use this certificate for, force accept certificate to avoid command line prompt
+$enableArgs = @{
+	Thumbprint = $result.ManagedItem.CertificateThumbprintHash
+	Services = $services
+	Force = $true
 }
+
+if ($addDoNotRequireSslFlag -eq $true)
+{
+	$enableArgs["DoNotRequireSsl"] = $true
+}
+
+Enable-ExchangeCertificate @enableArgs
 
 Write-Host "Certificate set OK for services."
 

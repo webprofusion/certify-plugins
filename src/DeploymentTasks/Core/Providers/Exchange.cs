@@ -61,6 +61,7 @@ namespace Certify.Providers.DeploymentTasks
                 { "addDoNotRequireSslFlag", doNotRequireSsl }
             };
 
+            // the Exchange snap-in requires Windows PowerShell, which is not available in-process
             var scriptResult = await PowerShellManager.RunScript(new PowerShellScriptSettings
             {
                 PowerShellExecutionPolicy = execParams.Context.PowershellExecutionPolicy,
@@ -69,7 +70,7 @@ namespace Certify.Providers.DeploymentTasks
                 ScriptContent = script,
                 Credentials = execParams.Credentials,
                 LogonType = logonType,
-                ExecutionMode = PowerShellExecutionMode.Automatic
+                ExecutionMode = PowerShellExecutionMode.SystemProcess
             });
 
             return new List<ActionResult> { scriptResult };
