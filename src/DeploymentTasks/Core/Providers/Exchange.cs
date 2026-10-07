@@ -53,7 +53,6 @@ namespace Certify.Providers.DeploymentTasks
 
             var services = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "services")?.Value;
             var doNotRequireSsl = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "donotrequiressl")?.Value;
-            var logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
 
             var parameters = new Dictionary<string, object>
             {
@@ -61,15 +60,18 @@ namespace Certify.Providers.DeploymentTasks
                 { "addDoNotRequireSslFlag", doNotRequireSsl }
             };
 
-            // the Exchange snap-in requires Windows PowerShell, which is not available in-process
+            // the Exchange snap-in requires a Windows PowerShell process, which cannot be launched with alternate credentials from Local System
+            if (execParams.Credentials?.Any() == true)
+            {
+                execParams.Log?.Warning("Exchange task: ignoring the configured target credentials and running as the service user, for compatibility with the Exchange PowerShell snap-in.");
+            }
+
             var scriptResult = await PowerShellManager.RunScript(new PowerShellScriptSettings
             {
                 PowerShellExecutionPolicy = execParams.Context.PowershellExecutionPolicy,
                 Result = certRequest,
                 Parameters = parameters,
                 ScriptContent = script,
-                Credentials = execParams.Credentials,
-                LogonType = logonType,
                 ExecutionMode = PowerShellExecutionMode.SystemProcess
             });
 
