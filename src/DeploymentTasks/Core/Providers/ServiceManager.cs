@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using Certify.Models.Config;
@@ -94,6 +95,14 @@ namespace Certify.Providers.DeploymentTasks
 
             var service = new ServiceController(servicename);
 
+            // stopping the service this task runs in ends the task, and the certificate request running it, before either
+            // completes. The request is then never recorded as complete, so it is attempted again on the next start
+            if ((action == "restart" || action == "stop") && IsHostedByCurrentProcess(servicename))
+            {
+                results.Add(new ActionResult($"Service [{servicename}] was not stopped because it hosts this process, and stopping it would end the certificate request before it completes. The Certify Management Hub reloads its HTTPS certificate when the certificate file changes, so it does not need a restart.", true) { IsWarning = true });
+                return results;
+            }
+
             var ticks = System.TimeSpan.FromSeconds(durationSeconds);
 
             if (action == "restart")
@@ -158,6 +167,77 @@ namespace Certify.Providers.DeploymentTasks
 
             return results;
         }
+
+        /// <summary>
+        /// True if the service runs in this process. The service is opened for status queries only, which any account may
+        /// do, rather than via ServiceController.ServiceHandle, which requires full control of the service
+        /// </summary>
+        private static bool IsHostedByCurrentProcess(string servicename)
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return false;
+            }
+
+            var scManager = OpenSCManager(null, null, SC_MANAGER_CONNECT);
+            if (scManager == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            try
+            {
+                var service = OpenService(scManager, servicename, SERVICE_QUERY_STATUS);
+                if (service == IntPtr.Zero)
+                {
+                    return false;
+                }
+
+                try
+                {
+                    return QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, out var status, Marshal.SizeOf<SERVICE_STATUS_PROCESS>(), out _)
+                        && status.dwProcessId == Environment.ProcessId;
+                }
+                finally
+                {
+                    CloseServiceHandle(service);
+                }
+            }
+            finally
+            {
+                CloseServiceHandle(scManager);
+            }
+        }
+
+        private const int SC_MANAGER_CONNECT = 0x0001;
+        private const int SERVICE_QUERY_STATUS = 0x0004;
+        private const int SC_STATUS_PROCESS_INFO = 0;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SERVICE_STATUS_PROCESS
+        {
+            public int dwServiceType;
+            public int dwCurrentState;
+            public int dwControlsAccepted;
+            public int dwWin32ExitCode;
+            public int dwServiceSpecificExitCode;
+            public int dwCheckPoint;
+            public int dwWaitHint;
+            public int dwProcessId;
+            public int dwServiceFlags;
+        }
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr OpenSCManager(string machineName, string databaseName, int access);
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr OpenService(IntPtr scManager, string serviceName, int access);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool QueryServiceStatusEx(IntPtr service, int infoLevel, out SERVICE_STATUS_PROCESS buffer, int bufferSize, out int bytesNeeded);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool CloseServiceHandle(IntPtr handle);
 
         private static async Task<ServiceController> StopServiceWithRetry(ILog log, string servicename, ServiceController service, TimeSpan ticks)
         {
