@@ -284,7 +284,7 @@ namespace Certify.Datastore.SQLite
             }
             catch (Exception exp)
             {
-                throw new AggregateException($"Failed to decrypt Credential [{storageKey}] - it was most likely created by a different user account.", exp);
+                throw new AggregateException($"Failed to decrypt Credential [{storageKey}]. {CredentialsUtil.GetDecryptFailureReason()}", exp);
             }
         }
 
@@ -298,9 +298,9 @@ namespace Certify.Datastore.SQLite
             }
             catch (AggregateException exp)
             {
-                // the credential exists but this user account cannot decrypt it, which will not resolve on its
+                // the credential exists but cannot be decrypted, which will not resolve on its
                 // own. Callers see the same null as any other unavailable credential, so the reason is logged here
-                _log?.Error(exp, "Stored credential [{storageKey}] could not be decrypted. It was most likely created by a different user account.", storageKey);
+                _log?.Error(exp, "Stored credential [{storageKey}] could not be decrypted. {reason}", storageKey, CredentialsUtil.GetDecryptFailureReason());
                 return null;
             }
             catch (Exception exp)
