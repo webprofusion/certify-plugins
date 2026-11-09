@@ -32,7 +32,8 @@ namespace Certify.Providers.DeploymentTasks
                     new() { Key="impersonationmode", Name="Impersonation Mode", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value=PowerShellImpersonationMode.Default.ToString(), OptionsList=Helpers.PowerShellImpersonationModeOptions, Description="Full Impersonation starts PowerShell as the selected Windows user and requires Windows credentials. Full Impersonation With Profile also loads the target user's profile and environment." },
                     new() { Key="executionmode", Name="Execution Mode", IsRequired=false, IsCredential=false, Type= OptionType.Select, Value=PowerShellManager.GetDefaultExecutionMode().ToString(), OptionsList=Helpers.PowerShellExecutionModeOptions, Description="Automatic uses in-process PowerShell on Linux/macOS and a system PowerShell process on Windows by default." },
                     new() { Key="args", Name="Arguments (optional)", IsRequired=false, IsCredential=false, Description="optional arguments in the form arg1=value;arg2=value"  },
-                    new() { Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  }
+                    new() { Key="timeout", Name="Script Timeout Mins.", IsRequired=false, IsCredential=false, Description="optional number of minutes to wait for the script before timeout."  },
+                    new() { Key="reportwarnings", Name="Report Script Warnings", IsRequired=false, IsCredential=false, Type= OptionType.Boolean, Value="false", Description="If enabled, the task completes with a warning when the script writes a PowerShell warning (e.g. Write-Warning)."  }
                 }
             };
         }
@@ -126,6 +127,8 @@ namespace Certify.Providers.DeploymentTasks
 
             var loadUserProfile = impersonationMode == PowerShellImpersonationMode.FullWithProfile;
 
+            bool.TryParse(execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "reportwarnings")?.Value, out var reportWarnings);
+
             // if running as local/default service user no credentials are provided for user impersonation
             var credentials = execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL ? null : execParams.Credentials;
 
@@ -140,7 +143,8 @@ namespace Certify.Providers.DeploymentTasks
                 LaunchNewProcess = launchNewProcess,
                 ExecutionMode = executionMode,
                 ImpersonationMode = impersonationMode,
-                LoadUserProfile = loadUserProfile
+                LoadUserProfile = loadUserProfile,
+                ReportWarnings = reportWarnings
             });
 
             results.Add(result);
