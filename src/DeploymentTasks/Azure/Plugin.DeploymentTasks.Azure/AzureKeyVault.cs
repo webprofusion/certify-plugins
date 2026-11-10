@@ -123,7 +123,7 @@ namespace Plugin.DeploymentTasks.Azure
             }
             catch (AuthenticationFailedException exp)
             {
-                execParams.Log.Error($"Azure Authentication error: {exp.InnerException?.Message ?? exp.Message}");
+                execParams.Log.Error($"Azure Authentication error: {exp.InnerException?.Message ?? exp.Message} The stored credential has Directory (tenant) Id [{execParams.Credentials["tenantid"]}] and Application (client) Id [{execParams.Credentials["clientid"]}].");
                 results.Add(new ActionResult("Key Vault Deployment Failed", false));
             }
             catch (Exception exp)
