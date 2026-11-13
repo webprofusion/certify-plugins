@@ -87,6 +87,28 @@ namespace Certify.Tests.DeploymentTaskTests
         }
 
         [TestMethod, TestCategory("Misc")]
+        public async Task TestTaskCredentialTypesAreListed()
+        {
+            // load plugins from the test output folder as the service does, into the instance the credential type list reads from
+            var pluginManager = PluginManager.CurrentInstance ?? new PluginManager();
+            pluginManager.LoadPlugins(new List<string> { PluginManager.PLUGINS_DEPLOYMENT_TASKS, PluginManager.PLUGINS_DNS_PROVIDERS }, usePluginSubfolder: false);
+
+            var credentialTypes = await Certify.Core.Management.Challenges.ChallengeProviders.GetChallengeAPIProviders();
+            var tasks = await DeploymentTaskProviderFactory.GetDeploymentTaskProviders(pluginManager.DeploymentTaskProviders);
+
+            Assert.IsTrue(tasks.Any(t => t.Id == KempLoadMaster.Definition.Id), "core deployment tasks plugin is loaded");
+
+            // credential types defined by plugins (e.g. Kemp LoadMaster) are listed once, alongside the standard ones
+            Assert.AreEqual(1, credentialTypes.Count(c => c.Id == CredentialTypes.KempLoadMaster));
+            Assert.AreEqual(credentialTypes.Count, credentialTypes.Select(c => c.Id).Distinct().Count());
+
+            foreach (var task in tasks.Where(t => !string.IsNullOrEmpty(t.ExternalCredentialType)))
+            {
+                Assert.IsTrue(credentialTypes.Any(c => c.Id == task.ExternalCredentialType), $"{task.Title} credential type {task.ExternalCredentialType} is listed");
+            }
+        }
+
+        [TestMethod, TestCategory("Misc")]
         public async Task TestPowershellScriptArgumentParsingPreservesAdditionalEquals()
         {
             var provider = new PowershellScript();
