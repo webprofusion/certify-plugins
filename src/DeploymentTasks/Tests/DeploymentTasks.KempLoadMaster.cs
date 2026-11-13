@@ -1,12 +1,7 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,7 +29,9 @@ namespace Certify.Tests.DeploymentTaskTests
             base.Setup();
 
             _lm = new FakeLoadMaster("admin", "secret", "key+/=");
-            (_pfxPath, _intermediateName) = CreateTestPfxWithChain();
+            var (pfxPath, intermediates) = TestCertificates.CreatePfxWithChain();
+            _pfxPath = pfxPath;
+            _intermediateName = $"certify-ca-{intermediates[0]}";
         }
 
         [TestCleanup]
@@ -56,27 +53,27 @@ namespace Certify.Tests.DeploymentTaskTests
 
             Assert.IsTrue(results.All(r => r.IsSuccess), string.Join("; ", results.Select(r => r.Message)));
 
-            var addCert = _lm.Requests.Single(r => r.Command == "addcert");
+            var addCert = _lm.Requests.Single(r => r.Path == "/access/addcert");
             Assert.AreEqual("www.example.com", addCert.Query["cert"]);
             Assert.AreEqual("1", addCert.Query["replace"]);
             StringAssert.Contains(addCert.Body, "PRIVATE KEY-----");
             Assert.AreEqual(1, CountOf(addCert.Body, "-----BEGIN CERTIFICATE-----"), "only the leaf certificate is sent with the key");
 
-            var addIntermediate = _lm.Requests.Single(r => r.Command == "addintermediate");
+            var addIntermediate = _lm.Requests.Single(r => r.Path == "/access/addintermediate");
             Assert.AreEqual(_intermediateName, addIntermediate.Query["cert"]);
             Assert.AreEqual(1, CountOf(addIntermediate.Body, "-----BEGIN CERTIFICATE-----"));
             Assert.IsFalse(addIntermediate.Body.Contains("PRIVATE KEY"));
 
             Assert.IsTrue(_lm.Requests.IndexOf(addIntermediate) < _lm.Requests.IndexOf(addCert), "intermediate is added before the certificate changes");
-            Assert.IsTrue(_lm.Requests.All(r => r.Authorization == "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("admin:secret"))));
+            Assert.IsTrue(_lm.Requests.All(r => r.Header("Authorization") == "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("admin:secret"))));
 
             // a second deployment does not add the intermediate again
             _lm.Requests.Clear();
             results = await Execute("www.example.com");
 
             Assert.IsTrue(results.All(r => r.IsSuccess));
-            Assert.IsFalse(_lm.Requests.Any(r => r.Command == "addintermediate"));
-            Assert.AreEqual("1", _lm.Requests.Single(r => r.Command == "addcert").Query["replace"]);
+            Assert.IsFalse(_lm.Requests.Any(r => r.Path == "/access/addintermediate"));
+            Assert.AreEqual("1", _lm.Requests.Single(r => r.Path == "/access/addcert").Query["replace"]);
         }
 
         [TestMethod, TestCategory("KempLoadMaster")]
@@ -85,7 +82,7 @@ namespace Certify.Tests.DeploymentTaskTests
             var results = await Execute("new.example.com");
 
             Assert.IsTrue(results.All(r => r.IsSuccess));
-            Assert.AreEqual("0", _lm.Requests.Single(r => r.Command == "addcert").Query["replace"]);
+            Assert.AreEqual("0", _lm.Requests.Single(r => r.Path == "/access/addcert").Query["replace"]);
             StringAssert.Contains(results.Last().Message, "Virtual Services");
         }
 
@@ -122,7 +119,7 @@ namespace Certify.Tests.DeploymentTaskTests
 
             Assert.IsTrue(results.All(r => r.IsSuccess));
             Assert.IsTrue(results.Any(r => r.IsWarning && r.Message.Contains("Filename already exists")));
-            Assert.IsTrue(_lm.Requests.Any(r => r.Command == "addcert"));
+            Assert.IsTrue(_lm.Requests.Any(r => r.Path == "/access/addcert"));
         }
 
         [TestMethod, TestCategory("KempLoadMaster")]
@@ -145,9 +142,9 @@ namespace Certify.Tests.DeploymentTaskTests
 
             Assert.IsTrue(results.All(r => r.IsSuccess), string.Join("; ", results.Select(r => r.Message)));
             Assert.IsTrue(_lm.Requests.Count >= 3);
-            Assert.IsTrue(_lm.Requests.All(r => r.Query.GetValueOrDefault("apikey") == "key+/=" && r.Authorization == null), "every request sends the API key, and no basic authentication");
+            Assert.IsTrue(_lm.Requests.All(r => r.Query.GetValueOrDefault("apikey") == "key+/=" && r.Header("Authorization") == null), "every request sends the API key, and no basic authentication");
 
-            var addCert = _lm.Requests.Single(r => r.Command == "addcert");
+            var addCert = _lm.Requests.Single(r => r.Path == "/access/addcert");
             Assert.AreEqual("www.example.com", addCert.Query["cert"]);
             Assert.AreEqual("1", addCert.Query["replace"]);
         }
@@ -161,7 +158,7 @@ namespace Certify.Tests.DeploymentTaskTests
             var results = await Execute("www.example.com", credentials: credentials);
 
             Assert.IsTrue(results.All(r => r.IsSuccess));
-            Assert.IsTrue(_lm.Requests.All(r => r.Authorization == null));
+            Assert.IsTrue(_lm.Requests.All(r => r.Header("Authorization") == null));
         }
 
         [TestMethod, TestCategory("KempLoadMaster")]
@@ -263,67 +260,18 @@ namespace Certify.Tests.DeploymentTaskTests
         private static int CountOf(string text, string value) => (text.Length - text.Replace(value, "").Length) / value.Length;
 
         /// <summary>
-        /// Create a PFX containing a leaf certificate and key, an intermediate and a root
-        /// </summary>
-        private static (string Path, string IntermediateName) CreateTestPfxWithChain()
-        {
-            var notBefore = DateTimeOffset.UtcNow.AddDays(-1);
-            var notAfter = DateTimeOffset.UtcNow.AddDays(30);
-
-            using var rootKey = RSA.Create(2048);
-            var rootReq = new CertificateRequest("CN=Test Root", rootKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            rootReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
-            rootReq.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
-            using var root = rootReq.CreateSelfSigned(notBefore, notAfter.AddDays(10));
-
-            using var intKey = RSA.Create(2048);
-            var intReq = new CertificateRequest("CN=Test Intermediate", intKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            intReq.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
-            intReq.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
-            using var intPublic = intReq.Create(root, notBefore, notAfter.AddDays(5), new byte[] { 1, 2, 3, 4 });
-            using var intermediate = intPublic.CopyWithPrivateKey(intKey);
-
-            using var leafKey = RSA.Create(2048);
-            var leafReq = new CertificateRequest("CN=www.example.com", leafKey, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            using var leafPublic = leafReq.Create(intermediate, notBefore, notAfter, new byte[] { 5, 6, 7, 8 });
-            using var leaf = leafPublic.CopyWithPrivateKey(leafKey);
-
-            var collection = new X509Certificate2Collection
-            {
-                leaf,
-                X509CertificateLoader.LoadCertificate(intPublic.RawData),
-                X509CertificateLoader.LoadCertificate(root.RawData)
-            };
-
-            var path = Path.Combine(Path.GetTempPath(), $"certify-kemp-test-{Guid.NewGuid():N}.pfx");
-            File.WriteAllBytes(path, collection.Export(X509ContentType.Pkcs12, ""));
-
-            return (path, $"certify-ca-{intPublic.Thumbprint.ToLowerInvariant()}");
-        }
-
-        private sealed class RecordedRequest
-        {
-            public string Method { get; init; }
-            public string Command { get; init; }
-            public Dictionary<string, string> Query { get; init; }
-            public string Body { get; init; }
-            public string Authorization { get; init; }
-        }
-
-        /// <summary>
-        /// Stand-in for the LoadMaster RESTful API: listcert, listintermediate, addcert and addintermediate with basic authentication
+        /// Stand-in for the LoadMaster RESTful API: listcert, listintermediate, addcert and addintermediate with basic authentication or an API key
         /// </summary>
         private sealed class FakeLoadMaster : IDisposable
         {
-            private readonly TcpListener _listener = new TcpListener(IPAddress.Loopback, 0);
+            private readonly FakeHttpServer _server;
             private readonly string _expectedAuth;
             private readonly string _expectedApiKey;
-            private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
-            public string Address { get; }
+            public string Address => _server.Address;
+            public List<FakeHttpRequest> Requests => _server.Requests;
             public HashSet<string> Certs { get; } = new HashSet<string>();
             public HashSet<string> Intermediates { get; } = new HashSet<string>();
-            public List<RecordedRequest> Requests { get; } = new List<RecordedRequest>();
             public string AddCertError { get; set; }
             public string AddIntermediateError { get; set; }
             public bool ReturnHtml { get; set; }
@@ -332,108 +280,28 @@ namespace Certify.Tests.DeploymentTaskTests
             {
                 _expectedAuth = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
                 _expectedApiKey = apiKey;
-
-                _listener.Start();
-                Address = $"http://127.0.0.1:{((IPEndPoint)_listener.LocalEndpoint).Port}";
-
-                _ = Task.Run(Serve);
+                _server = new FakeHttpServer(Handle);
             }
 
-            /// <summary>
-            /// Minimal HTTP/1.1 handling: one request per connection, answered with Connection: close
-            /// </summary>
-            private async Task Serve()
+            private FakeHttpResponse Handle(FakeHttpRequest r)
             {
-                while (!_cts.IsCancellationRequested)
+                if (r.Header("Authorization") != _expectedAuth && r.Query.GetValueOrDefault("apikey") != _expectedApiKey)
                 {
-                    TcpClient tcp;
-                    try
-                    {
-                        tcp = await _listener.AcceptTcpClientAsync(_cts.Token);
-                    }
-                    catch (Exception) when (_cts.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    using (tcp)
-                    {
-                        var stream = tcp.GetStream();
-                        var recorded = await ReadRequest(stream);
-
-                        lock (Requests)
-                        {
-                            Requests.Add(recorded);
-                        }
-
-                        var (status, response) = Handle(recorded);
-
-                        var body = Encoding.UTF8.GetBytes(response);
-                        var head = $"HTTP/1.1 {status} {(status == 200 ? "OK" : "Error")}\r\nContent-Type: {(ReturnHtml ? "text/html" : "text/xml")}\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n";
-                        await stream.WriteAsync(Encoding.ASCII.GetBytes(head));
-                        await stream.WriteAsync(body);
-                    }
-                }
-            }
-
-            private static async Task<RecordedRequest> ReadRequest(NetworkStream stream)
-            {
-                // read up to the end of the headers
-                var buffer = new List<byte>();
-                var one = new byte[1];
-                while (!(buffer.Count >= 4 && buffer[^4] == '\r' && buffer[^3] == '\n' && buffer[^2] == '\r' && buffer[^1] == '\n'))
-                {
-                    if (await stream.ReadAsync(one) == 0)
-                    {
-                        break;
-                    }
-
-                    buffer.Add(one[0]);
-                }
-
-                var lines = Encoding.ASCII.GetString(buffer.ToArray()).Split("\r\n");
-                var requestLine = lines[0].Split(' ');
-                var headers = lines.Skip(1).Where(l => l.Contains(':')).ToDictionary(l => l[..l.IndexOf(':')].Trim(), l => l[(l.IndexOf(':') + 1)..].Trim(), StringComparer.OrdinalIgnoreCase);
-
-                var body = Array.Empty<byte>();
-                if (headers.TryGetValue("Content-Length", out var lengthText) && int.TryParse(lengthText, out var length) && length > 0)
-                {
-                    body = new byte[length];
-                    await stream.ReadExactlyAsync(body);
-                }
-
-                var target = new Uri("http://localhost" + requestLine[1]);
-                var query = System.Web.HttpUtility.ParseQueryString(target.Query);
-
-                return new RecordedRequest
-                {
-                    Method = requestLine[0],
-                    Command = target.AbsolutePath.Substring("/access/".Length),
-                    Query = query.AllKeys.ToDictionary(k => k, k => query[k]),
-                    Body = Encoding.ASCII.GetString(body),
-                    Authorization = headers.GetValueOrDefault("Authorization")
-                };
-            }
-
-            private (int Status, string Body) Handle(RecordedRequest r)
-            {
-                if (r.Authorization != _expectedAuth && r.Query.GetValueOrDefault("apikey") != _expectedApiKey)
-                {
-                    return (401, "<html>Unauthorized</html>");
+                    return new FakeHttpResponse(401, "text/html", "<html>Unauthorized</html>");
                 }
 
                 if (ReturnHtml)
                 {
-                    return (200, "<!DOCTYPE html><html><body>Login</body></html>");
+                    return new FakeHttpResponse(200, "text/html", "<!DOCTYPE html><html><body>Login</body></html>");
                 }
 
-                switch (r.Command)
+                switch (r.Path)
                 {
-                    case "listcert":
+                    case "/access/listcert":
                         return Ok(List(Certs));
-                    case "listintermediate":
+                    case "/access/listintermediate":
                         return Ok(List(Intermediates));
-                    case "addcert":
+                    case "/access/addcert":
                         if (AddCertError != null)
                         {
                             return Fail(AddCertError);
@@ -446,7 +314,7 @@ namespace Certify.Tests.DeploymentTaskTests
 
                         Certs.Add(r.Query["cert"]);
                         return Ok("Certificate Successfully Installed");
-                    case "addintermediate":
+                    case "/access/addintermediate":
                         if (AddIntermediateError != null)
                         {
                             return Fail(AddIntermediateError);
@@ -461,15 +329,11 @@ namespace Certify.Tests.DeploymentTaskTests
 
             private static string List(IEnumerable<string> names) => "<Data>" + string.Concat(names.Select(n => $"<cert><name>{n}</name><type>RSA</type></cert>")) + "</Data>";
 
-            private static (int, string) Ok(string success) => (200, $"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<Response stat=\"200\" code=\"ok\">\n<Success>{success}</Success>\n</Response>");
+            private static FakeHttpResponse Ok(string success) => new FakeHttpResponse(200, "text/xml", $"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<Response stat=\"200\" code=\"ok\">\n<Success>{success}</Success>\n</Response>");
 
-            private static (int, string) Fail(string error) => (422, $"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<Response stat=\"422\" code=\"fail\">\n<Error>{error}</Error>\n</Response>");
+            private static FakeHttpResponse Fail(string error) => new FakeHttpResponse(422, "text/xml", $"<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<Response stat=\"422\" code=\"fail\">\n<Error>{error}</Error>\n</Response>");
 
-            public void Dispose()
-            {
-                _cts.Cancel();
-                _listener.Stop();
-            }
+            public void Dispose() => _server.Dispose();
         }
     }
 }

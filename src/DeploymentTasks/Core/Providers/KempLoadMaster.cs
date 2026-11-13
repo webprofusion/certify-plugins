@@ -1,19 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Certify.Models;
 using Certify.Models.Config;
-using Certify.Shared.Core.Utils.PKI;
+using Certify.Providers.Deployment.Core.Shared;
 
 namespace Certify.Providers.DeploymentTasks
 {
@@ -30,8 +27,6 @@ namespace Certify.Providers.DeploymentTasks
         // certificate names on the LoadMaster may only use these characters, and must not contain API parameter names
         private static readonly Regex ValidCertName = new Regex("^[A-Za-z0-9._-]{1,128}$", RegexOptions.Compiled);
         private static readonly string[] ReservedCertNameWords = { "ident", "cfile", "kfile", "ffile", "replace", "password" };
-
-        private static readonly Regex PemCertBlock = new Regex("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", RegexOptions.Compiled);
 
         static KempLoadMaster()
         {
@@ -72,14 +67,7 @@ namespace Certify.Providers.DeploymentTasks
             var results = new List<ActionResult>();
             var settings = GetSettings(execParams);
 
-            if (string.IsNullOrWhiteSpace(settings.AddressText))
-            {
-                results.Add(new ActionResult("LoadMaster Address is required.", false));
-            }
-            else if (settings.Address == null)
-            {
-                results.Add(new ActionResult("LoadMaster Address must be a full URL, e.g. https://192.168.1.10", false));
-            }
+            NetworkDevice.ValidateAddress(settings.AddressText, "LoadMaster Address", results);
 
             if (string.IsNullOrWhiteSpace(settings.CertName))
             {
@@ -117,35 +105,24 @@ namespace Certify.Providers.DeploymentTasks
             var log = execParams.Log;
             var cancellationToken = execParams.CancellationToken;
 
-            var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
-            var hasCertificate = !string.IsNullOrEmpty(managedCert?.CertificatePath) && File.Exists(managedCert.CertificatePath);
+            var certificate = await NetworkDevice.LoadCertificate(execParams);
+            if (!certificate.IsSuccess)
+            {
+                results.Add(new ActionResult(certificate.Message, false));
+                return results;
+            }
 
+            var hasCertificate = certificate.Result != null;
             if (!hasCertificate && apply)
             {
                 results.Add(new ActionResult("No certificate to deploy.", false));
                 return results;
             }
 
-            string certAndKeyPem = null;
-            var intermediates = new List<(string Name, string Subject, string Pem)>();
-
-            if (hasCertificate)
-            {
-                var pfxData = await File.ReadAllBytesAsync(managedCert.CertificatePath, cancellationToken);
-                var pfxPwd = "";
-
-                if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId))
-                {
-                    var pwdCred = await execParams.CredentialsManager.GetUnlockedCredentialsDictionary(managedCert.CertificatePasswordCredentialId);
-                    if (pwdCred != null)
-                    {
-                        pfxPwd = pwdCred["password"];
-                    }
-                }
-
-                certAndKeyPem = CertUtils.GetCertComponentsAsPEMString(pfxData, pfxPwd, ExportFlags.PrivateKey | ExportFlags.EndEntityCertificate);
-                intermediates = GetIntermediates(pfxData, pfxPwd);
-            }
+            var certAndKeyPem = hasCertificate ? certificate.Result.KeyPem + certificate.Result.CertPem : null;
+            var intermediates = (certificate.Result?.Intermediates ?? new List<DeviceCaCertificate>())
+                .Select(i => (Name: $"certify-ca-{i.Thumbprint}", i.Subject, i.Pem))
+                .ToList();
 
             var signIn = SignIn.FromCredentials(execParams.Credentials);
             using var client = new LoadMasterClient(settings.Address, signIn, settings.AllowInvalidTls);
@@ -218,7 +195,7 @@ namespace Certify.Providers.DeploymentTasks
             }
             catch (HttpRequestException exp)
             {
-                results.Add(new ActionResult($"Kemp LoadMaster: could not connect to {settings.Address}: {exp.Message}" + (settings.AllowInvalidTls ? "" : " If the LoadMaster uses a self-signed management certificate, enable 'Allow Untrusted LoadMaster Certificate'."), false));
+                results.Add(new ActionResult($"Kemp LoadMaster: could not connect to {settings.Address}: {exp.Message}" + NetworkDevice.ConnectionFailureHint(settings.AllowInvalidTls, "Allow Untrusted LoadMaster Certificate"), false));
                 return results;
             }
             catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -235,29 +212,7 @@ namespace Certify.Providers.DeploymentTasks
             var certName = parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value?.Trim();
             _ = bool.TryParse(parameters.FirstOrDefault(c => c.Key == "allow_invalid_tls")?.Value, out var allowInvalidTls);
 
-            Uri address = null;
-            if (Uri.TryCreate(addressText?.TrimEnd('/'), UriKind.Absolute, out var parsed) && (parsed.Scheme == Uri.UriSchemeHttps || parsed.Scheme == Uri.UriSchemeHttp))
-            {
-                address = parsed;
-            }
-
-            return (addressText, address, certName, allowInvalidTls);
-        }
-
-        /// <summary>
-        /// Intermediate certificates from the PFX chain, named by thumbprint so the same intermediate is only ever added once
-        /// </summary>
-        private static List<(string Name, string Subject, string Pem)> GetIntermediates(byte[] pfxData, string pfxPwd)
-        {
-            var pem = CertUtils.GetCertComponentsAsPEMString(pfxData, pfxPwd, ExportFlags.IntermediateCertificates);
-
-            return PemCertBlock.Matches(pem)
-                .Select(m =>
-                {
-                    using var cert = X509Certificate2.CreateFromPem(m.Value);
-                    return (Name: $"certify-ca-{cert.Thumbprint.ToLowerInvariant()}", Subject: cert.GetNameInfo(X509NameType.SimpleName, false), Pem: m.Value + "\n");
-                })
-                .ToList();
+            return (addressText, NetworkDevice.ParseAddress(addressText), certName, allowInvalidTls);
         }
 
         /// <summary>
@@ -307,17 +262,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 _signIn = signIn;
 
-                var handler = new HttpClientHandler();
-                if (allowInvalidTls)
-                {
-                    handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-                }
-
-                _http = new HttpClient(handler)
-                {
-                    BaseAddress = new Uri(address.GetLeftPart(UriPartial.Authority) + "/access/"),
-                    Timeout = TimeSpan.FromSeconds(60)
-                };
+                _http = NetworkDevice.CreateHttpClient(new Uri(address.GetLeftPart(UriPartial.Authority) + "/access/"), allowInvalidTls);
 
                 if (!signIn.UsesApiKey)
                 {
