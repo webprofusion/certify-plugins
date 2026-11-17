@@ -23,6 +23,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
         private const string ProviderId = "posh-acme";
         private const string ProviderTitle = "Posh-ACME";
         private const string OrderFileName = "order.json";
+        private const string ConfigFolderName = "Posh-ACME";
 
         /// <summary>
         /// Provider definition for Posh-ACME.
@@ -64,6 +65,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
 
             var directorySearch = new DirectoryInfo(_settingsPath);
             var configFiles = directorySearch.GetFiles(OrderFileName, SearchOption.AllDirectories);
+            var serverUrls = new Dictionary<string, string?>();
 
             foreach (var config in configFiles)
             {
@@ -88,43 +90,15 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
                         DateExpiry = cfg.CertExpires,
                         LastRenewalStatus = cfg.Status == "valid" ? RequestState.Success : cfg.Status != null ? RequestState.Error : null,
                         DateLastRenewalAttempt = config.LastWriteTime,
-                        RequestConfig = new CertRequestConfig
-                        {
-                            PrimaryDomain = cfg.MainDomain,
-                            SubjectAlternativeNames = cfg.SANs
-                        },
-                        DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
-                        {
-                            new DomainOption
-                            {
-                                Domain = cfg.MainDomain,
-                                IsPrimaryDomain = true,
-                                IsManualEntry = true,
-                                IsSelected = true
-                            }
-                        },
                         IsChanged = false
                     };
 
-                    if (managedCert.RequestConfig.SubjectAlternativeNames is not null)
-                    {
-                        var domains = managedCert.RequestConfig.SubjectAlternativeNames
-                            .Where(d => d != managedCert.RequestConfig.PrimaryDomain)
-                            .Distinct();
-                        foreach (var d in domains)
-                        {
-                            managedCert.DomainOptions.Add(new DomainOption
-                            {
-                                Domain = d,
-                                IsManualEntry = true,
-                                IsPrimaryDomain = false
-                            });
-                        }
-                    }
+                    SetDomains(managedCert, new[] { cfg.MainDomain }.Concat(cfg.SANs ?? []));
 
-                    var certDirectoryPath = Path.GetDirectoryName(config.FullName);
-                    var certFileName = Path.Combine(certDirectoryPath, "cert.cer");
-                    var certFile = new FileInfo(certFileName);
+                    // orders are kept in {server}\{account}\{order}
+                    SetCertificateAuthority(managedCert, GetServerDirectoryUrl(config.Directory?.Parent?.Parent, serverUrls), config.Directory?.Parent?.Parent?.Name);
+
+                    var certFile = new FileInfo(Path.Combine(config.DirectoryName!, "cert.cer"));
 
                     if (certFile.Exists)
                     {
@@ -154,21 +128,64 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
                 return true;
             }
 
-            var settingsPath = Environment.GetEnvironmentVariable("POSHACME_HOME");
+            var customHome = Environment.GetEnvironmentVariable("POSHACME_HOME");
 
-            if (string.IsNullOrEmpty(settingsPath))
-            {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                settingsPath = Path.Combine(appDataPath, "Posh-ACME");
-            }
+            // Posh-ACME keeps its config in the profile of the user who runs it, which is usually not the account
+            // this service runs as, so other users' profiles are searched too
+            var settingsPath = OperatingSystem.IsWindows()
+                ? ConfigLocator.FirstExisting([
+                        string.IsNullOrWhiteSpace(customHome) ? null : Environment.ExpandEnvironmentVariables(customHome),
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ConfigFolderName)
+                    ]) ?? ConfigLocator.FindSingleInUserHomes(_logger, ProviderTitle, Path.Combine("AppData", "Local", ConfigFolderName))
+                : ConfigLocator.FirstExisting([
+                        customHome,
+                        ConfigLocator.ExpandHome($"~/.config/{ConfigFolderName}")
+                    ]) ?? ConfigLocator.FindSingleInUserHomes(_logger, ProviderTitle, Path.Combine(".config", ConfigFolderName));
 
-            if (Directory.Exists(settingsPath))
+            if (settingsPath != null)
             {
                 _settingsPath = settingsPath;
                 return true;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// The ACME directory URL of a Posh-ACME server folder, recorded in its dir.json
+        /// </summary>
+        private string? GetServerDirectoryUrl(DirectoryInfo? serverFolder, Dictionary<string, string?> cache)
+        {
+            if (serverFolder == null)
+            {
+                return null;
+            }
+
+            if (!cache.TryGetValue(serverFolder.FullName, out var url))
+            {
+                try
+                {
+                    var dirFile = Path.Combine(serverFolder.FullName, "dir.json");
+
+                    if (File.Exists(dirFile))
+                    {
+                        using var dir = System.Text.Json.JsonDocument.Parse(File.ReadAllText(dirFile));
+
+                        if (dir.RootElement.TryGetProperty("location", out var location))
+                        {
+                            url = location.GetString();
+                        }
+                    }
+                }
+                catch (Exception exp)
+                {
+                    _logger?.LogDebug($"{ProviderTitle}: Could not read the server details in {serverFolder.FullName}: {exp.Message}");
+                }
+
+                cache[serverFolder.FullName] = url;
+            }
+
+            return url;
         }
     }
 }

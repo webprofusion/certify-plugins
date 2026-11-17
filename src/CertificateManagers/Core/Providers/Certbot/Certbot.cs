@@ -29,6 +29,15 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
         private const string LiveFolder = "live";
         private const string ConfigFilePattern = "*.conf";
         private const string CertFileName = "cert.pem";
+        private const string RenewalParamsSection = "renewalparams";
+
+        /// <summary>
+        /// Values certbot's config reader treats as false
+        /// </summary>
+        private static readonly HashSet<string> FalseValues = new(StringComparer.OrdinalIgnoreCase) { "false", "no", "off", "0" };
+
+        private static string AutoRenewDisabledMessage(string renewalFileName) =>
+            $"Automatic renewal is turned off for this certificate in certbot (autorenew = False in {RenewalFolder}/{renewalFileName}).";
 
         /// <summary>
         /// Provider definition for Certbot.
@@ -110,6 +119,20 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                         _logger.LogError($"Failed to parse config: [{config.FullName}] {exp}");
                     }
 
+                    var renewalParams = renewalConfig?.GetValueOrDefault(RenewalParamsSection);
+
+                    // certbot skips a lineage with autorenew turned off when renewing, but still lists it
+                    var autoRenewDisabled = renewalParams?.TryGetValue("autorenew", out var autoRenew) == true
+                        && FalseValues.Contains(autoRenew.Trim());
+
+                    if (autoRenewDisabled)
+                    {
+                        managedCert.IncludeInAutoRenew = false;
+                        managedCert.Comments = AutoRenewDisabledMessage(config.Name);
+                    }
+
+                    SetCertificateAuthority(managedCert, renewalParams?.GetValueOrDefault("server"));
+
                     var certFilePath = Path.Combine(_settingsPath, LiveFolder, id, CertFileName);
                     string? configuredPath = null;
 
@@ -177,34 +200,12 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                             {
                                 // If cert has less than 30 days left, mark as failed to renew
                                 managedCert.LastRenewalStatus = RequestState.Error;
-                                managedCert.RenewalFailureMessage = "Check certbot configuration. This certificate will expire in less than 30 days and has not yet automatically renewed.";
+                                managedCert.RenewalFailureMessage = autoRenewDisabled
+                                    ? AutoRenewDisabledMessage(config.Name) + " This certificate will expire in less than 30 days."
+                                    : "Check certbot configuration. This certificate will expire in less than 30 days and has not yet automatically renewed.";
                             }
 
-                            managedCert.RequestConfig = new CertRequestConfig
-                            {
-                                PrimaryDomain = parsedCert.SubjectName.Name.Replace("CN=", string.Empty).Trim()
-                            };
-
-                            var sn = cert.GetSubjectAlternativeNames();
-                            var sans = new List<string>();
-
-                            foreach (var s in sn)
-                            {
-                                sans.Add(s[1].ToString());
-                            }
-
-                            managedCert.RequestConfig.SubjectAlternativeNames = sans.ToArray();
-
-                            managedCert.DomainOptions =
-                            [
-                                new DomainOption
-                                {
-                                    Domain = managedCert.RequestConfig.PrimaryDomain,
-                                    IsPrimaryDomain = true,
-                                    IsManualEntry = true,
-                                    IsSelected = true
-                                }
-                            ];
+                            SetDomains(managedCert, GetCertificateDomains(parsedCert));
                         }
                         catch (Exception exp)
                         {

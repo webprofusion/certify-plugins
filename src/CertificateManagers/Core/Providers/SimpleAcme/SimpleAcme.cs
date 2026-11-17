@@ -9,6 +9,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.SimpleAcme
         internal override string ProviderId => Definition.Id;
         internal override string ProviderTitle => Definition.Title;
         internal override string IdPrefix => Definition.Id;
+        internal override string ClientName => "simple-acme";
         public static new ProviderDefinition Definition
         {
             get

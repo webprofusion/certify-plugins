@@ -451,37 +451,82 @@ namespace Certify.Plugin.CertificateManagers.Utils
                     managedCert.RenewalFailureMessage = $"Check {ProviderTitleOrDefault()} configuration. This certificate will expire in less than 30 days and has not yet automatically renewed.";
                 }
 
-                managedCert.RequestConfig = new CertRequestConfig
-                {
-                    PrimaryDomain = parsedCert.SubjectName.Name
-                };
-
-                var sn = cert.GetSubjectAlternativeNames();
-                var sans = new List<string>();
-                foreach (var s in sn)
-                {
-                    if (s[1] != null)
-                    {
-                        sans.Add(s[1].ToString()!);
-                    }
-                }
-
-                managedCert.RequestConfig.SubjectAlternativeNames = sans.ToArray();
-
-                managedCert.DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>
-                {
-                    new DomainOption
-                    {
-                        Domain = managedCert.RequestConfig.PrimaryDomain,
-                        IsPrimaryDomain = true,
-                        IsManualEntry = true,
-                        IsSelected = true
-                    }
-                };
+                SetDomains(managedCert, GetCertificateDomains(parsedCert));
             }
             catch (Exception exp)
             {
                 SetCertificateUnreadable(log, managedCert, certFile.FullName, exp);
+            }
+        }
+
+        /// <summary>
+        /// The common name and subject alternative names (DNS names and IP addresses) of a certificate, common name first
+        /// </summary>
+        public static List<string> GetCertificateDomains(X509Certificate2 cert)
+        {
+            var names = new List<string>();
+            var commonName = cert.GetNameInfo(X509NameType.SimpleName, false);
+
+            if (!string.IsNullOrWhiteSpace(commonName))
+            {
+                names.Add(commonName);
+            }
+
+            foreach (var ext in cert.Extensions.OfType<X509SubjectAlternativeNameExtension>())
+            {
+                names.AddRange(ext.EnumerateDnsNames());
+                names.AddRange(ext.EnumerateIPAddresses().Select(ip => ip.ToString()));
+            }
+
+            return names.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>
+        /// Set the domains of an item, the first being the primary domain. Does nothing if there are none
+        /// </summary>
+        public static void SetDomains(ManagedCertificate managedCert, IEnumerable<string?>? domains)
+        {
+            var names = domains?
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Select(d => d!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? [];
+
+            if (names.Count == 0)
+            {
+                return;
+            }
+
+            managedCert.RequestConfig ??= new CertRequestConfig();
+            managedCert.RequestConfig.PrimaryDomain = names[0];
+            managedCert.RequestConfig.SubjectAlternativeNames = names.ToArray();
+
+            managedCert.DomainOptions = new System.Collections.ObjectModel.ObservableCollection<DomainOption>(
+                names.Select((d, i) => new DomainOption
+                {
+                    Domain = d,
+                    IsPrimaryDomain = i == 0,
+                    IsManualEntry = true,
+                    IsSelected = true
+                }));
+        }
+
+        /// <summary>
+        /// Record the certificate authority of the first endpoint which matches a known one
+        /// </summary>
+        protected static void SetCertificateAuthority(ManagedCertificate managedCert, params string?[] endpoints)
+        {
+            foreach (var endpoint in endpoints)
+            {
+                var ca = CertificateAuthorityLookup.FromEndpoint(endpoint);
+
+                if (ca != null)
+                {
+                    managedCert.CertificateAuthorityId = ca.Value.CertificateAuthorityId;
+                    managedCert.CertificateCurrentCA = ca.Value.CertificateAuthorityId;
+                    managedCert.UseStagingMode = ca.Value.IsStaging;
+                    return;
+                }
             }
         }
 

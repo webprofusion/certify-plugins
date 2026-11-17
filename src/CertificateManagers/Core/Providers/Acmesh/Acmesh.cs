@@ -21,9 +21,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
         private string _logPath = string.Empty;
         private ILogger _logger = default!;
 
-        private const string NixLogPath = "~/.acme.sh";
-        private const string NixSettingsPath = "~/.acme.sh";
-        private const string WinLogPath = "C:\\acme.sh";
+        private const string HomeFolderName = ".acme.sh";
         private const string WinSettingsPath = "C:\\acme.sh";
         private const string ScriptFileName = "acme.sh";
         private const string ConfigFilePattern = "*.conf";
@@ -133,6 +131,11 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                             certReadFailures.Add(managedCert.Id!);
                         }
 
+                        if (settings["_global"].TryGetValue("Le_API", out var acmeServer))
+                        {
+                            SetCertificateAuthority(managedCert, acmeServer.Trim("' ".ToCharArray()));
+                        }
+
                         managedCertificates.Add(managedCert);
                     }
                     catch (Exception exp)
@@ -205,36 +208,25 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                 return true;
             }
 
-            string settingsPath;
+            string? settingsPath;
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                settingsPath = WinSettingsPath;
-
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    return true;
-                }
-
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-                settingsPath = Path.Combine(appDataPath, "acme.sh");
-
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    return true;
-                }
+                settingsPath = ConfigLocator.FirstExisting([WinSettingsPath, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "acme.sh")]);
             }
             else
             {
-                settingsPath = NixSettingsPath;
+                // acme.sh installs into the home folder of whoever installed it, unless LE_WORKING_DIR was set
+                settingsPath = ConfigLocator.FirstExisting([
+                    Environment.GetEnvironmentVariable("LE_WORKING_DIR"),
+                    ConfigLocator.ExpandHome($"~/{HomeFolderName}")
+                ]) ?? ConfigLocator.FindSingleInUserHomes(_logger, Definition.Title, HomeFolderName);
+            }
 
-                if (Directory.Exists(settingsPath))
-                {
-                    _settingsPath = settingsPath;
-                    return true;
-                }
+            if (settingsPath != null)
+            {
+                _settingsPath = settingsPath;
+                return true;
             }
 
             return false;
@@ -245,10 +237,8 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
         /// </summary>
         private List<StatusLogResult> ParseLatestLogs(DateTimeOffset searchStart, List<string> searchIds)
         {
-            // use the configured log path if set, otherwise the default acme.sh home for this machine
-            var logPath = !string.IsNullOrWhiteSpace(_logPath)
-                ? _logPath
-                : RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? WinLogPath : NixLogPath;
+            // use the configured log path if set, otherwise the acme.sh home, where acme.sh writes acme.sh.log
+            var logPath = !string.IsNullOrWhiteSpace(_logPath) ? _logPath : _settingsPath;
 
             var results = new List<StatusLogResult>();
 
