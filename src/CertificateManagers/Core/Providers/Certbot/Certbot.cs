@@ -15,7 +15,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
     /// <summary>
     /// Certificate manager for Certbot local config.
     /// </summary>
-    public class Certbot : CertificateManagerBase, ICertificateManager
+    public partial class Certbot : CertificateManagerBase, ICertificateManager
     {
         private string _settingsPath = string.Empty;
         private string _logPath = string.Empty;
@@ -102,10 +102,13 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                     };
 
                     Dictionary<string, Dictionary<string, string>>? renewalConfig = null;
+                    var migrated = false;
 
                     try
                     {
-                        renewalConfig = IniFileParser.Parse(File.ReadAllText(config.FullName), _logger);
+                        var renewalText = File.ReadAllText(config.FullName);
+                        renewalConfig = IniFileParser.Parse(renewalText, _logger);
+                        migrated = renewalText.Contains(MigratedMarker, StringComparison.Ordinal);
 
                         if (renewalConfig.TryGetValue("_global", out var globalConfig)
                             && globalConfig.TryGetValue("version", out var certbotVersion)
@@ -128,7 +131,9 @@ namespace Certify.Plugin.CertificateManagers.Providers.Certbot
                     if (autoRenewDisabled)
                     {
                         managedCert.IncludeInAutoRenew = false;
-                        managedCert.Comments = AutoRenewDisabledMessage(config.Name);
+                        managedCert.Comments = migrated
+                            ? $"Renewal was handed over to Certify The Web at migration cut over (autorenew = False in {RenewalFolder}/{config.Name})."
+                            : AutoRenewDisabledMessage(config.Name);
                     }
 
                     SetCertificateAuthority(managedCert, renewalParams?.GetValueOrDefault("server"));

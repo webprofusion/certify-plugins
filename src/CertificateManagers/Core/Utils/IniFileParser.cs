@@ -32,10 +32,11 @@ namespace Certify.Plugin.CertificateManagers.Utils
                         {
                             if (!string.IsNullOrEmpty(l) && l.Contains("="))
                             {
-                                var kv = l.Split('=');
+                                // values can contain '=' (base64, URLs), and a repeated key takes the last value
+                                var kv = l.Split('=', 2);
                                 content.TryGetValue(section, out var values);
                                 if (values == null) values = new Dictionary<string, string>();
-                                values.Add(kv[0].Trim(), kv[1].Trim());
+                                values[kv[0].Trim()] = kv[1].Trim();
                                 content[section] = values;
                             }
                         }

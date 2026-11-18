@@ -51,6 +51,11 @@ namespace Certify.Plugin.CertificateManagers.Migration
         /// which cannot migrate as is
         /// </summary>
         public string[] AmbientAuthOptions { get; init; } = [];
+
+        /// <summary>
+        /// Options holding the path of a file whose content is the parameter value (e.g. a key file), by parameter key
+        /// </summary>
+        public Dictionary<string, string> FileOptions { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -99,8 +104,22 @@ namespace Certify.Plugin.CertificateManagers.Migration
             new() { Key = "bunny", Title = "Bunny DNS", ProviderId = PoshAcmePrefix + "Bunny" },
             new() { Key = "acme-dns", Title = "acme-dns", ProviderId = AcmeDnsProviderId },
             new() { Key = "script", Title = "Script", ProviderId = ScriptDnsProviderId, Note = "The source's script runs through a wrapper script, which passes it the arguments it was configured with. The script must work when run by this instance's service account." },
+            new() { Key = "ovh", Title = "OVH", ProviderId = "DNS01.API.Ovh" },
+            new() { Key = "ionos", Title = "IONOS", ProviderId = "DNS01.API.IONOS" },
+            new() { Key = "dnsimple", Title = "DNSimple", ProviderId = PoshAcmePrefix + "DNSimple" },
+            new() { Key = "desec", Title = "deSEC", ProviderId = PoshAcmePrefix + "DeSEC" },
+            new() { Key = "porkbun", Title = "Porkbun", ProviderId = PoshAcmePrefix + "Porkbun" },
+            new() { Key = "hurricaneelectric", Title = "Hurricane Electric", ProviderId = PoshAcmePrefix + "HurricaneElectric" },
+            new() { Key = "dynu", Title = "Dynu", ProviderId = PoshAcmePrefix + "Dynu" },
+            new() { Key = "inwx", Title = "INWX", ProviderId = PoshAcmePrefix + "INWX" },
+            new() { Key = "gandi", Title = "Gandi", ProviderId = PoshAcmePrefix + "Gandi" },
+            new() { Key = "namesilo", Title = "NameSilo", ProviderId = PoshAcmePrefix + "NameSilo" },
+            new() { Key = "namecheap", Title = "Namecheap", ProviderId = PoshAcmePrefix + "NameCheap" },
+            new() { Key = "namecom", Title = "Name.com", ProviderId = PoshAcmePrefix + "NameCom" },
 
             // no equivalent here
+            new() { Key = "gehirn", Title = "Gehirn DNS" },
+            new() { Key = "sakuracloud", Title = "Sakura Cloud DNS" },
             new() { Key = "arsys", Title = "Arsys" },
             new() { Key = "czechia", Title = "Czechia" },
             new() { Key = "dnsmint", Title = "DnsMint" },
@@ -173,11 +192,124 @@ namespace Certify.Plugin.CertificateManagers.Migration
             new() { SourcePluginId = "86c8d86b-2069-4048-9bf1-fadb07e84d61", Key = "webnames" }
         ];
 
+        private static readonly Dictionary<string, string> Rfc2136Algorithms = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["HMAC-MD5"] = "hmac-md5",
+            ["HMAC-SHA1"] = "hmac-sha1",
+            ["HMAC-SHA224"] = "hmac-sha224",
+            ["HMAC-SHA256"] = "hmac-sha256",
+            ["HMAC-SHA384"] = "hmac-sha384",
+            ["HMAC-SHA512"] = "hmac-sha512"
+        };
+
+        /// <summary>
+        /// certbot DNS authenticators, by authenticator name, with the options of their credentials file. certbot's
+        /// Route 53 and Google plugins take no credentials file, so their readers handle them
+        /// </summary>
+        public static readonly IReadOnlyList<DnsProviderAlias> CertbotDnsAliases =
+        [
+            new() { SourcePluginId = "dns-cloudflare", Key = "cloudflare", Options = Map(("dns_cloudflare_api_token", "apitoken"), ("dns_cloudflare_email", "emailaddress"), ("dns_cloudflare_api_key", "authkey")) },
+            new() { SourcePluginId = "dns-digitalocean", Key = "digitalocean", Options = Map(("dns_digitalocean_token", "DOToken")) },
+            new() { SourcePluginId = "dns-dnsimple", Key = "dnsimple", Options = Map(("dns_dnsimple_token", "DSTokenInsecure")) },
+            new() { SourcePluginId = "dns-dnsmadeeasy", Key = "dnsmadeeasy", Options = Map(("dns_dnsmadeeasy_api_key", "apikey"), ("dns_dnsmadeeasy_secret_key", "apisecret")) },
+            new() { SourcePluginId = "dns-linode", Key = "linode", Options = Map(("dns_linode_key", "LITokenInsecure"), ("dns_linode_version", "")) },
+            new() { SourcePluginId = "dns-luadns", Key = "luadns", Options = Map(("dns_luadns_email", "LuaUsername"), ("dns_luadns_token", "LuaPassword")) },
+            new() { SourcePluginId = "dns-nsone", Key = "ns1", Options = Map(("dns_nsone_api_key", "NS1KeyInsecure")) },
+            new()
+            {
+                SourcePluginId = "dns-ovh", Key = "ovh",
+                Options = Map(("dns_ovh_endpoint", "appendpoint"), ("dns_ovh_application_key", "appkey"), ("dns_ovh_application_secret", "appsecret"), ("dns_ovh_consumer_key", "consumerkey"))
+            },
+            new()
+            {
+                SourcePluginId = "dns-rfc2136", Key = "rfc2136",
+                Options = Map(("dns_rfc2136_server", "DDNSNameserver"), ("dns_rfc2136_port", "DDNSPort"), ("dns_rfc2136_name", "DDNSKeyName"), ("dns_rfc2136_secret", "DDNSKeyValueInsecure"), ("dns_rfc2136_algorithm", "DDNSKeyType"), ("dns_rfc2136_sign_query", "")),
+                ValueMaps = new() { ["DDNSKeyType"] = Rfc2136Algorithms }
+            },
+            new() { SourcePluginId = "dns-route53", Key = "route53" },
+            new() { SourcePluginId = "dns-google", Key = "googlecloud" },
+            new() { SourcePluginId = "dns-gehirn", Key = "gehirn" },
+            new() { SourcePluginId = "dns-sakuracloud", Key = "sakuracloud" }
+        ];
+
+        /// <summary>
+        /// acme.sh DNS API scripts, by script name, with the variables they save (in account.conf or the domain's conf).
+        /// acme-dns, nsupdate and gcloud are handled by the reader
+        /// </summary>
+        public static readonly IReadOnlyList<DnsProviderAlias> AcmeShDnsAliases =
+        [
+            new() { SourcePluginId = "dns_cf", Key = "cloudflare", Options = Map(("CF_Token", "apitoken"), ("CF_Key", "authkey"), ("CF_Email", "emailaddress"), ("CF_Zone_ID", "zoneid"), ("CF_Account_ID", "")) },
+            new() { SourcePluginId = "dns_aws", Key = "route53", Options = Map(("AWS_ACCESS_KEY_ID", "accesskey"), ("AWS_SECRET_ACCESS_KEY", "secretaccesskey"), ("AWS_DNS_SLOWRATE", "")) },
+            new()
+            {
+                SourcePluginId = "dns_azure", Key = "azure",
+                Options = Map(("AZUREDNS_SUBSCRIPTIONID", "subscriptionid"), ("AZUREDNS_TENANTID", "tenantid"), ("AZUREDNS_APPID", "clientid"), ("AZUREDNS_CLIENTSECRET", "secret")),
+                AmbientAuthOptions = ["AZUREDNS_MANAGEDIDENTITY"]
+            },
+            new() { SourcePluginId = "dns_dgon", Key = "digitalocean", Options = Map(("DO_API_KEY", "DOToken")) },
+            new() { SourcePluginId = "dns_gd", Key = "godaddy", Options = Map(("GD_Key", "authkey"), ("GD_Secret", "authsecret")) },
+            new() { SourcePluginId = "dns_linode_v4", Key = "linode", Options = Map(("LINODE_V4_API_KEY", "LITokenInsecure")) },
+            new() { SourcePluginId = "dns_me", Key = "dnsmadeeasy", Options = Map(("ME_Key", "apikey"), ("ME_Secret", "apisecret")) },
+            new() { SourcePluginId = "dns_ovh", Key = "ovh", Options = Map(("OVH_AK", "appkey"), ("OVH_AS", "appsecret"), ("OVH_CK", "consumerkey"), ("OVH_END_POINT", "appendpoint")) },
+            new() { SourcePluginId = "dns_hetzner", Key = "hetzner", Options = Map(("HETZNER_Token", "HetznerTokenInsecure")) },
+            new() { SourcePluginId = "dns_hetznercloud", Key = "hetznercloud", Options = Map(("HETZNER_TOKEN", "HCToken")) },
+            new() { SourcePluginId = "dns_lua", Key = "luadns", Options = Map(("LUA_Email", "LuaUsername"), ("LUA_Key", "LuaPassword")) },
+            new() { SourcePluginId = "dns_nsone", Key = "ns1", Options = Map(("NS1_Key", "NS1KeyInsecure")) },
+            new() { SourcePluginId = "dns_ali", Key = "aliyun", Options = Map(("Ali_Key", "accesskeyid"), ("Ali_Secret", "accesskeysecret")) },
+            new() { SourcePluginId = "dns_tencent", Key = "tencent", Options = Map(("Tencent_SecretId", "TencentKeyId"), ("Tencent_SecretKey", "TencentSecret")) },
+            new() { SourcePluginId = "dns_bunny", Key = "bunny", Options = Map(("BUNNY_API_KEY", "BunnyAccessKey")) },
+            new() { SourcePluginId = "dns_simply", Key = "simply", Options = Map(("SIMPLY_AccountName", "SimplyAccount"), ("SIMPLY_ApiKey", "SimplyAPIKeyInsecure")) },
+            new() { SourcePluginId = "dns_domeneshop", Key = "domeneshop", Options = Map(("DOMENESHOP_Token", "DomeneshopToken"), ("DOMENESHOP_Secret", "DomeneshopSecret")) },
+            new() { SourcePluginId = "dns_infomaniak", Key = "infomaniak", Options = Map(("INFOMANIAK_API_TOKEN", "InfomaniakToken")) },
+            new() { SourcePluginId = "dns_porkbun", Key = "porkbun", Options = Map(("PORKBUN_API_KEY", "PorkbunAPIKey"), ("PORKBUN_SECRET_API_KEY", "PorkbunSecret")) },
+            new() { SourcePluginId = "dns_desec", Key = "desec", Options = Map(("DEDYN_TOKEN", "DSTokenInsecure")) },
+            new() { SourcePluginId = "dns_he", Key = "hurricaneelectric", Options = Map(("HE_Username", "HEUsername"), ("HE_Password", "HEPassword")) },
+            new() { SourcePluginId = "dns_ionos", Key = "ionos", Options = Map(("IONOS_PREFIX", "public"), ("IONOS_SECRET", "secret")) },
+            new() { SourcePluginId = "dns_dynu", Key = "dynu", Options = Map(("Dynu_ClientId", "DynuClientID"), ("Dynu_Secret", "DynuSecret")) },
+            new() { SourcePluginId = "dns_inwx", Key = "inwx", Options = Map(("INWX_User", "INWXUsername"), ("INWX_Password", "INWXPassword")) },
+            new() { SourcePluginId = "dns_gandi_livedns", Key = "gandi", Options = Map(("GANDI_LIVEDNS_TOKEN", "GandiPAT"), ("GANDI_LIVEDNS_KEY", "GandiTokenInsecure")) },
+            new() { SourcePluginId = "dns_namesilo", Key = "namesilo", Options = Map(("Namesilo_Key", "NameSiloKey")) },
+            new() { SourcePluginId = "dns_namecheap", Key = "namecheap", Options = Map(("NAMECHEAP_USERNAME", "NCUsername"), ("NAMECHEAP_API_KEY", "NCApiKey"), ("NAMECHEAP_SOURCEIP", "")) },
+            new() { SourcePluginId = "dns_namecom", Key = "namecom", Options = Map(("Namecom_Username", "NameComUserName"), ("Namecom_Token", "NameComToken")) },
+            new() { SourcePluginId = "dns_dnsimple", Key = "dnsimple", Options = Map(("DNSimple_OAUTH_TOKEN", "DSTokenInsecure")) },
+            new() { SourcePluginId = "dns_transip", Key = "transip", Options = Map(("TRANSIP_Username", "login")), FileOptions = Map(("TRANSIP_Key_File", "privatekey")) },
+            new() { SourcePluginId = "dns_gcloud", Key = "googlecloud" }
+        ];
+
+        /// <summary>
+        /// Posh-ACME plugins which map to a provider here other than the one running the same plugin, by plugin name.
+        /// Other plugins map to the provider here running them, by their own argument names
+        /// </summary>
+        public static readonly IReadOnlyList<DnsProviderAlias> PoshAcmeDnsAliases =
+        [
+            new()
+            {
+                SourcePluginId = "Cloudflare", Key = "cloudflare",
+                Options = Map(("CFToken", "apitoken"), ("CFTokenInsecure", "apitoken"), ("CFAuthEmail", "emailaddress"), ("CFAuthKey", "authkey"), ("CFAuthKeySecure", "authkey"),
+                    ("CFTokenReadAll", ""), ("CFTokenReadAllInsecure", ""))
+            },
+            new()
+            {
+                SourcePluginId = "Route53", Key = "route53",
+                Options = Map(("R53AccessKey", "accesskey"), ("R53SecretKey", "secretaccesskey"), ("R53SecretKeyInsecure", "secretaccesskey")),
+                AmbientAuthOptions = ["R53UseIAMRole", "R53ProfileName"]
+            },
+            new()
+            {
+                SourcePluginId = "Azure", Key = "azure",
+                Options = Map(("AZSubscriptionId", "subscriptionid"), ("AZTenantId", "tenantid"), ("AZAppUsername", "clientid"), ("AZAppPasswordInsecure", "secret"),
+                    ("AZAppCred.user", "clientid"), ("AZAppCred.pass", "secret")),
+                AmbientAuthOptions = ["AZUseIMDS", "AZAccessToken", "AZCertThumbprint", "AZCertPfx"]
+            }
+        ];
+
         public static DnsProviderEntry? GetDnsProvider(string? key) =>
             key == null ? null : DnsProviders.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase));
 
-        public static DnsProviderAlias? GetWinAcmeDnsAlias(string? pluginId) =>
-            pluginId == null ? null : WinAcmeDnsAliases.FirstOrDefault(a => string.Equals(a.SourcePluginId, pluginId, StringComparison.OrdinalIgnoreCase));
+        public static DnsProviderAlias? GetWinAcmeDnsAlias(string? pluginId) => GetAlias(WinAcmeDnsAliases, pluginId);
+
+        public static DnsProviderAlias? GetAlias(IEnumerable<DnsProviderAlias> aliases, string? pluginId) =>
+            pluginId == null ? null : aliases.FirstOrDefault(a => string.Equals(a.SourcePluginId, pluginId, StringComparison.OrdinalIgnoreCase));
 
         /// <summary>
         /// The key algorithm here for an RSA key size, and whether it is exact

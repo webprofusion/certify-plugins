@@ -332,6 +332,21 @@ namespace Certify.Plugin.CertificateManagers.Migration
                     $"Renews {_source.RenewalDays} days after the last renewal, as {Tool} is set to.",
                     $"Renews {defaultRenewal}, as set for this instance. {Tool} is set to renew {_source.RenewalDays} days after the last renewal.");
             }
+            else if (_source.RenewBeforeExpiryDays > 0)
+            {
+                var keep = UseSource("renewal-days", false);
+
+                if (keep)
+                {
+                    _item.CustomRenewalTarget = _source.RenewBeforeExpiryDays;
+                    _item.CustomRenewalIntervalMode = "DaysBeforeExpiry";
+                }
+
+                AddChoice("renewal-days", "Renewal", "Renewal interval", keep,
+                    $"{_source.RenewBeforeExpiryDays} days before expiry ({Tool})", $"{DefaultRenewalInterval(brief: true)} (default)",
+                    $"Renews {_source.RenewBeforeExpiryDays} days before expiry, as {Tool} is set to.",
+                    $"Renews {defaultRenewal}, as set for this instance. {Tool} is set to renew {_source.RenewBeforeExpiryDays} days before expiry.");
+            }
             else
             {
                 Add("renewal-days", ExternalMigrationFindingLevel.Mapped, "Renewal", "Renewal interval",
@@ -506,6 +521,14 @@ namespace Certify.Plugin.CertificateManagers.Migration
         private bool MapDnsValidation(SourceValidation validation, CertRequestChallengeConfig challenge, string key, string scope)
         {
             var entry = MigrationCatalogue.GetDnsProvider(validation.DnsProvider);
+
+            if (entry == null && !string.IsNullOrWhiteSpace(validation.ScriptPlugin))
+            {
+                // a Posh-ACME plugin maps to the provider here which runs the same plugin script
+                var byScript = _context.ChallengeProviders.FirstOrDefault(p => string.Equals(GetConfigValue(p.Config, "Script"), validation.ScriptPlugin, StringComparison.OrdinalIgnoreCase));
+                entry = new DnsProviderEntry { Key = validation.ScriptPlugin!, Title = validation.SourceName, ProviderId = byScript?.Id };
+            }
+
             var name = entry?.Title ?? validation.SourceName;
 
             if (entry?.ProviderId == null)
@@ -529,10 +552,25 @@ namespace Certify.Plugin.CertificateManagers.Migration
             var parameters = (definition.ProviderParameters ?? []).ToList();
             bool IsCredential(string parameterKey) => parameters.FirstOrDefault(p => string.Equals(p.Key, parameterKey, StringComparison.OrdinalIgnoreCase))?.IsCredential ?? true;
 
-            var values = validation.Parameters.Select(p => (p.Key, Value: ExternalMigrationCredentialDraft.LiteralPrefix + p.Value, IsSecret: false))
-                .Concat(validation.SecretParameters.Select(p => (p.Key, Value: p.Value, IsSecret: true)))
-                .Concat(entry.FixedValues.Select(p => (p.Key, Value: ExternalMigrationCredentialDraft.LiteralPrefix + p.Value, IsSecret: false)))
-                .ToList();
+            // values by the provider's own parameter keys, so an option it has no parameter for is reported rather than stored
+            var values = new List<(string Key, string Value, bool IsSecret)>();
+
+            foreach (var (sourceKey, value, isSecret) in validation.Parameters.Select(p => (p.Key, ExternalMigrationCredentialDraft.LiteralPrefix + p.Value, false))
+                .Concat(validation.SecretParameters.Select(p => (p.Key, p.Value, true))))
+            {
+                var parameter = FindParameter(parameters, sourceKey);
+
+                if (parameter?.Key == null)
+                {
+                    validation.UnmappedOptions.Add(sourceKey);
+                }
+                else
+                {
+                    values.Add((parameter.Key, value, isSecret));
+                }
+            }
+
+            values.AddRange(entry.FixedValues.Select(p => (p.Key, ExternalMigrationCredentialDraft.LiteralPrefix + p.Value, false)));
 
             var credentialValues = values.Where(v => IsCredential(v.Key)).ToList();
             var secretKeys = values.Where(v => v.IsSecret).Select(v => v.Value).ToList();
@@ -609,6 +647,41 @@ namespace Certify.Plugin.CertificateManagers.Migration
             return true;
         }
 
+        /// <summary>
+        /// The provider parameter for a source option, matched by key. Posh-ACME names a secure argument and its plain
+        /// text alternative X and XInsecure, of which providers here have one, or name the argument in their config
+        /// </summary>
+        private static ProviderParameter? FindParameter(List<ProviderParameter> parameters, string sourceKey)
+        {
+            string[] candidates =
+            [
+                sourceKey,
+                sourceKey + "Insecure",
+                sourceKey + "Secure",
+                sourceKey.EndsWith("Insecure", StringComparison.Ordinal) ? sourceKey[..^"Insecure".Length] : "",
+                sourceKey.EndsWith("Secure", StringComparison.Ordinal) && !sourceKey.EndsWith("Insecure", StringComparison.Ordinal) ? sourceKey[..^"Secure".Length] : ""
+            ];
+
+            foreach (var candidate in candidates.Where(c => c.Length > 0))
+            {
+                var match = parameters.FirstOrDefault(p => string.Equals(p.Key, candidate, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    return match;
+                }
+            }
+
+            return parameters.FirstOrDefault(p => p.ExtendedConfig?.Replace(" ", "").Contains($"\"AltParamKey\":\"{sourceKey}\"", StringComparison.OrdinalIgnoreCase) == true);
+        }
+
+        /// <summary>
+        /// A value from a provider's config string, e.g. Script from "Provider=Certify.Providers.DNS.PoshACME;Script=Akamai"
+        /// </summary>
+        private static string? GetConfigValue(string? config, string name) =>
+            config?.Split(';')
+                .Select(p => p.Split('=', 2))
+                .FirstOrDefault(p => p.Length == 2 && string.Equals(p[0].Trim(), name, StringComparison.OrdinalIgnoreCase))?[1].Trim();
+
         /// <returns>true if the output stores the certificate in the machine certificate store</returns>
         private bool MapOutput(SourceOutput output, int index)
         {
@@ -673,7 +746,7 @@ namespace Certify.Plugin.CertificateManagers.Migration
                         var password = PasswordDraft(output, "PEM key password");
 
                         AddExport("pemcrt", Combine(path, $"{fileName}-crt.pem"), null);
-                        AddExport("pemchain", Combine(path, $"{fileName}-chain.pem"), null);
+                        AddExport("pemcrtpartialchain", Combine(path, $"{fileName}-chain.pem"), null);
                         AddExport("pemintermediates", Combine(path, $"{fileName}-chain-only.pem"), null);
                         AddExport("pemkey", Combine(path, $"{fileName}-key.pem"), password);
 
@@ -712,6 +785,26 @@ namespace Certify.Plugin.CertificateManagers.Migration
                         return false;
                     }
 
+                case SourceOutputKinds.Files:
+                    {
+                        var files = settings.Where(s => FileExportTypes.ContainsKey(s.Key) && !string.IsNullOrWhiteSpace(s.Value)).ToList();
+
+                        if (!files.Any())
+                        {
+                            Add(key, ExternalMigrationFindingLevel.Mapped, "Store", output.SourceName, $"{Tool} writes no certificate files of its own here.");
+                            return false;
+                        }
+
+                        foreach (var (type, file) in files)
+                        {
+                            AddExport(type, file, null);
+                        }
+
+                        Add(key, ExternalMigrationFindingLevel.Mapped, "Store", output.SourceName,
+                            $"Exported to the same files: {string.Join(", ", files.Select(f => $"{f.Value} ({FileExportTypes[f.Key]})"))}.");
+                        return false;
+                    }
+
                 case SourceOutputKinds.KeyVault:
                     MapKeyVault(output, key);
                     return false;
@@ -733,6 +826,19 @@ namespace Certify.Plugin.CertificateManagers.Migration
         }
 
         private const string ExportPasswordParameter = "export_pwd_credential";
+
+        /// <summary>
+        /// Export types of the certificate export task a <see cref="SourceOutputKinds.Files"/> output can use
+        /// </summary>
+        private static readonly Dictionary<string, string> FileExportTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["pemcrt"] = "certificate",
+            ["pemintermediates"] = "intermediate certificates",
+            ["pemcrtpartialchain"] = "certificate and intermediates",
+            ["pemkey"] = "private key",
+            ["pemfull"] = "key, certificate and chain",
+            ["pfxfull"] = "PFX"
+        };
 
         private void MapKeyVault(SourceOutput output, string key)
         {
@@ -853,8 +959,8 @@ namespace Certify.Plugin.CertificateManagers.Migration
                         AddTask(MigrationCatalogue.TaskPowerShell, $"Run {System.IO.Path.GetFileName(script)}",
                             ("scriptpath", InlineDraft(wrapper, $"Wrapper for {script}")), ("inputresult", "true"));
 
-                        Add(key, ExternalMigrationFindingLevel.Mapped, "Installation", "Installation script",
-                            $"{script} runs after each renewal with the same arguments, through a wrapper script written at import.");
+                        Add(key, ExternalMigrationFindingLevel.Mapped, "Installation", installation.SourceName == SourceInstallationKinds.Script ? "Installation script" : installation.SourceName,
+                            settings.GetValueOrDefault(SourceSettingNames.Description) ?? $"{script} runs after each renewal with the same arguments, through a wrapper script written at import.");
                         return false;
                     }
 

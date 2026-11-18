@@ -14,7 +14,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
     /// <summary>
     /// Certificate manager for Posh-ACME (PowerShell) local config.
     /// </summary>
-    public class PoshAcme : CertificateManagerBase, ICertificateManager
+    public partial class PoshAcme : CertificateManagerBase, ICertificateManager
     {
         private string _settingsPath = string.Empty;
         private string _logPath = string.Empty;
@@ -81,7 +81,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
 
                     var managedCert = new ManagedCertificate
                     {
-                        Id = $"{ManagedCertificate.ExternalItemIdPrefix}posh-acme-{Certify.Management.Util.ToUrlSafeBase64String(cfg.Id)}",
+                        Id = ItemIdFor(cfg.Id),
                         Name = cfg.FriendlyName,
                         ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                         SourceId = Definition.Id,

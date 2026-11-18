@@ -40,6 +40,11 @@ namespace Certify.Plugin.CertificateManagers.Migration
         public const string KeyVault = "KeyVault";
         public const string UserStore = "UserStore";
         public const string P7bFile = "P7bFile";
+
+        /// <summary>
+        /// Files at fixed paths, with settings keyed by the export type here (pemcrt, pemkey etc), each the file path
+        /// </summary>
+        public const string Files = "Files";
         public const string None = "None";
         public const string Unknown = "Unknown";
     }
@@ -95,6 +100,12 @@ namespace Certify.Plugin.CertificateManagers.Migration
         /// For DNS validation, the catalogue key of the DNS provider (see <see cref="MigrationCatalogue"/>)
         /// </summary>
         public string? DnsProvider { get; set; }
+
+        /// <summary>
+        /// For DNS validation by a Posh-ACME plugin, the plugin name. Used when there is no catalogue key: the provider
+        /// here is the one running the same plugin, and the parameters are by the plugin's argument names
+        /// </summary>
+        public string? ScriptPlugin { get; set; }
 
         /// <summary>
         /// The source's own name for the method, for display
@@ -175,6 +186,11 @@ namespace Certify.Plugin.CertificateManagers.Migration
         /// </summary>
         public const string ScriptWrapper = "ScriptWrapper";
         public const string Script = "Script";
+
+        /// <summary>
+        /// What an installation does, shown in the preview instead of the default text for its kind
+        /// </summary>
+        public const string Description = "Description";
     }
 
     public class SourceOutput
@@ -296,6 +312,11 @@ namespace Certify.Plugin.CertificateManagers.Migration
         /// Renewal interval in days, if set explicitly in the source's settings
         /// </summary>
         public int? RenewalDays { get; set; }
+
+        /// <summary>
+        /// Days before expiry to renew, if set explicitly in the source's settings (instead of <see cref="RenewalDays"/>)
+        /// </summary>
+        public int? RenewBeforeExpiryDays { get; set; }
 
         /// <summary>
         /// Source settings not migrated because nothing here is equivalent, which differ from the source's defaults

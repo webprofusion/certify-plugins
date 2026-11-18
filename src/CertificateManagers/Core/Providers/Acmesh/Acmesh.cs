@@ -15,7 +15,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
     /// <summary>
     /// Certificate manager for acme.sh local config.
     /// </summary>
-    public class AcmeSh : CertificateManagerBase, ICertificateManager
+    public partial class AcmeSh : CertificateManagerBase, ICertificateManager
     {
         private string _settingsPath = string.Empty;
         private string _logPath = string.Empty;
@@ -111,7 +111,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 
                         var managedCert = new ManagedCertificate
                         {
-                            Id = $"{ManagedCertificate.ExternalItemIdPrefix}acme.sh-{Certify.Management.Util.ToUrlSafeBase64String(id)}",
+                            Id = ItemIdFor(id, config.Directory),
                             Name = id,
                             ItemType = ManagedCertificateType.SSL_ExternallyManaged,
                             SourceId = Definition.Id,
