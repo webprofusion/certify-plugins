@@ -70,6 +70,17 @@ namespace Tests.Plugin.CertificateManagers
         }
 
         [TestMethod]
+        [DataRow("https://ca.internal:44361/acme/directory", DisplayName = "Directory URL")]
+        [DataRow("ca.internal44361acmedirectory", DisplayName = "win-acme folder name, which keeps the port")]
+        public void CustomCertificateAuthorityIsFoundFromEndpoint(string endpoint)
+        {
+            var custom = new Certify.Models.CertificateAuthority { Id = "custom", ProductionAPIEndpoint = "https://ca.internal:44361/acme/directory" };
+
+            Assert.AreEqual("custom", CertificateAuthorityLookup.FromEndpoint(endpoint, [custom])?.CertificateAuthorityId);
+            Assert.IsNull(CertificateAuthorityLookup.FromEndpoint("ca.internalacmedirectory", [custom]), "A different port is a different server");
+        }
+
+        [TestMethod]
         public void HomeFolderIsExpanded()
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

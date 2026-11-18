@@ -20,7 +20,7 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
     /// <summary>
     /// Certificate manager for win-acme local config.
     /// </summary>
-    public class WinAcme : CertificateManagerBase, ICertificateManager
+    public partial class WinAcme : CertificateManagerBase, ICertificateManager
     {
         private string _settingsPath = string.Empty;
         private string _logPath = string.Empty;
@@ -354,36 +354,13 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
         /// </summary>
         private string? FindScheduledConfigurationPath()
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                return null;
-            }
-
             try
             {
-                var tasksFolder = new DirectoryInfo(Path.Combine(Environment.SystemDirectory, "Tasks"));
-
-                if (!tasksFolder.Exists)
+                foreach (var programFolder in FindScheduledProgramFolders())
                 {
-                    return null;
-                }
+                    var settingsFile = Path.Combine(programFolder, "settings.json");
 
-                foreach (var taskFile in tasksFolder.GetFiles($"{ClientName} renew (*)"))
-                {
-                    var task = XDocument.Load(taskFile.FullName);
-                    var ns = task.Root?.Name.Namespace ?? XNamespace.None;
-                    var exec = task.Descendants(ns + "Exec").FirstOrDefault();
-                    var command = exec?.Element(ns + "Command")?.Value?.Trim().Trim('"');
-                    var programFolder = exec?.Element(ns + "WorkingDirectory")?.Value?.Trim().Trim('"');
-
-                    if (string.IsNullOrWhiteSpace(programFolder) && !string.IsNullOrWhiteSpace(command))
-                    {
-                        programFolder = Path.GetDirectoryName(command);
-                    }
-
-                    var settingsFile = string.IsNullOrWhiteSpace(programFolder) ? null : Path.Combine(programFolder, "settings.json");
-
-                    if (settingsFile == null || !File.Exists(settingsFile))
+                    if (!File.Exists(settingsFile))
                     {
                         continue;
                     }
@@ -409,6 +386,66 @@ namespace Certify.Plugin.CertificateManagers.Providers.WinAcme
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// The program folders of the "{client} renew ({server})" scheduled tasks the program creates, which is the only
+        /// record of where the program is
+        /// </summary>
+        private IEnumerable<string> FindScheduledProgramFolders()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                yield break;
+            }
+
+            var tasksFolder = new DirectoryInfo(Path.Combine(Environment.SystemDirectory, "Tasks"));
+
+            if (!tasksFolder.Exists)
+            {
+                yield break;
+            }
+
+            // only administrators can list the tasks folder, so when not elevated the program is not found this way
+            FileInfo[] taskFiles;
+
+            try
+            {
+                taskFiles = tasksFolder.GetFiles($"{ClientName} renew (*)");
+            }
+            catch (Exception exp) when (exp is UnauthorizedAccessException || exp is IOException)
+            {
+                _logger?.LogDebug($"{ProviderTitle}: Could not list scheduled tasks: {exp.Message}");
+                yield break;
+            }
+
+            foreach (var taskFile in taskFiles)
+            {
+                string? programFolder = null;
+
+                try
+                {
+                    var task = XDocument.Load(taskFile.FullName);
+                    var ns = task.Root?.Name.Namespace ?? XNamespace.None;
+                    var exec = task.Descendants(ns + "Exec").FirstOrDefault();
+                    var command = exec?.Element(ns + "Command")?.Value?.Trim().Trim('"');
+                    programFolder = exec?.Element(ns + "WorkingDirectory")?.Value?.Trim().Trim('"');
+
+                    if (string.IsNullOrWhiteSpace(programFolder) && !string.IsNullOrWhiteSpace(command))
+                    {
+                        programFolder = Path.GetDirectoryName(command);
+                    }
+                }
+                catch (Exception exp)
+                {
+                    _logger?.LogDebug($"{ProviderTitle}: Could not read scheduled task {taskFile.Name}: {exp.Message}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(programFolder) && Directory.Exists(programFolder))
+                {
+                    yield return programFolder;
+                }
+            }
         }
 
         /// <summary>

@@ -17,7 +17,14 @@ namespace Certify.Plugin.CertificateManagers.Utils
         /// separators removed)
         /// </summary>
         /// <returns>The CA id and whether the endpoint is its staging endpoint, or null if no known CA matches</returns>
-        public static (string CertificateAuthorityId, bool IsStaging)? FromEndpoint(string? endpoint)
+        public static (string CertificateAuthorityId, bool IsStaging)? FromEndpoint(string? endpoint) =>
+            FromEndpoint(endpoint, CertificateAuthority.CoreCertificateAuthorities);
+
+        /// <summary>
+        /// Find the certificate authority for an ACME endpoint among the given certificate authorities, such as
+        /// those configured on an instance
+        /// </summary>
+        public static (string CertificateAuthorityId, bool IsStaging)? FromEndpoint(string? endpoint, IEnumerable<CertificateAuthority> authorities)
         {
             if (string.IsNullOrWhiteSpace(endpoint))
             {
@@ -29,7 +36,7 @@ namespace Certify.Plugin.CertificateManagers.Utils
             var exactMatches = new List<(string Id, bool IsStaging)>();
             var hostMatches = new List<(string Id, bool IsStaging)>();
 
-            foreach (var ca in CertificateAuthority.CoreCertificateAuthorities.Where(c => !string.IsNullOrEmpty(c.Id)))
+            foreach (var ca in authorities.Where(c => !string.IsNullOrEmpty(c.Id)))
             {
                 foreach (var (url, isStaging) in new[] { (ca.ProductionAPIEndpoint, false), (ca.StagingAPIEndpoint, true) })
                 {
@@ -41,7 +48,8 @@ namespace Certify.Plugin.CertificateManagers.Utils
                     var path = uri.AbsolutePath.TrimEnd('/');
                     var basePath = path.EndsWith("/directory", StringComparison.OrdinalIgnoreCase) ? path[..^"/directory".Length] : path;
 
-                    if (value == Normalise(uri.Host + path) || value == Normalise(uri.Host + basePath))
+                    // the authority keeps a non default port, which win-acme also keeps in its folder names
+                    if (value == Normalise(uri.Authority + path) || value == Normalise(uri.Authority + basePath))
                     {
                         exactMatches.Add((ca.Id!, isStaging));
                     }
