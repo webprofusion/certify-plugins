@@ -30,8 +30,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.CertificateManager" Version="4.1.0.2" />
+    <PackageReference Include="AWSSDK.SecurityToken" Version="4.1.0.2" />
     <PackageReference Include="SimpleImpersonation" Version="4.2.0" />
-    <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <PackageReference Include="SSH.NET" Version="2026.0.1" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.15" />
   </ItemGroup>
 
