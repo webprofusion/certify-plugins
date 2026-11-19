@@ -40,6 +40,7 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = StandardAuthTypes.STANDARD_AUTH_GENERIC,
+                RequiresManagementHub = true,
                 Description = "Add or update a named certificate-key pair on a NetScaler ADC (Citrix ADC) using the NITRO API. Virtual servers bound to it pick up the new certificate automatically.",
                 ProviderParameters = new List<ProviderParameter>
                 {

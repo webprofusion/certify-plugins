@@ -109,6 +109,17 @@ namespace Certify.Tests.DeploymentTaskTests
         }
 
         [TestMethod, TestCategory("Misc")]
+        public void TestNetworkDeviceTasksRequireManagementHub()
+        {
+            var hubOnly = new[] { KempLoadMaster.Definition, NetScaler.Definition, F5BigIp.Definition, FortiGate.Definition, PaloAlto.Definition, SonicWall.Definition };
+
+            foreach (var definition in hubOnly)
+            {
+                Assert.IsTrue(definition.RequiresManagementHub, $"{definition.Title} requires a Management Hub");
+            }
+        }
+
+        [TestMethod, TestCategory("Misc")]
         public async Task TestPowershellScriptArgumentParsingPreservesAdditionalEquals()
         {
             var provider = new PowershellScript();

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Certify.Models;
@@ -81,10 +83,11 @@ namespace Certify.Providers.Deployment.Core.Shared
 
         /// <summary>
         /// HTTP client for a device management API. If allowed, the device's own TLS certificate is not checked (e.g. a default self-signed certificate).
+        /// With credentials, the client answers HTTP Digest or Basic authentication challenges itself.
         /// </summary>
-        public static HttpClient CreateHttpClient(Uri baseAddress, bool allowInvalidTls)
+        public static HttpClient CreateHttpClient(Uri baseAddress, bool allowInvalidTls, ICredentials credentials = null)
         {
-            var handler = new HttpClientHandler();
+            var handler = new HttpClientHandler { Credentials = credentials };
             if (allowInvalidTls)
             {
                 handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
@@ -95,6 +98,32 @@ namespace Certify.Providers.Deployment.Core.Shared
                 BaseAddress = baseAddress,
                 Timeout = TimeSpan.FromSeconds(60)
             };
+        }
+
+        /// <summary>
+        /// multipart/form-data content with the parts in order (a part with a file name is sent as a file). Built by hand, as some device APIs
+        /// do not accept the quoted boundary that MultipartFormDataContent uses.
+        /// </summary>
+        public static HttpContent MultipartForm(params (string Name, string FileName, byte[] Value)[] parts)
+        {
+            var boundary = "certify" + Guid.NewGuid().ToString("N");
+            var body = new MemoryStream();
+
+            void write(string text) => body.Write(Encoding.ASCII.GetBytes(text));
+
+            foreach (var (name, fileName, value) in parts)
+            {
+                write($"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"");
+                write(fileName != null ? $"; filename=\"{fileName}\"\r\nContent-Type: application/octet-stream\r\n\r\n" : "\r\n\r\n");
+                body.Write(value);
+                write("\r\n");
+            }
+
+            write($"--{boundary}--\r\n");
+
+            var content = new ByteArrayContent(body.ToArray());
+            content.Headers.TryAddWithoutValidation("Content-Type", $"multipart/form-data; boundary={boundary}");
+            return content;
         }
 
         /// <summary>

@@ -38,6 +38,7 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = CredentialTypes.KempLoadMaster,
+                RequiresManagementHub = true,
                 Description = "Add or replace a named SSL certificate on a Progress Kemp LoadMaster using its API. Virtual Services using the certificate pick up the new one automatically.",
                 ProviderParameters = new List<ProviderParameter>
                 {

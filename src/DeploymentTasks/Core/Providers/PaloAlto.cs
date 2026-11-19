@@ -45,6 +45,7 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = StandardAuthTypes.STANDARD_AUTH_GENERIC,
+                RequiresManagementHub = true,
                 Description = "Import the certificate to a Palo Alto Networks firewall (PAN-OS) using the XML API, replacing the named certificate, then commit the change. Settings which use the certificate, such as SSL/TLS service profiles, pick up each renewal.",
                 ProviderParameters = new List<ProviderParameter>
                 {
@@ -326,24 +327,11 @@ namespace Certify.Providers.DeploymentTasks
             {
                 var query = $"?type=import&category=keypair&certificate-name={Uri.EscapeDataString(name)}&format=pem{(vsys != null ? "&vsys=" + Uri.EscapeDataString(vsys) : "")}";
 
-                var fields = new Dictionary<string, string>
-                {
-                    ["key"] = _apiKey,
-                    ["passphrase"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(16))
-                };
-
-                // built by hand, as PAN-OS does not accept the quoted boundary HttpClient's MultipartFormDataContent uses
-                var boundary = "certify" + Guid.NewGuid().ToString("N");
-                var body = new StringBuilder();
-                foreach (var (field, value) in fields)
-                {
-                    body.Append($"--{boundary}\r\nContent-Disposition: form-data; name=\"{field}\"\r\n\r\n{value}\r\n");
-                }
-
-                body.Append($"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{name}.pem\"\r\nContent-Type: application/octet-stream\r\n\r\n{pem}\r\n--{boundary}--\r\n");
-
-                using var content = new ByteArrayContent(Encoding.ASCII.GetBytes(body.ToString()));
-                content.Headers.TryAddWithoutValidation("Content-Type", $"multipart/form-data; boundary={boundary}");
+                // PAN-OS does not accept a quoted multipart boundary
+                using var content = NetworkDevice.MultipartForm(
+                    ("key", null, Encoding.ASCII.GetBytes(_apiKey)),
+                    ("passphrase", null, Encoding.ASCII.GetBytes(Convert.ToHexString(RandomNumberGenerator.GetBytes(16)))),
+                    ("file", $"{name}.pem", Encoding.ASCII.GetBytes(pem)));
 
                 return await Post(query, content, cancellationToken);
             }

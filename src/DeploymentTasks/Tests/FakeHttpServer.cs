@@ -19,11 +19,15 @@ namespace Certify.Tests.DeploymentTaskTests
         public Dictionary<string, string> Query { get; init; }
         public Dictionary<string, string> Headers { get; init; }
         public string Body { get; init; }
+        public byte[] BodyBytes { get; init; }
 
         public string Header(string name) => Headers.GetValueOrDefault(name);
     }
 
-    public sealed record FakeHttpResponse(int Status, string ContentType, string Body);
+    /// <summary>
+    /// A response, with any extra headers. A null response closes the connection without answering.
+    /// </summary>
+    public sealed record FakeHttpResponse(int Status, string ContentType, string Body, Dictionary<string, string> Headers = null);
 
     /// <summary>
     /// Local stand-in for a device management API, used to test deployment tasks without the device. HttpListener is not used as it
@@ -81,8 +85,14 @@ namespace Certify.Tests.DeploymentTaskTests
                         response = new FakeHttpResponse(500, "text/plain", exp.ToString());
                     }
 
+                    if (response == null)
+                    {
+                        continue;
+                    }
+
                     var body = Encoding.UTF8.GetBytes(response.Body ?? "");
-                    var head = $"HTTP/1.1 {response.Status} {(response.Status < 400 ? "OK" : "Error")}\r\nContent-Type: {response.ContentType}\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n";
+                    var extraHeaders = string.Concat((response.Headers ?? new()).Select(h => $"{h.Key}: {h.Value}\r\n"));
+                    var head = $"HTTP/1.1 {response.Status} {(response.Status < 400 ? "OK" : "Error")}\r\nContent-Type: {response.ContentType}\r\nContent-Length: {body.Length}\r\n{extraHeaders}Connection: close\r\n\r\n";
                     await stream.WriteAsync(Encoding.ASCII.GetBytes(head));
                     await stream.WriteAsync(body);
                 }
@@ -124,7 +134,8 @@ namespace Certify.Tests.DeploymentTaskTests
                 Path = Uri.UnescapeDataString(target.AbsolutePath),
                 Query = query.AllKeys.Where(k => k != null).ToDictionary(k => k, k => query[k]),
                 Headers = headers,
-                Body = Encoding.UTF8.GetString(body)
+                Body = Encoding.UTF8.GetString(body),
+                BodyBytes = body
             };
         }
 

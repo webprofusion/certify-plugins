@@ -40,6 +40,7 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = StandardAuthTypes.STANDARD_AUTH_GENERIC,
+                RequiresManagementHub = true,
                 Description = "Add or update a named SSL certificate, key and chain on an F5 BIG-IP using the iControl REST API. Client SSL profiles using them pick up the new certificate automatically.",
                 ProviderParameters = new List<ProviderParameter>
                 {

@@ -40,6 +40,7 @@ namespace Certify.Providers.DeploymentTasks
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.ExternalCredential,
                 ExternalCredentialType = StandardAuthTypes.STANDARD_AUTH_API_TOKEN,
+                RequiresManagementHub = true,
                 Description = "Import the certificate to a FortiGate using the FortiOS REST API, and move everything that used the previous certificate (admin interface, SSL VPN, virtual IPs, SSL inspection profiles etc) to it.",
                 ProviderParameters = new List<ProviderParameter>
                 {
