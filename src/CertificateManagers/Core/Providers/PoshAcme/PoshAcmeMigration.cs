@@ -226,8 +226,10 @@ namespace Certify.Plugin.CertificateManagers.Providers.PoshAcme
                 return null;
             }
 
+            // an order Posh-ACME renews is found before a set aside one, should the order have been created again since
             var files = new DirectoryInfo(_settingsPath).GetFiles(OrderFileName + "*", SearchOption.AllDirectories)
-                .Where(f => f.Name == OrderFileName || (includeDisabled && f.Name == OrderFileName + DisabledSuffix));
+                .Where(f => f.Name == OrderFileName || (includeDisabled && f.Name == OrderFileName + DisabledSuffix))
+                .OrderBy(f => f.Name != OrderFileName);
 
             foreach (var file in files)
             {

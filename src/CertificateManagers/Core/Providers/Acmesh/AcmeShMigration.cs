@@ -236,8 +236,10 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
                 return null;
             }
 
+            // a conf acme.sh renews is found before a removed one, should the domain have been issued again since
             var files = new DirectoryInfo(_settingsPath).GetFiles("*.conf*", SearchOption.AllDirectories)
-                .Where(f => f.Name.EndsWith(".conf", StringComparison.Ordinal) || (includeDisabled && f.Name.EndsWith(".conf" + DisabledSuffix, StringComparison.Ordinal)));
+                .Where(f => f.Name.EndsWith(".conf", StringComparison.Ordinal) || (includeDisabled && f.Name.EndsWith(".conf" + DisabledSuffix, StringComparison.Ordinal)))
+                .OrderBy(f => f.Name.EndsWith(DisabledSuffix, StringComparison.Ordinal));
 
             foreach (var file in files)
             {
@@ -460,7 +462,8 @@ namespace Certify.Plugin.CertificateManagers.Providers.AcmeSh
 
             private void DescribeValidations()
             {
-                var methods = (Get("Le_Webroot") ?? "").Split(',', StringSplitOptions.TrimEntries);
+                // "no" is a method here, standalone mode, so the value is read as it is
+                var methods = (_entry.Get("Le_Webroot") ?? "").Split(',', StringSplitOptions.TrimEntries);
                 var identifiers = Description.Identifiers;
 
                 // one method for all, or one per identifier in order
