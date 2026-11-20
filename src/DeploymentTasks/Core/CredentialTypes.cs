@@ -30,6 +30,11 @@ namespace Certify.Providers.DeploymentTasks
         public const string GoogleServiceAccountKey = "ExternalAuth.Google.ServiceAccountKey";
 
         /// <summary>
+        /// CyberArk Conjur API key sign in: url, account, login, api_key, ca_data, allow_invalid_tls
+        /// </summary>
+        public const string ConjurApiKey = "ExternalAuth.CyberArk.ConjurApiKey";
+
+        /// <summary>
         /// All credential types in the index. New definitions each call, so callers cannot change the originals
         /// </summary>
         public static List<ChallengeProviderDefinition> GetAll() => new List<ChallengeProviderDefinition>
@@ -88,6 +93,23 @@ namespace Certify.Providers.DeploymentTasks
                 ProviderParameters = new List<ProviderParameter>
                 {
                     new ProviderParameter{ Key="service_account_key", Name="Service Account Key (JSON)", IsRequired=true, IsPassword=true, IsCredential=true, Description="The contents of the service account's JSON key file, as downloaded from the Google Cloud console." }
+                },
+                ChallengeType = "",
+                HandlerType = ChallengeHandlerType.INTERNAL
+            },
+            new ChallengeProviderDefinition
+            {
+                Id = ConjurApiKey,
+                Title = "CyberArk Conjur API Key",
+                Description = "Conjur server, account and a host's API key",
+                ProviderParameters = new List<ProviderParameter>
+                {
+                    new ProviderParameter{ Key="url", Name="Conjur URL", IsRequired=true, IsCredential=true, Description="Address of the Conjur server, e.g. https://conjur.example.com" },
+                    new ProviderParameter{ Key="account", Name="Account", IsRequired=true, IsCredential=true, Description="Conjur organization account, e.g. myorg" },
+                    new ProviderParameter{ Key="login", Name="Login", IsRequired=true, IsCredential=true, Description="Host (or user) to sign in as, e.g. host/certify" },
+                    new ProviderParameter{ Key="api_key", Name="API Key", IsRequired=true, IsPassword=true, IsCredential=true, Description="API key of the host (or user)" },
+                    new ProviderParameter{ Key="ca_data", Name="CA Certificate", IsRequired=false, IsCredential=true, Type=OptionType.MultiLineText, Description="(optional) CA certificate of the Conjur server's TLS certificate, in PEM format, e.g. conjur-myorg.pem. If set, only this CA is trusted. Leave blank if the Conjur server certificate is publicly trusted." },
+                    new ProviderParameter{ Key="allow_invalid_tls", Name="Allow Invalid TLS Certificate", IsRequired=false, IsCredential=true, Type=OptionType.Boolean, Value="false", Description="Don't check the Conjur server's TLS certificate. Not recommended: set the CA Certificate instead." }
                 },
                 ChallengeType = "",
                 HandlerType = ChallengeHandlerType.INTERNAL

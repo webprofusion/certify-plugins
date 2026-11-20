@@ -4,9 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Security;
 using System.Security.Authentication;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
@@ -44,7 +42,6 @@ namespace Certify.Providers.DeploymentTasks
 
         private static readonly Regex ValidName = new Regex(@"^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$", RegexOptions.Compiled);
         private static readonly Regex ValidNamespace = new Regex(@"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", RegexOptions.Compiled);
-        private static readonly Regex PemCertificate = new Regex("-----BEGIN CERTIFICATE-----(.+?)-----END CERTIFICATE-----", RegexOptions.Compiled | RegexOptions.Singleline);
 
         /// <summary>
         /// Workload kinds that can be restarted, by the names accepted in the setting
@@ -401,74 +398,7 @@ namespace Certify.Providers.DeploymentTasks
             var caText = value("ca_data");
             _ = bool.TryParse(value("allow_invalid_tls"), out var allowInvalidTls);
 
-            return new Credential(NetworkDevice.ParseAddress(serverText), token, caText, caText == null ? null : ParseCaCertificates(caText), allowInvalidTls);
-        }
-
-        /// <summary>
-        /// CA certificates from PEM, or from base64 encoded PEM as in a kubeconfig file. Line breaks in the PEM are not needed, as they may be
-        /// lost when pasted into a single line field. Null if there are none or they can't be read.
-        /// </summary>
-        public static X509Certificate2Collection ParseCaCertificates(string text)
-        {
-            if (!text.Contains("-----BEGIN"))
-            {
-                try
-                {
-                    text = Encoding.ASCII.GetString(Convert.FromBase64String(Regex.Replace(text, @"\s", "")));
-                }
-                catch (FormatException)
-                {
-                    return null;
-                }
-            }
-
-            try
-            {
-                var collection = new X509Certificate2Collection();
-                foreach (Match pem in PemCertificate.Matches(text))
-                {
-                    collection.Add(X509CertificateLoader.LoadCertificate(Convert.FromBase64String(Regex.Replace(pem.Groups[1].Value, @"\s", ""))));
-                }
-
-                return collection.Count > 0 ? collection : null;
-            }
-            catch (Exception exp) when (exp is FormatException || exp is CryptographicException)
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Whether to accept the API server's TLS certificate. With CA certificates, only a chain to one of them is trusted (as kubectl does),
-        /// otherwise the system's trusted roots are used. The name must match either way.
-        /// </summary>
-        public static bool IsServerCertificateTrusted(X509Certificate2 certificate, X509Chain chain, SslPolicyErrors errors, X509Certificate2Collection caCertificates, bool allowInvalidTls)
-        {
-            if (allowInvalidTls)
-            {
-                return true;
-            }
-
-            if (caCertificates == null)
-            {
-                return errors == SslPolicyErrors.None;
-            }
-
-            if ((errors & ~SslPolicyErrors.RemoteCertificateChainErrors) != SslPolicyErrors.None)
-            {
-                return false;
-            }
-
-            using var custom = new X509Chain();
-            custom.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-            custom.ChainPolicy.CustomTrustStore.AddRange(caCertificates);
-            custom.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-            foreach (var element in chain?.ChainElements.Cast<X509ChainElement>() ?? Enumerable.Empty<X509ChainElement>())
-            {
-                custom.ChainPolicy.ExtraStore.Add(element.Certificate);
-            }
-
-            return custom.Build(certificate);
+            return new Credential(NetworkDevice.ParseAddress(serverText), token, caText, caText == null ? null : TlsTrust.ParseCaCertificates(caText), allowInvalidTls);
         }
 
         private sealed record ApiResponse(HttpStatusCode Status, JsonNode Body, string Error)
@@ -488,7 +418,7 @@ namespace Certify.Providers.DeploymentTasks
             {
                 var handler = new HttpClientHandler
                 {
-                    ServerCertificateCustomValidationCallback = (_, certificate, chain, errors) => IsServerCertificateTrusted(certificate, chain, errors, credential.CaCertificates, credential.AllowInvalidTls)
+                    ServerCertificateCustomValidationCallback = (_, certificate, chain, errors) => TlsTrust.IsServerCertificateTrusted(certificate, chain, errors, credential.CaCertificates, credential.AllowInvalidTls)
                 };
 
                 _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
