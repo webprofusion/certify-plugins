@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -32,21 +33,24 @@ namespace Certify.Tests.DeploymentTaskTests
     /// <summary>
     /// Local stand-in for a device management API, used to test deployment tasks without the device. HttpListener is not used as it
     /// needs a URL reservation on Windows. Minimal HTTP/1.1 handling: one request per connection, answered with Connection: close.
+    /// With a server certificate (which needs its private key), requests are served over HTTPS.
     /// </summary>
     public sealed class FakeHttpServer : IDisposable
     {
         private readonly TcpListener _listener = new TcpListener(IPAddress.Loopback, 0);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly Func<FakeHttpRequest, FakeHttpResponse> _handler;
+        private readonly X509Certificate2 _serverCertificate;
 
         public string Address { get; }
         public List<FakeHttpRequest> Requests { get; } = new List<FakeHttpRequest>();
 
-        public FakeHttpServer(Func<FakeHttpRequest, FakeHttpResponse> handler)
+        public FakeHttpServer(Func<FakeHttpRequest, FakeHttpResponse> handler, X509Certificate2 serverCertificate = null)
         {
             _handler = handler;
+            _serverCertificate = serverCertificate;
             _listener.Start();
-            Address = $"http://127.0.0.1:{((IPEndPoint)_listener.LocalEndpoint).Port}";
+            Address = $"{(serverCertificate == null ? "http" : "https")}://127.0.0.1:{((IPEndPoint)_listener.LocalEndpoint).Port}";
 
             _ = Task.Run(Serve);
         }
@@ -67,8 +71,28 @@ namespace Certify.Tests.DeploymentTaskTests
 
                 using (tcp)
                 {
-                    var stream = tcp.GetStream();
-                    var request = await ReadRequest(stream);
+                    Stream stream = tcp.GetStream();
+                    FakeHttpRequest request;
+                    try
+                    {
+                        if (_serverCertificate != null)
+                        {
+                            var tls = new SslStream(stream);
+                            await tls.AuthenticateAsServerAsync(_serverCertificate);
+                            stream = tls;
+                        }
+
+                        request = await ReadRequest(stream);
+                        if (request == null)
+                        {
+                            continue;
+                        }
+                    }
+                    catch (Exception exp) when (exp is IOException || exp is System.Security.Authentication.AuthenticationException)
+                    {
+                        // the client refused the TLS certificate, or closed the connection
+                        continue;
+                    }
 
                     lock (Requests)
                     {
@@ -99,7 +123,7 @@ namespace Certify.Tests.DeploymentTaskTests
             }
         }
 
-        private static async Task<FakeHttpRequest> ReadRequest(NetworkStream stream)
+        private static async Task<FakeHttpRequest> ReadRequest(Stream stream)
         {
             // read up to the end of the headers
             var buffer = new List<byte>();
@@ -112,6 +136,12 @@ namespace Certify.Tests.DeploymentTaskTests
                 }
 
                 buffer.Add(one[0]);
+            }
+
+            if (buffer.Count == 0)
+            {
+                // closed without a request
+                return null;
             }
 
             var lines = Encoding.ASCII.GetString(buffer.ToArray()).Split("\r\n");

@@ -111,7 +111,7 @@ namespace Certify.Tests.DeploymentTaskTests
         [TestMethod, TestCategory("Misc")]
         public void TestHubOnlyTasksRequireManagementHub()
         {
-            var hubOnly = new[] { KempLoadMaster.Definition, NetScaler.Definition, F5BigIp.Definition, FortiGate.Definition, PaloAlto.Definition, SonicWall.Definition, CiscoFmc.Definition, AwsCertificateManager.Definition, AwsSecretsManager.Definition };
+            var hubOnly = new[] { KempLoadMaster.Definition, NetScaler.Definition, F5BigIp.Definition, FortiGate.Definition, PaloAlto.Definition, SonicWall.Definition, CiscoFmc.Definition, AwsCertificateManager.Definition, AwsSecretsManager.Definition, KubernetesSecret.Definition };
 
             foreach (var definition in hubOnly)
             {

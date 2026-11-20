@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -34,6 +35,38 @@ namespace Certify.Providers.Deployment.Core.Shared
         /// Intermediate certificates, in chain order from the issuer of the end entity certificate upwards (roots excluded)
         /// </summary>
         public List<DeviceCaCertificate> Intermediates { get; init; } = new();
+
+        /// <summary>
+        /// The intermediate certificates in PEM format, in chain order
+        /// </summary>
+        public string ChainPem => string.Concat(Intermediates.Select(i => i.Pem));
+
+        /// <summary>
+        /// The end entity certificate followed by its intermediates, in PEM format
+        /// </summary>
+        public string FullChainPem => CertPem + ChainPem;
+
+        /// <summary>
+        /// The private key as unencrypted PKCS#8 PEM, which applications and libraries most widely accept
+        /// </summary>
+        public string Pkcs8KeyPem()
+        {
+            if (KeyPem.Contains("BEGIN RSA PRIVATE KEY"))
+            {
+                using var rsa = RSA.Create();
+                rsa.ImportFromPem(KeyPem);
+                return rsa.ExportPkcs8PrivateKeyPem();
+            }
+
+            if (KeyPem.Contains("BEGIN EC PRIVATE KEY"))
+            {
+                using var ec = ECDsa.Create();
+                ec.ImportFromPem(KeyPem);
+                return ec.ExportPkcs8PrivateKeyPem();
+            }
+
+            return KeyPem;
+        }
     }
 
     public class DeviceCaCertificate

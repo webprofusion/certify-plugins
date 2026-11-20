@@ -324,14 +324,12 @@ namespace Certify.Providers.DeploymentTasks
         /// </summary>
         private static async Task<string> SecretValue(DeviceCertificate cert, string pfxPath, CancellationToken cancellationToken)
         {
-            var chain = string.Concat(cert.Intermediates.Select(i => i.Pem));
-
             var value = new JsonObject
             {
                 ["certificate"] = cert.CertPem,
-                ["private_key"] = Pkcs8PrivateKeyPem(cert.KeyPem),
-                ["chain"] = chain,
-                ["fullchain"] = cert.CertPem + chain
+                ["private_key"] = cert.Pkcs8KeyPem(),
+                ["chain"] = cert.ChainPem,
+                ["fullchain"] = cert.FullChainPem
             };
 
             if (pfxPath != null)
@@ -346,28 +344,6 @@ namespace Certify.Providers.DeploymentTasks
         /// Version ID for a secret value: a GUID from its hash, so the same value always has the same version ID
         /// </summary>
         private static string VersionId(string secretValue) => new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(secretValue)).AsSpan(0, 16)).ToString();
-
-        /// <summary>
-        /// The key as PKCS#8 PEM, which applications and libraries most widely accept
-        /// </summary>
-        private static string Pkcs8PrivateKeyPem(string keyPem)
-        {
-            if (keyPem.Contains("BEGIN RSA PRIVATE KEY"))
-            {
-                using var rsa = RSA.Create();
-                rsa.ImportFromPem(keyPem);
-                return rsa.ExportPkcs8PrivateKeyPem();
-            }
-
-            if (keyPem.Contains("BEGIN EC PRIVATE KEY"))
-            {
-                using var ec = ECDsa.Create();
-                ec.ImportFromPem(keyPem);
-                return ec.ExportPkcs8PrivateKeyPem();
-            }
-
-            return keyPem;
-        }
 
         private sealed record Settings(string RegionSetting, string SecretId, string KmsKeyId, bool IncludePfx, string EndpointText, Uri Endpoint)
         {
