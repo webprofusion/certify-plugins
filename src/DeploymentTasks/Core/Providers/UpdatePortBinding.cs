@@ -31,7 +31,7 @@ namespace Certify.Providers.DeploymentTasks
                 Id = "Certify.Providers.DeploymentTasks.UpdatePortBinding",
                 Title = "Update Port Binding",
                 DefaultTitle = "Update Port Binding",
-                IsExperimental = true,
+                IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService,
                 Description = "Uses netsh to update a IP:port certificate binding",

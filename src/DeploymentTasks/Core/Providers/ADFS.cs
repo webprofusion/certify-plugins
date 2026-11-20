@@ -75,7 +75,7 @@ namespace Certify.Providers.DeploymentTasks
                 Title = "Deploy to ADFS",
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
-                IsExperimental = true,
+                IsExperimental = false,
                 Description = "Apply certificate to local Active Directory Federation Services (ADFS) service",
                 ProviderParameters = new List<ProviderParameter>
                 {

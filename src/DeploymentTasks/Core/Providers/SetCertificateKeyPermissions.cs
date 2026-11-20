@@ -20,7 +20,7 @@ namespace Certify.Providers.DeploymentTasks
                 Id = "Certify.Providers.DeploymentTasks.SetCertificateKeyPermissions",
                 Title = "Set Certificate Key Permissions",
                 DefaultTitle = "Set Certificate Key Permissions",
-                IsExperimental = true,
+                IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
                 SupportedContexts = DeploymentContextType.LocalAsService,
                 SupportsRemoteTarget = false,
