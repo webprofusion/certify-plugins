@@ -7,6 +7,9 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Certify.Models;
@@ -66,6 +69,28 @@ namespace Certify.Providers.Deployment.Core.Shared
             }
 
             return KeyPem;
+        }
+
+        /// <summary>
+        /// The certificate as a JSON object, as stored in secrets managers: certificate, private_key (PKCS#8), chain (intermediates),
+        /// fullchain (certificate and intermediates) and optionally pfx (base64). Roots are not included.
+        /// </summary>
+        public string SecretJson(byte[] pfx = null)
+        {
+            var value = new JsonObject
+            {
+                ["certificate"] = CertPem,
+                ["private_key"] = Pkcs8KeyPem(),
+                ["chain"] = ChainPem,
+                ["fullchain"] = FullChainPem
+            };
+
+            if (pfx != null)
+            {
+                value["pfx"] = Convert.ToBase64String(pfx);
+            }
+
+            return value.ToJsonString(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
         }
     }
 

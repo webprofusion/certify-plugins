@@ -5,9 +5,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,8 +39,6 @@ namespace Certify.Providers.DeploymentTasks
         private static readonly Regex ValidName = new Regex(@"^[\w/+=.@-]{1,512}$", RegexOptions.Compiled);
 
         private static readonly string[] Permissions = { "secretsmanager:DescribeSecret", "secretsmanager:CreateSecret", "secretsmanager:PutSecretValue", "secretsmanager:TagResource", "secretsmanager:UpdateSecretVersionStage" };
-
-        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
         static AwsSecretsManager()
         {
@@ -158,7 +153,7 @@ namespace Certify.Providers.DeploymentTasks
                 return results;
             }
 
-            var secretValue = certificate.Result == null ? null : await SecretValue(certificate.Result, settings.IncludePfx ? managedCert.CertificatePath : null, cancellationToken);
+            var secretValue = certificate.Result?.SecretJson(certificate.Result != null && settings.IncludePfx ? await File.ReadAllBytesAsync(managedCert.CertificatePath, cancellationToken) : null);
             var versionId = secretValue == null ? null : VersionId(secretValue);
 
             try
@@ -316,28 +311,6 @@ namespace Certify.Providers.DeploymentTasks
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// The secret value: a JSON object with the certificate, its private key (PKCS#8), the intermediates, the certificate and intermediates
-        /// together, and optionally the PFX file. Roots are not included.
-        /// </summary>
-        private static async Task<string> SecretValue(DeviceCertificate cert, string pfxPath, CancellationToken cancellationToken)
-        {
-            var value = new JsonObject
-            {
-                ["certificate"] = cert.CertPem,
-                ["private_key"] = cert.Pkcs8KeyPem(),
-                ["chain"] = cert.ChainPem,
-                ["fullchain"] = cert.FullChainPem
-            };
-
-            if (pfxPath != null)
-            {
-                value["pfx"] = Convert.ToBase64String(await File.ReadAllBytesAsync(pfxPath, cancellationToken));
-            }
-
-            return value.ToJsonString(JsonOptions);
         }
 
         /// <summary>

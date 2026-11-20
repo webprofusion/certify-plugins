@@ -25,6 +25,11 @@ namespace Certify.Providers.DeploymentTasks
         public const string KubernetesToken = "ExternalAuth.Kubernetes.Token";
 
         /// <summary>
+        /// Google Cloud service account JSON key file: service_account_key
+        /// </summary>
+        public const string GoogleServiceAccountKey = "ExternalAuth.Google.ServiceAccountKey";
+
+        /// <summary>
         /// All credential types in the index. New definitions each call, so callers cannot change the originals
         /// </summary>
         public static List<ChallengeProviderDefinition> GetAll() => new List<ChallengeProviderDefinition>
@@ -71,6 +76,18 @@ namespace Certify.Providers.DeploymentTasks
                     new ProviderParameter{ Key="token", Name="Token", IsRequired=true, IsPassword=true, IsCredential=true, Description="Bearer token of the service account to use, e.g. from 'kubectl create token' or a service account token secret." },
                     new ProviderParameter{ Key="ca_data", Name="Cluster CA Certificate", IsRequired=false, IsCredential=true, Type=OptionType.MultiLineText, Description="(optional) CA certificate of the API server, as the 'certificate-authority-data' of a kubeconfig file or in PEM format. If set, only this CA is trusted. Leave blank if the API server certificate is publicly trusted." },
                     new ProviderParameter{ Key="allow_invalid_tls", Name="Allow Invalid TLS Certificate", IsRequired=false, IsCredential=true, Type=OptionType.Boolean, Value="false", Description="Don't check the API server's TLS certificate. Not recommended: set the Cluster CA Certificate instead." }
+                },
+                ChallengeType = "",
+                HandlerType = ChallengeHandlerType.INTERNAL
+            },
+            new ChallengeProviderDefinition
+            {
+                Id = GoogleServiceAccountKey,
+                Title = "Google Cloud Service Account Key",
+                Description = "JSON key file of a Google Cloud service account",
+                ProviderParameters = new List<ProviderParameter>
+                {
+                    new ProviderParameter{ Key="service_account_key", Name="Service Account Key (JSON)", IsRequired=true, IsPassword=true, IsCredential=true, Description="The contents of the service account's JSON key file, as downloaded from the Google Cloud console." }
                 },
                 ChallengeType = "",
                 HandlerType = ChallengeHandlerType.INTERNAL
