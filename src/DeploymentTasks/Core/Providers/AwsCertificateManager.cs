@@ -9,12 +9,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Amazon;
 using Amazon.CertificateManager;
 using Amazon.CertificateManager.Model;
 using Amazon.Runtime;
-using Amazon.SecurityToken;
-using AssumeRoleRequest = Amazon.SecurityToken.Model.AssumeRoleRequest;
 using Certify.Models;
 using Certify.Models.Config;
 using Certify.Models.Providers;
@@ -37,8 +34,9 @@ namespace Certify.Providers.DeploymentTasks
         /// </summary>
         public const string ManagedCertificateTag = "certify:managed-certificate-id";
 
-        private static readonly Regex ValidRegion = new Regex("^[a-z]{2}(-[a-z]+)+-[0-9]+$", RegexOptions.Compiled);
         private static readonly Regex ValidArn = new Regex(@"^arn:[\w+=/,.@-]+:acm:([a-z0-9-]+):[0-9]{12}:certificate/[\w+=,.@-]+$", RegexOptions.Compiled);
+
+        private static readonly string[] Permissions = { "acm:ListCertificates", "acm:ListTagsForCertificate", "acm:DescribeCertificate", "acm:ImportCertificate", "acm:AddTagsToCertificate" };
 
         // ListCertificates only returns RSA 2048 certificates unless other key types are asked for
         private static readonly List<string> AllKeyTypes = new List<string>
@@ -104,25 +102,14 @@ namespace Certify.Providers.DeploymentTasks
                 results.Add(new ActionResult("AWS Region is required, unless you set the Certificate ARN.", false));
             }
 
-            if (settings.RegionSetting != null && !ValidRegion.IsMatch(settings.RegionSetting))
-            {
-                results.Add(new ActionResult("AWS Region must be a region code, e.g. us-east-1 or eu-west-1.", false));
-            }
+            Aws.ValidateRegion(settings.RegionSetting, results);
 
             if (settings.EndpointText != null && settings.Endpoint == null)
             {
                 results.Add(new ActionResult("ACM Endpoint must be blank or a full URL, e.g. https://acm-fips.us-east-1.amazonaws.com.", false));
             }
 
-            var credentials = GetCredentials(execParams);
-            if (credentials == null)
-            {
-                results.Add(new ActionResult("An AWS Access Key credential is required.", false));
-            }
-            else if (credentials.AssumeRole && credentials.RoleArn == null)
-            {
-                results.Add(new ActionResult("The AWS Access Key credential has Assume IAM role enabled, but no Role ARN.", false));
-            }
+            Aws.ValidateAccessKey(Aws.GetAccessKey(execParams), results);
 
             if (execParams.IsPreviewOnly && !results.Any(r => !r.IsSuccess))
             {
@@ -171,11 +158,11 @@ namespace Certify.Providers.DeploymentTasks
             }
 
             var region = settings.Region;
-            var credentials = GetCredentials(execParams);
+            var accessKey = Aws.GetAccessKey(execParams);
 
             try
             {
-                using var client = await CreateClient(settings, credentials, cancellationToken);
+                using var client = new AmazonCertificateManagerClient(await Aws.SignIn(accessKey, region, cancellationToken), Aws.Configure(new AmazonCertificateManagerConfig(), region, settings.Endpoint));
 
                 // the certificate to re-import, if there is one
                 CertificateDetail existing;
@@ -265,7 +252,7 @@ namespace Certify.Providers.DeploymentTasks
             }
             catch (AmazonServiceException exp)
             {
-                results.Add(new ActionResult($"AWS Certificate Manager: {DescribeError(exp)}", false));
+                results.Add(new ActionResult($"AWS Certificate Manager: {Aws.DescribeError(exp, Permissions)}", false));
                 return results;
             }
             catch (Exception exp) when (exp is AmazonClientException || exp is HttpRequestException)
@@ -278,40 +265,6 @@ namespace Certify.Providers.DeploymentTasks
                 results.Add(new ActionResult($"AWS Certificate Manager: request to ACM in {region} timed out.", false));
                 return results;
             }
-        }
-
-        private static async Task<AmazonCertificateManagerClient> CreateClient(Settings settings, Credentials credentials, CancellationToken cancellationToken)
-        {
-            var config = new AmazonCertificateManagerConfig();
-            if (settings.Endpoint != null)
-            {
-                config.ServiceURL = settings.Endpoint.ToString();
-                config.AuthenticationRegion = settings.Region;
-            }
-            else
-            {
-                config.RegionEndpoint = RegionEndpoint.GetBySystemName(settings.Region);
-            }
-
-            AWSCredentials awsCredentials = new BasicAWSCredentials(credentials.AccessKey, credentials.SecretKey);
-
-            if (credentials.AssumeRole)
-            {
-                using var sts = new AmazonSecurityTokenServiceClient(awsCredentials, new AmazonSecurityTokenServiceConfig { RegionEndpoint = RegionEndpoint.GetBySystemName(settings.Region) });
-
-                var request = new AssumeRoleRequest
-                {
-                    RoleArn = credentials.RoleArn,
-                    RoleSessionName = credentials.SessionName,
-                    DurationSeconds = 900,
-                    ExternalId = credentials.ExternalId
-                };
-
-                var role = await sts.AssumeRoleAsync(request, cancellationToken);
-                awsCredentials = new SessionAWSCredentials(role.Credentials.AccessKeyId, role.Credentials.SecretAccessKey, role.Credentials.SessionToken);
-            }
-
-            return new AmazonCertificateManagerClient(awsCredentials, config);
         }
 
         private static async Task<CertificateDetail> Describe(AmazonCertificateManagerClient client, string arn, CancellationToken cancellationToken)
@@ -467,20 +420,6 @@ namespace Certify.Providers.DeploymentTasks
 
         private static MemoryStream Pem(string pem) => new MemoryStream(Encoding.ASCII.GetBytes(pem));
 
-        private static string DescribeError(AmazonServiceException exp)
-        {
-            var message = exp.Message?.TrimEnd('.');
-
-            return exp.ErrorCode switch
-            {
-                "UnrecognizedClientException" or "InvalidClientTokenId" or "InvalidSignatureException" or "SignatureDoesNotMatch"
-                    => $"access denied ({message}). Check the Access Key ID and Secret Access Key of the AWS Access Key credential.",
-                "AccessDeniedException" or "AccessDenied"
-                    => $"access denied ({message}). The IAM user or role needs the acm:ListCertificates, acm:ListTagsForCertificate, acm:DescribeCertificate, acm:ImportCertificate and acm:AddTagsToCertificate permissions.",
-                _ => $"{exp.ErrorCode}: {message}."
-            };
-        }
-
         private sealed record Settings(string RegionSetting, string Arn, string EndpointText, Uri Endpoint)
         {
             /// <summary>
@@ -495,28 +434,7 @@ namespace Certify.Providers.DeploymentTasks
             string value(string key) => parameters.FirstOrDefault(c => c.Key == key)?.Value?.Trim() is { Length: > 0 } v ? v : null;
 
             var endpointText = value("acm_endpoint");
-            var endpoint = Uri.TryCreate(endpointText, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) ? uri : null;
-
-            return new Settings(value("region")?.ToLowerInvariant(), value("certificate_arn"), endpointText, endpoint);
-        }
-
-        private sealed record Credentials(string AccessKey, string SecretKey, bool AssumeRole, string RoleArn, string SessionName, string ExternalId);
-
-        private static Credentials GetCredentials(DeploymentTaskExecutionParams execParams)
-        {
-            var credentials = execParams.Credentials;
-            string value(string key) => credentials?.TryGetValue(key, out var v) == true && !string.IsNullOrWhiteSpace(v) ? v.Trim() : null;
-
-            var accessKey = value("accesskey");
-            var secretKey = credentials?.GetValueOrDefault("secretaccesskey");
-            if (accessKey == null || string.IsNullOrEmpty(secretKey))
-            {
-                return null;
-            }
-
-            _ = bool.TryParse(value("useassumerole"), out var assumeRole);
-
-            return new Credentials(accessKey, secretKey, assumeRole, value("rolearn"), value("rolesessionname") ?? "CertifyTheWeb", value("externalid"));
+            return new Settings(value("region")?.ToLowerInvariant(), value("certificate_arn"), endpointText, Aws.ParseEndpoint(endpointText));
         }
     }
 }
