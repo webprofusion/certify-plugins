@@ -50,7 +50,12 @@ namespace Certify.Providers.DeploymentTasks
 
             execParams.Log?.Information("Executing command via PowerShell");
 
-            var parameters = new Dictionary<string, object>();
+            var restartServices = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "restartServices")?.Value ?? "false";
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "restartServices", restartServices }
+            };
             var logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
 
             var scriptResult = await PowerShellManager.RunScript(new PowerShellScriptSettings

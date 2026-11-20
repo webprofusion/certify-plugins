@@ -26,7 +26,7 @@ namespace Certify.Providers.DeploymentTasks
             {"pemfullnokey", "PEM - Full Certificate Chain (Excluding Key)" },
             {"pemfull", "PEM - Full Certificate Chain (Including Key)" },
             {"pemcrtpartialchain", "PEM - Primary Certificate + Intermediate Certificate Chain (e.g. .crt)" },
-            {"pfxfull", "PFX (PKCX#12), Full certificate including private key" }
+            {"pfxfull", "PFX (PKCS#12), Full certificate including private key" }
         };
 
         /// <summary>
@@ -283,7 +283,7 @@ namespace Certify.Providers.DeploymentTasks
                         }
                         catch
                         {
-                            var err = "Task using Windows Credentials require a valid username and password.";
+                            var err = "Task using Windows Credentials requires a valid username and password.";
                             log.Error(err);
 
                             return new List<ActionResult>{

@@ -135,13 +135,13 @@ namespace Certify.Providers.DeploymentTasks
                 var chainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_chain");
                 if (!string.IsNullOrWhiteSpace(chainPath?.Value))
                 {
-                    results.AddRange(await base.Validate(execParams, chainPath.Value, "pemchain"));
+                    results.AddRange(await base.Validate(execParams, chainPath.Value, "pemintermediates"));
                 }
 
                 var fullchainPath = settings.Parameters.FirstOrDefault(p => p.Key == "path_fullchain");
                 if (!string.IsNullOrWhiteSpace(fullchainPath?.Value))
                 {
-                    results.AddRange(await base.Validate(execParams, fullchainPath.Value, "pemfullnokey"));
+                    results.AddRange(await base.Validate(execParams, fullchainPath.Value, "pemcrtpartialchain"));
                 }
             }
 

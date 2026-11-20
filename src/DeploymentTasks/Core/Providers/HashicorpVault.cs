@@ -66,7 +66,7 @@ namespace Certify.Providers.DeploymentTasks
 
             if (!string.IsNullOrEmpty(vaultNamespace))
             {
-                httpClient.DefaultRequestHeaders.Add("X-Vault-Namespace", execParams.Credentials["vault_namespace"]);
+                httpClient.DefaultRequestHeaders.Add("X-Vault-Namespace", vaultNamespace);
             }
 
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -161,6 +161,19 @@ namespace Certify.Providers.DeploymentTasks
         public async Task<List<ActionResult>> Validate(DeploymentTaskExecutionParams execParams)
         {
             var results = new List<ActionResult> { };
+
+            var vaultUri = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_uri")?.Value;
+            var vaultPath = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "vault_secret_path")?.Value;
+
+            if (string.IsNullOrWhiteSpace(vaultUri) || !Uri.TryCreate(vaultUri, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                results.Add(new ActionResult("Vault URI is required and must be an http or https URL.", false));
+            }
+
+            if (string.IsNullOrWhiteSpace(vaultPath))
+            {
+                results.Add(new ActionResult("Path to Secret is required.", false));
+            }
 
             return await Task.FromResult(results);
         }

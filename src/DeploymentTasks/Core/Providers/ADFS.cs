@@ -34,13 +34,13 @@ namespace Certify.Providers.DeploymentTasks
 
             execParams.Log?.Information("Executing command via PowerShell");
 
-            var performRestart = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "performServiceRestart")?.Value ?? "false";
+            var restartServices = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "restartServices")?.Value ?? "false";
             var alternateTlsBinding = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "alternateTlsBinding")?.Value ?? "false";
             var logonType = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "logontype")?.Value ?? null;
 
             var parameters = new Dictionary<string, object>
             {
-                { "performServiceRestart", performRestart },
+                { "restartServices", restartServices },
                 { "alternateTlsBinding", alternateTlsBinding }
             };
 

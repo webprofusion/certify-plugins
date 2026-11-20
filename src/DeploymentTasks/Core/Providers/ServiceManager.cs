@@ -60,7 +60,7 @@ namespace Certify.Providers.DeploymentTasks
                 IsExperimental = false,
                 HasDynamicParameters = true,
                 UsageType = DeploymentProviderUsage.Any,
-                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork,
+                SupportedContexts = DeploymentContextType.LocalAsService,
                 SupportsRemoteTarget = false,
                 Description = "Used to stop, start or restart a service affected by certificate updates.",
                 ProviderParameters =
@@ -93,6 +93,11 @@ namespace Certify.Providers.DeploymentTasks
             var servicename = settings.Parameters.FirstOrDefault(c => c.Key == "servicename")?.Value;
             var action = settings.Parameters.FirstOrDefault(c => c.Key == "action")?.Value;
 
+            if (execParams.Credentials?.Any() == true)
+            {
+                execParams.Log?.Warning("Restart a Service: this task always runs as the Certify service account on the local machine, the credentials selected for the task are not used.");
+            }
+
             var service = new ServiceController(servicename);
 
             // stopping the service this task runs in ends the task, and the certificate request running it, before either
@@ -109,41 +114,23 @@ namespace Certify.Providers.DeploymentTasks
             {
                 if (service.Status != ServiceControllerStatus.Stopped)
                 {
-                    if (!execParams.IsPreviewOnly)
-                    {
-                        service = await StopServiceWithRetry(execParams.Log, servicename, service, ticks);
-                    }
+                    service = await StopServiceWithRetry(execParams.Log, servicename, service, ticks);
                 }
                 else
                 {
                     execParams.Log?.Information($"Service already stopped [{servicename}] ");
                 }
 
-                if (!execParams.IsPreviewOnly)
-                {
-                    service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
+                service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
 
-                    results.Add(new ActionResult("Service Restarted", true));
-                }
-                else
-                {
-                    results.Add(new ActionResult("[Preview] Service would restart.", true));
-                }
+                results.Add(new ActionResult("Service Restarted", true));
             }
-
             else if (action == "stop")
             {
                 if (service.Status != ServiceControllerStatus.Stopped)
                 {
-                    if (!execParams.IsPreviewOnly)
-                    {
-                        service = await StopServiceWithRetry(execParams.Log, servicename, service, ticks);
-                        results.Add(new ActionResult("Service Stopped", true));
-                    }
-                    else
-                    {
-                        results.Add(new ActionResult("[Preview] Service would be stopped", true));
-                    }
+                    service = await StopServiceWithRetry(execParams.Log, servicename, service, ticks);
+                    results.Add(new ActionResult("Service Stopped", true));
                 }
                 else
                 {
@@ -154,15 +141,8 @@ namespace Certify.Providers.DeploymentTasks
             }
             else if (action == "start")
             {
-                if (!execParams.IsPreviewOnly)
-                {
-                    service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
-                    results.Add(new ActionResult("Service Started", true));
-                }
-                else
-                {
-                    results.Add(new ActionResult("[Preview] Service would be started", true));
-                }
+                service = await StartServiceWithRetry(execParams.Log, servicename, service, ticks);
+                results.Add(new ActionResult("Service Started", true));
             }
 
             return results;
@@ -331,6 +311,21 @@ namespace Certify.Providers.DeploymentTasks
                 {
                     results.Add(new ActionResult($"Duration specified is outside the supported range. Max wait duration is {MAX_DURATION}", false));
                 }
+            }
+
+            if (execParams.IsPreviewOnly && !results.Any())
+            {
+                var preview = action switch
+                {
+                    "restart" => "restarted",
+                    "stop" => "stopped",
+                    "start" => "started",
+                    _ => null
+                };
+
+                results.Add(preview != null
+                    ? new ActionResult($"[Preview] Service [{servicename}] would be {preview}.", true)
+                    : new ActionResult($"Unknown action [{action}]. The action must be restart, stop or start.", false));
             }
 
             return await Task.FromResult(results);

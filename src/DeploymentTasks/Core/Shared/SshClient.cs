@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Certify.Config;
 using Certify.Models.Providers;
 using Renci.SshNet;
@@ -139,9 +140,12 @@ namespace Certify.Providers.Deployment.Core.Shared
             return new ConnectionInfo(config.Host, config.Port, config.Username, authMethods.ToArray());
         }
 
-        public List<CommandResult> ExecuteCommands(List<string> commands, ILog log)
+        /// <summary>
+        /// Run each command in turn, stopping at the first which fails (non-zero exit status, timeout or error). A connection
+        /// failure is returned as a failed result for the first command.
+        /// </summary>
+        public List<CommandResult> ExecuteCommands(List<string> commands, ILog log, TimeSpan? commandTimeout = null)
         {
-
             var results = new List<CommandResult>();
 
             var connectionInfo = GetConnectionInfo(_config);
@@ -151,27 +155,55 @@ namespace Certify.Providers.Deployment.Core.Shared
                 try
                 {
                     ssh.Connect();
+                }
+                catch (Exception e)
+                {
+                    log?.Error($"SshClient :: Error connecting to {_config.Host}:{_config.Port} {e}");
+                    results.Add(new CommandResult { Command = commands.FirstOrDefault(), Result = $"Could not connect to {_config.Host}:{_config.Port}: {e.Message}", IsError = true });
+                    return results;
+                }
 
-                    foreach (var command in commands)
+                foreach (var command in commands)
+                {
+                    try
                     {
-                        try
-                        {
-                            var cmd = ssh.RunCommand(command);
+                        using var cmd = ssh.CreateCommand(command);
 
-                            results.Add(new CommandResult { Command = command, Result = cmd.Result, IsError = false });
-                        }
-                        catch (Exception exp)
+                        if (commandTimeout.HasValue)
                         {
-                            results.Add(new CommandResult { Command = command, Result = exp.ToString(), IsError = true });
+                            cmd.CommandTimeout = commandTimeout.Value;
+                        }
+
+                        cmd.Execute();
+
+                        if (cmd.ExitStatus is int exitStatus && exitStatus != 0)
+                        {
+                            var output = string.Join(Environment.NewLine, new[] { cmd.Result, cmd.Error }.Where(o => !string.IsNullOrWhiteSpace(o)));
+                            results.Add(new CommandResult { Command = command, Result = $"Exit status {exitStatus}. {output}".Trim(), IsError = true });
                             break;
                         }
-                    }
 
+                        results.Add(new CommandResult { Command = command, Result = cmd.Result, IsError = false });
+                    }
+                    catch (Renci.SshNet.Common.SshOperationTimeoutException)
+                    {
+                        results.Add(new CommandResult { Command = command, Result = $"The command did not complete within the timeout ({commandTimeout?.TotalMinutes} mins).", IsError = true });
+                        break;
+                    }
+                    catch (Exception exp)
+                    {
+                        results.Add(new CommandResult { Command = command, Result = exp.ToString(), IsError = true });
+                        break;
+                    }
+                }
+
+                try
+                {
                     ssh.Disconnect();
                 }
                 catch (Exception e)
                 {
-                    log?.Error($"SShClient :: Error executing command {e}");
+                    log?.Warning($"SshClient :: Error disconnecting {e.Message}");
                 }
             }
 

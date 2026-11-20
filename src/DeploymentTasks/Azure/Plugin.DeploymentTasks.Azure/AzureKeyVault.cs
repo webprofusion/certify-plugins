@@ -37,7 +37,7 @@ namespace Plugin.DeploymentTasks.Azure
                     new() { Key="vault_uri", Name="Azure Vault Uri", IsRequired=true, IsCredential=false,  Description="e.g. https://<vault-name>.vault.azure.net/", Type= OptionType.String },
                     new() { Key="cert_name", Name="Certificate Name", IsRequired=false, IsCredential=false,  Description="(optional, alphanumeric characters 0-9a-Z or -)", Type= OptionType.String },
                     new() { Key="friendly_name", Name="PFX Friendly Name", IsRequired=false, IsCredential=false, Description="(optional) custom friendly name for the certificate in the PFX", Type= OptionType.String },
-                    new() { Key="azure_service",Name="Azure Service", IsRequired=true, IsPassword=false, IsCredential=false, Value="global", OptionsList="global=Azure Cloud; china=Azure China; germany=Azure Germany; usgov=Azure US Government" },
+                    new() { Key="azure_service",Name="Azure Service", IsRequired=true, IsPassword=false, IsCredential=false, Value="global", OptionsList="global=Azure Cloud; china=Azure China; usgov=Azure US Government" },
                 }
             };
         }
@@ -84,7 +84,7 @@ namespace Plugin.DeploymentTasks.Azure
 
             var customName = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value;
 
-            var certName = GetStringAsKeyVaultName(customName ?? managedCert.Name);
+            var certName = GetStringAsKeyVaultName(string.IsNullOrWhiteSpace(customName) ? managedCert.Name : customName.Trim());
 
             var certPwd = "";
 
@@ -166,7 +166,13 @@ namespace Plugin.DeploymentTasks.Azure
                 results.Add(new ActionResult("Vault URI is required e.g. https://<vault-name>.vault.azure.net/", false));
             }
 
-            var cert_name = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value;
+            var azureservice = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "azure_service")?.Value;
+            if (!AzureUtils.IsSupportedAuthorityService(azureservice))
+            {
+                results.Add(new ActionResult($"Azure Service [{azureservice}] is not supported. Azure Germany has closed, choose Azure Cloud, Azure China or Azure US Government.", false));
+            }
+
+            var cert_name = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "cert_name")?.Value?.Trim();
             if (!string.IsNullOrEmpty(cert_name))
             {
                 if (!Regex.IsMatch(cert_name, "^[0-9a-zA-Z-]+$"))

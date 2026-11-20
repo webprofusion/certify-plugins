@@ -30,7 +30,7 @@ namespace Certify.Providers.DeploymentTasks
                 Title = "Run...",
                 IsExperimental = false,
                 UsageType = DeploymentProviderUsage.PostRequest,
-                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.WindowsNetwork | DeploymentContextType.SSH,
+                SupportedContexts = DeploymentContextType.LocalAsService | DeploymentContextType.LocalAsUser | DeploymentContextType.SSH,
                 SupportsRemoteTarget = true,
                 Description = "Run a program, batch file or custom script",
                 ProviderParameters = new()
@@ -82,7 +82,7 @@ namespace Certify.Providers.DeploymentTasks
 
             if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_SSH)
             {
-                return await RunSSHScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials);
+                return await RunSSHScript(execParams.Log, command, args, execParams.Settings, execParams.Credentials, timeout);
             }
             else if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL)
             {
@@ -91,6 +91,12 @@ namespace Certify.Providers.DeploymentTasks
             }
             else if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
             {
+                if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
+                {
+                    // older tasks may use the Windows (Network) target, which has no remote execution: the script runs on this machine as the given user
+                    execParams.Log?.Warning("Run script: Windows (Network) credentials are used to run the script on this machine as that user, not on a remote machine.");
+                }
+
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     var err = "Running scripts as another user (alternative credentials) is not currently supported on Linux.";
@@ -101,7 +107,7 @@ namespace Certify.Providers.DeploymentTasks
                 }
                 else
                 {
-                    // Windows: use SimpleImpersonation or launch new process
+                    // Windows: the script runs on this machine as the given user, using SimpleImpersonation or by launching a new process
                     UserCredentials windowsCredentials = null;
                     if (execParams.Credentials != null && execParams.Credentials.Count > 0)
                     {
@@ -111,13 +117,18 @@ namespace Certify.Providers.DeploymentTasks
                         }
                         catch
                         {
-                            var err = "Task with Windows Credentials requires username and password.";
-                            execParams.Log.Error(err);
-
-                            return new() {
-                                new() { IsSuccess = false, Message = err }
-                            };
+                            windowsCredentials = null;
                         }
+                    }
+
+                    if (windowsCredentials == null)
+                    {
+                        var err = "Task with Windows Credentials requires a username and password.";
+                        execParams.Log?.Error(err);
+
+                        return new() {
+                            new() { IsSuccess = false, Message = err }
+                        };
                     }
 
                     if (launchNewProcess)
@@ -146,7 +157,7 @@ namespace Certify.Providers.DeploymentTasks
             return results;
         }
 
-        private static async Task<List<ActionResult>> RunSSHScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials)
+        private static async Task<List<ActionResult>> RunSSHScript(ILog log, string command, string args, DeploymentTaskConfig settings, Dictionary<string, string> credentials, int timeoutMins)
         {
             var sshConfig = SshClient.GetConnectionConfig(settings, credentials);
 
@@ -154,24 +165,25 @@ namespace Certify.Providers.DeploymentTasks
 
             var commandList = new List<string>
             {
-                $"{command} {args}"
+                string.IsNullOrWhiteSpace(args) ? command : $"{command} {args}"
             };
 
             log?.Information($"Executing command via SSH [{sshConfig.Host}:{sshConfig.Port}]");
 
-            var scriptResults = await Task.FromResult(ssh.ExecuteCommands(commandList, log));
+            var scriptResults = await Task.Run(() => ssh.ExecuteCommands(commandList, log, TimeSpan.FromMinutes(timeoutMins)));
 
-            if (scriptResults.Any(r => r.IsError))
+            if (scriptResults.Count == 0 || scriptResults.Any(r => r.IsError))
             {
-                var firstError = scriptResults.First(c => c.IsError);
+                var firstError = scriptResults.FirstOrDefault(c => c.IsError);
                 return new() {
-                    new() { IsSuccess = false, Message = $"One or more commands failed: {firstError.Command} :: {firstError.Result}" }
+                    new() { IsSuccess = false, Message = $"Command failed: {firstError?.Command} :: {firstError?.Result}" }
                 };
             }
             else
             {
+                var output = string.Join(Environment.NewLine, scriptResults.Select(r => r.Result).Where(r => !string.IsNullOrWhiteSpace(r)));
                 return new() {
-                    new() { IsSuccess = true, Message = "Command Completed" }
+                    new() { IsSuccess = true, Message = string.IsNullOrWhiteSpace(output) ? "Command Completed" : $"Command Completed: {output}" }
                 };
             }
         }
@@ -196,8 +208,7 @@ namespace Certify.Providers.DeploymentTasks
             else if (!isCommand)
             {
                 // Only check for local file existence if not using SSH (remote scripts cannot be validated locally)
-                if (execParams.Settings.ChallengeProvider != StandardAuthTypes.STANDARD_AUTH_SSH &&
-                    (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER))
+                if (execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_LOCAL_AS_USER || execParams.Settings.ChallengeProvider == StandardAuthTypes.STANDARD_AUTH_WINDOWS)
                 {
                     if (!System.IO.File.Exists(path))
                     {

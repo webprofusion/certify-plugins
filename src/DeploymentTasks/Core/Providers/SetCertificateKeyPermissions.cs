@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Certify.Management;
@@ -49,44 +48,19 @@ namespace Certify.Providers.DeploymentTasks
                 return validation;
             }
 
-            var certRequest = execParams.Subject as CertificateRequestResult;
-
-            execParams.Log?.Information("Executing command via PowerShell");
-
             var account = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "account")?.Value;
             var permission = execParams.Settings.Parameters.FirstOrDefault(p => p.Key == "permission")?.Value ?? "read";
 
             var managedCert = ManagedCertificate.GetManagedCertificate(execParams.Subject);
 
-            if (string.IsNullOrEmpty(managedCert.CertificatePath) || !File.Exists(managedCert.CertificatePath))
+            if (string.IsNullOrEmpty(managedCert?.CertificateThumbprintHash))
             {
-                return new List<ActionResult> { new($"Certificate file not found: {managedCert.CertificatePath}", false) };
+                return PrepareErrorResult("There is no current certificate for this managed certificate. Private key permissions can be updated once a certificate has been requested and stored.");
             }
 
             try
             {
-
-                var settings = execParams.Settings;
-                var log = execParams.Log;
-
-                var pfxData = File.ReadAllBytes(managedCert.CertificatePath);
-
-                var certPwd = "";
-
-                if (!string.IsNullOrWhiteSpace(managedCert.CertificatePasswordCredentialId))
-                {
-                    var cred = await execParams.CredentialsManager.GetUnlockedCredentialsDictionary(managedCert.CertificatePasswordCredentialId);
-                    if (cred != null)
-                    {
-                        certPwd = cred["password"];
-                    }
-                    else
-                    {
-                        return PrepareErrorResult($"The credentials for this task could not be unlocked or were not accessible {managedCert.CertificatePasswordCredentialId}.");
-                    }
-                }
-
-                // get cert from store (try My, then Web Hosting) first otherwise it will be recreated on load with a new key file
+                // get cert from store (try My, then Web Hosting), as the private key permissions apply to the stored key
 
                 var cert = CertificateManager.GetCertificateByThumbprint(managedCert.CertificateThumbprintHash, CertificateManager.DEFAULT_STORE_NAME);
 
@@ -97,7 +71,7 @@ namespace Certify.Providers.DeploymentTasks
 
                 if (cert == null)
                 {
-                    return PrepareErrorResult($"Certificate is not found in the machine certificate store. Private key permissions cannot be modified unless certificate has been stored.");
+                    return PrepareErrorResult($"Certificate {managedCert.CertificateThumbprintHash} was not found in the machine certificate store (Personal or Web Hosting). Private key permissions can only be updated for a stored certificate.");
                 }
 
                 var certKeyPath = CertificateManager.GetCertificatePrivateKeyPath(cert);
@@ -108,12 +82,12 @@ namespace Certify.Providers.DeploymentTasks
                 }
                 else
                 {
-                    return PrepareErrorResult($"Failed to update certificate private key permissions updated for account {account}");
+                    return PrepareErrorResult($"Failed to update certificate private key ({certKeyPath}) permissions for account {account}.");
                 }
             }
             catch (Exception exp)
             {
-                return PrepareErrorResult($"Failed to update certificate private key permissions updated for account {account}:: {exp}");
+                return PrepareErrorResult($"Failed to update certificate private key permissions for account {account}: {exp.Message}");
             }
         }
 

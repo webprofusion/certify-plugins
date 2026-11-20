@@ -30,11 +30,11 @@ namespace Certify.Providers.DeploymentTasks
                 ProviderParameters = new List<ProviderParameter>
                 {
                     new ProviderParameter{ Key="project", Name="Project Name", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="e.g. PROJECT_NAME" },
-                    new ProviderParameter{ Key="config", Name="Config Name", IsRequired=false, IsCredential=false, Type= OptionType.String, Description="e.g. dev, prd etc" },
+                    new ProviderParameter{ Key="config", Name="Config Name", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="e.g. dev, prd etc" },
                     new ProviderParameter{ Key="secretname_cert", Name="Name for Certificate", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="e.g. EXAMPLE_COM_CERT" },
                     new ProviderParameter{ Key="secretname_key", Name="Name for Private Key", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="e.g. EXAMPLE_COM_KEY" },
-                    new ProviderParameter{ Key="secretname_fullchain", Name="Name for Fullchain", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="(optional)" },
-                    new ProviderParameter{ Key="secretname_pfx", Name="Name for PFX", IsRequired=true, IsCredential=false, Type= OptionType.String, Description="(optional)" }
+                    new ProviderParameter{ Key="secretname_fullchain", Name="Name for Fullchain", IsRequired=false, IsCredential=false, Type= OptionType.String, Description="(optional)" },
+                    new ProviderParameter{ Key="secretname_pfx", Name="Name for PFX", IsRequired=false, IsCredential=false, Type= OptionType.String, Description="(optional)" }
                 }
             };
         }
@@ -176,12 +176,15 @@ namespace Certify.Providers.DeploymentTasks
             var doppler_config = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "config")?.Value;
             var secretname_cert = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "secretname_cert")?.Value;
             var secretname_key = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "secretname_key")?.Value;
-            var secretname_fullchain = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "secretname_fullchain")?.Value;
-            var secretname_pfx = execParams.Settings.Parameters.FirstOrDefault(c => c.Key == "secretname_pfx")?.Value;
 
             if (string.IsNullOrEmpty(doppler_project) || string.IsNullOrEmpty(doppler_config))
             {
                 results.Add(new ActionResult("Doppler project and config names required.", false));
+            }
+
+            if (string.IsNullOrEmpty(secretname_cert) || string.IsNullOrEmpty(secretname_key))
+            {
+                results.Add(new ActionResult("Doppler secret names for the certificate and private key are required.", false));
             }
 
             return await Task.FromResult(results);

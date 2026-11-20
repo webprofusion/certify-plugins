@@ -73,31 +73,9 @@ namespace Certify.Providers.DeploymentTasks
                 parameters.Add("result", certRequest);
             }
 
-            if (!string.IsNullOrEmpty(args))
+            foreach (var arg in ParseArguments(args))
             {
-                args = SubstituteEscapedCharacters(args);
-
-                foreach (var o in args.Split(';'))
-                {
-                    if (!string.IsNullOrEmpty(o))
-                    {
-                        var keyValuePair = o.Split(new[] { '=' }, 2);
-
-                        if (keyValuePair.Length == 1)
-                        {
-                            // item has a key only
-                            var key = RestoreEscapedCharacters(keyValuePair[0]).Trim();
-                            parameters.Add(key, "");
-                        }
-                        else
-                        {
-                            // item has a key and value
-                            var key = RestoreEscapedCharacters(keyValuePair[0]).Trim();
-                            var val = RestoreEscapedCharacters(keyValuePair[1]).Trim();
-                            parameters.Add(key, val);
-                        }
-                    }
-                }
+                parameters.Add(arg.Key, arg.Value);
             }
 
             execParams.Log?.Information("Executing command via PowerShell");
@@ -170,20 +148,50 @@ namespace Certify.Providers.DeploymentTasks
         }
 
         /// <summary>
+        /// Parse arguments in the form arg1=value;arg2=value, where \; \= and \ escape a literal ; = or \
+        /// </summary>
+        public static List<KeyValuePair<string, string>> ParseArguments(string args)
+        {
+            var parsed = new List<KeyValuePair<string, string>>();
+
+            if (string.IsNullOrEmpty(args))
+            {
+                return parsed;
+            }
+
+            args = SubstituteEscapedCharacters(args);
+
+            foreach (var o in args.Split(';'))
+            {
+                if (!string.IsNullOrEmpty(o))
+                {
+                    var keyValuePair = o.Split(new[] { '=' }, 2);
+
+                    var key = RestoreEscapedCharacters(keyValuePair[0]).Trim();
+                    var val = keyValuePair.Length == 1 ? "" : RestoreEscapedCharacters(keyValuePair[1]).Trim();
+
+                    parsed.Add(new KeyValuePair<string, string>(key, val));
+                }
+            }
+
+            return parsed;
+        }
+
+        /// <summary>
         /// Before parsing arguments, allow for escaped characters
         /// </summary>
         /// <param name="args"></param>
         /// <returns></returns>
-        private string SubstituteEscapedCharacters(string args)
+        private static string SubstituteEscapedCharacters(string args)
         {
+            // substitute escaped \ first, so that \; is a literal \ followed by a separator
+            args = args.Replace(@"\\", "⏫");
+
             // substitute escaped semicolons
             args = args.Replace(@"\;", "🏠");
 
             // substitute escaped =
             args = args.Replace(@"\=", "▶️");
-
-            // substitute escaped \
-            args = args.Replace(@"\\", "⏫");
 
             return args;
         }
@@ -193,7 +201,7 @@ namespace Certify.Providers.DeploymentTasks
         /// </summary>
         /// <param name="args"></param>
         /// <returns></returns>
-        private string RestoreEscapedCharacters(string value)
+        private static string RestoreEscapedCharacters(string value)
         {
             if (value == null)
             {

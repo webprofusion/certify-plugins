@@ -29,6 +29,12 @@ namespace Plugin.DeploymentTasks.Azure
             }
         }
 
+        /// <summary>
+        /// True if the service has an authority host (blank uses the public cloud). Azure Germany has closed, so has none
+        /// </summary>
+        internal static bool IsSupportedAuthorityService(string service)
+            => string.IsNullOrWhiteSpace(service) || service.Trim() is "global" or "usgov" or "china";
+
         internal static Uri MapServiceToAuthorityHost(string service)
         {
             if (string.IsNullOrEmpty(service))
@@ -44,6 +50,8 @@ namespace Plugin.DeploymentTasks.Azure
                     return AzureAuthorityHosts.AzureGovernment;
                 case "china":
                     return AzureAuthorityHosts.AzureChina;
+                case "germany":
+                    throw new ArgumentException("Azure Germany has closed, choose Azure Cloud, Azure China or Azure US Government.", nameof(service));
                 default:
                     return AzureAuthorityHosts.AzurePublicCloud;
             }
